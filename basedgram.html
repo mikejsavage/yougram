@@ -1,0 +1,179 @@
+<script src="https://unpkg.com/alpinejs" defer></script>
+
+<style>
+* { box-sizing: border-box; color: inherit; font-family: inherit; }
+html, body { height: 100%; }
+
+body {
+	background: #ddd;
+	font-family: sans-serif;
+	line-height: 1.5;
+	margin: 0;
+}
+
+h1, h2 {
+	margin: 1rem;
+}
+
+.photos {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin: 0.5rem;
+}
+
+.photo {
+	flex: 1;
+	min-width: 20vmax;
+	max-width: 25vmax;
+}
+
+.photo-fullscreen {
+	background: rgba( 26, 26, 26, 0.75 );
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	padding: 5vmax;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.photo-fullscreen img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	user-select: none;
+}
+
+.photo-img {
+	display: block;
+	aspect-ratio: 1;
+	width: 100%;
+	object-fit: cover;
+	object-position: 50% 50%;
+	border-radius: 0.25rem 0.25rem 0 0;
+}
+
+.photo-title {
+	font-weight: bold;
+}
+
+.photo-description {
+	background: #ccc;
+	border: 1px solid #bababa;
+	border-top: 0;
+	border-radius: 0 0 0.25rem 0.25rem;
+	padding: 0.5rem;
+}
+</style>
+
+<h1>Basedgram</h1>
+
+<div class="photos">
+	<div class="photo" x-data="{ fullscreen: false }">
+		<template x-if="fullscreen">
+			<div class="photo-fullscreen" @click="fullscreen = false">
+				<img src="http://placekitten.com/400/200">
+			</div>
+		</template>
+
+		<a href="gg" @click.prevent="fullscreen = true">
+			<img class="photo-img" src="http://placekitten.com/400/200" loading="lazy">
+		</a>
+
+		<div class="photo-description">
+			<div class="photo-title">Great image</div>
+			Hello testing based based based based based based based based based
+		</div>
+	</div>
+
+	<div class="photo" x-data="{ fullscreen: false }">
+		<template x-if="fullscreen">
+			<div class="photo-fullscreen" @click="fullscreen = false">
+				<img src="http://placekitten.com/400/200">
+			</div>
+		</template>
+
+		<a href="gg" @click.prevent="fullscreen = true">
+			<img class="photo-img" src="http://placekitten.com/400/200" loading="lazy">
+		</a>
+
+		<div class="photo-description">
+			<div class="photo-title">Great image</div>
+			Hello testing
+		</div>
+	</div>
+
+	<div class="photo" x-data="{ fullscreen: false }">
+		<template x-if="fullscreen">
+			<div class="photo-fullscreen" @click="fullscreen = false">
+				<img src="http://placekitten.com/400/200">
+			</div>
+		</template>
+
+		<a href="gg" @click.prevent="fullscreen = true">
+			<img class="photo-img" src="http://placekitten.com/400/200" loading="lazy">
+		</a>
+
+		<div class="photo-description">
+			<div class="photo-title">Great image</div>
+			Hello testing
+		</div>
+	</div>
+
+	<div class="photo" x-data="{ fullscreen: false }">
+		<template x-if="fullscreen">
+			<div class="photo-fullscreen" @click="fullscreen = false">
+				<img src="http://placekitten.com/400/200">
+			</div>
+		</template>
+
+		<a href="gg" @click.prevent="fullscreen = true">
+			<img class="photo-img" src="http://placekitten.com/400/200" loading="lazy">
+		</a>
+
+		<div class="photo-description">
+			<div class="photo-title">Great image</div>
+			Hello testing
+		</div>
+	</div>
+
+	<div class="photo" x-data="{ fullscreen: false }">
+		<template x-if="fullscreen">
+			<div class="photo-fullscreen" @click="fullscreen = false">
+				<img src="http://placekitten.com/400/200">
+			</div>
+		</template>
+
+		<a href="gg" @click.prevent="fullscreen = true">
+			<img class="photo-img" src="http://placekitten.com/400/200" loading="lazy">
+		</a>
+
+		<div class="photo-description">
+			<div class="photo-title">Great image</div>
+			Hello testing
+		</div>
+	</div>
+
+	<div class="photo" x-data="{ fullscreen: false }">
+		<template x-if="fullscreen">
+			<div class="photo-fullscreen" @click="fullscreen = false">
+				<img src="http://placekitten.com/400/200">
+			</div>
+		</template>
+
+		<a href="gg" @click.prevent="fullscreen = true">
+			<img class="photo-img" src="http://placekitten.com/400/200" loading="lazy">
+		</a>
+
+		<div class="photo-description">
+			<div class="photo-title">Great image</div>
+			Hello testing
+		</div>
+	</div>
+</div>
+
+<h2>son</h2>
