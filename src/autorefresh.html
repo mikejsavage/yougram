@@ -1,0 +1,12 @@
+<script>
+let checksum = {{ .Checksum }};
+setInterval( function() {
+    fetch( "/Special:checksum" ).then( function( res ) {
+		return res.ok ? res.text() : null;
+    } ).then( function( cs ) {
+        if( cs != null && cs != checksum ) {
+            location.reload();
+        }
+	} ).catch( function() { } );
+}, 1000 );
+</script>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ .Title }}</title>
+
+{{ template "autorefresh.html" . }}
+<script src="https://unpkg.com/alpinejs@3.14.1" defer></script>
+<script>{{ .ThumbhashJS }}</script>
+
+<style>
+* {
+	box-sizing: border-box;
+}
+
+body {
+	font-family: sans-serif;
+	line-height: 1.5;
+	margin: 0;
+}
+
+h1, h2 {
+	margin: 1rem;
+}
+
+.photos {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.photo {
+	flex: 1;
+	min-width: 20vmax;
+	max-width: 25vmax;
+}
+
+.photo-fullscreen {
+	background: rgba( 26, 26, 26, 0.75 );
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	padding: 2.5vmax;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.photo-fullscreen img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	user-select: none;
+}
+
+.photo-description {
+	color: #fff;
+	padding: 0.5rem;
+}
+
+.thumbnail img {
+	aspect-ratio: 1;
+	width: 100%;
+	object-fit: cover;
+	object-position: 50% 50%;
+}
+
+.stack {
+	display: grid;
+	width: 100%;
+}
+
+.stack > * {
+	grid-row: 1;
+	grid-column: 1;
+}
+</style>
+
+<h1>{{ .Title }}</h1>
+
+<input type="file" multiple>
+
+<script>
+function MakeThumbhash( img, thumbhash ) {
+	let raw_thumbhash = atob( thumbhash );
+	let u8_thumbhash = new Uint8Array( raw_thumbhash.length );
+    for( let i = 0; i < raw_thumbhash.length; i++ ) {
+		u8_thumbhash[ i ] = raw_thumbhash.charCodeAt( i );
+    }
+	img.src = thumbHashToDataURL( u8_thumbhash );
+}
+</script>
+
+<div class="photos" x-data="{ fullscreen: null }">
+	{{ range $i, $photo := .Photos }}
+		<div class="photo" x-data="{ thumbhash: '{{ .Thumbhash }}' }">
+			<template x-if="fullscreen === 0">
+				<div class="photo-fullscreen"
+					@click="fullscreen = null"
+					@keydown.window.escape="fullscreen = null"
+					{{ if gt $i 0 }} @keydown.window.left="fullscreen = {{ add $i -1 }}" {{ end }}
+					{{ if lt $i (add (len $.Photos) -1) }} @keydown.window.right="fullscreen = {{ add $i 1 }}" {{ end }}
+				>
+					<div class="stack">
+						<img x-init="MakeThumbhash( $el, thumbhash )">
+						<img src="/Special:thumbnail/{{ .SHA256 }}" onload="this.previousElementSibling.remove()" @error="$el.remove()">
+						<img src="/Special:image/{{ .SHA256 }}" onload="this.previousElementSibling.remove()" @error="$el.remove()">
+					</div>
+				</div>
+			</template>
+
+			<a class="thumbnail stack" href="/Special:image/{{ .SHA256 }}" @click.prevent="fullscreen = {{ $i }}">
+				<img x-init="MakeThumbhash( $el, thumbhash )">
+				<img src="/Special:thumbnail/{{ .SHA256 }}" loading="lazy" onload="this.previousElementSibling.remove()">
+			</a>
+		</div>
+	{{ end }}
+</div>
