@@ -79,7 +79,10 @@ h1, h2 {
 
 <h1>{{ .Title }}</h1>
 
-<input type="file" multiple>
+<form action="/{{ .AlbumURL }}" method="POST" enctype="multipart/form-data">
+	<input type="file" name="photos" multiple>
+	<input type="submit">
+</form>
 
 <script>
 function MakeThumbhash( img, thumbhash ) {

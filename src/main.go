@@ -17,19 +17,19 @@ import (
 	"html/template"
 	"image"
 	"io"
-	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"net/http"
 	"regexp"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/galdor/go-thumbhash"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rwcarlsen/goexif/exif"
-	"github.com/galdor/go-thumbhash"
 	"github.com/tdewolff/minify/v2"
 	minify_css "github.com/tdewolff/minify/v2/css"
 	minify_js "github.com/tdewolff/minify/v2/js"
@@ -61,15 +61,31 @@ var thumbhashjs string
 
 var checksum string
 
-func try( err error ) {
+func must( err error ) {
 	if err != nil {
 		log.Fatal( err )
 	}
 }
 
-func try1[ T any ]( v T, err error ) T {
+func must1[ T1 any ]( v1 T1, err error ) T1 {
+	must( err )
+	return v1
+}
+
+func must2[ T1 any, T2 any ]( v1 T1, v2 T2, err error ) ( T1, T2 ) {
+	must( err )
+	return v1, v2
+}
+
+func try( err error ) {
+	if err != nil {
+		panic( err )
+	}
+}
+
+func try1[ T1 any ]( v1 T1, err error ) T1 {
 	try( err )
-	return v
+	return v1
 }
 
 func try2[ T1 any, T2 any ]( v1 T1, v2 T2, err error ) ( T1, T2 ) {
@@ -85,17 +101,17 @@ func exec( query string, args ...interface{} ) {
 }
 
 func initTables() {
-	const application_id = -1524217918;
-	const schema_version = 1;
+	const application_id = -1524217918
+	const schema_version = 1
 
 	{
 		var id int32
 		row := db.QueryRow( "PRAGMA application_id" )
-		try( row.Scan( &id ) )
+		must( row.Scan( &id ) )
 
 		var version int32
 		row = db.QueryRow( "PRAGMA user_version" )
-		try( row.Scan( &version ) )
+		must( row.Scan( &version ) )
 
 		if id != 0 && version != 0 {
 			if id != application_id {
@@ -167,13 +183,13 @@ func initTables() {
 	exec( "INSERT INTO auto_assign_rules ( album_id, start_date, end_date, latitude, longitude, radius ) VALUES ( 2, strftime( '%s', '2024-01-01' ), strftime( '%s', '2024-12-31' ), 60, 24, 50 )" )
 
 	{
-		f := try1( os.Open( "DSCF2994.jpeg" ) )
+		f := must1( os.Open( "DSCF2994.jpeg" ) )
 		defer f.Close()
 
-		decoded := try1( StbLoad( f ) )
+		decoded := must1( StbLoad( f ) )
 		scale := 512.0 / float32( min( decoded.Rect.Dx(), decoded.Rect.Dy() ) )
 		thumbnail := StbResize( decoded, int( float32( decoded.Rect.Dx() ) * scale ), int( float32( decoded.Rect.Dy() ) * scale ) )
-		thumbnail_jpg := try1( StbToJpg( thumbnail, 80 ) )
+		thumbnail_jpg := must1( StbToJpg( thumbnail, 80 ) )
 
 		thumbnail2 := thumbhash.EncodeImage( decoded )
 
@@ -204,33 +220,45 @@ type MapboxGeocodingFeature struct {
 }
 
 type MapboxGeocodingResponse struct {
-	Features []MapboxGeocodingFeature `"json:features"`
+	Features []MapboxGeocodingFeature `json:"features"`
 }
 
 func ( feature *MapboxGeocodingFeature ) UnmarshalJSON( b []byte ) error {
 	var f interface{}
 	json.Unmarshal( b, &f )
 
-	m := f.(map[string]interface{})
+	m := f.( map[string]interface{} )
 
-	properties := m[ "properties" ].(map[string]interface{})
-	geometry := m[ "geometry" ].(map[string]interface{})
-	coordinates := geometry[ "coordinates" ].([]interface{})
+	properties := m[ "properties" ].( map[string]interface{} )
+	geometry := m[ "geometry" ].( map[string]interface{} )
+	coordinates := geometry[ "coordinates" ].( []interface{} )
 
-	feature.Address = properties[ "full_address" ].(string)
-	feature.Latitude = float32( coordinates[ 0 ].(float64) )
-	feature.Longitude = float32( coordinates[ 1 ].(float64) )
+	feature.Address = properties[ "full_address" ].( string )
+	feature.Latitude = float32( coordinates[ 0 ].( float64 ) )
+	feature.Longitude = float32( coordinates[ 1 ].( float64 ) )
 
 	return nil
 }
 
+func geocode() {
+	resp := try1( http.Get( "https://api.mapbox.com/search/geocode/v6/forward?q=Los%20Angeles&access_token=pk.eyJ1IjoibWlrZWpzYXZhZ2UiLCJhIjoiY2x6bGZ0ajI0MDI2YTJrcG5tc2tmazZ1ZCJ9.vMTIB8J0J9fAiI2IrNrc5w" ) )
+	body := try1( io.ReadAll( resp.Body ) )
+	fmt.Printf( "%s\n", body )
+	var decoded MapboxGeocodingResponse
+	try( json.Unmarshal( []byte( body ), &decoded ) )
+
+	for _, feature := range decoded.Features {
+		fmt.Printf( "%s %f,%f\n", feature.Address, feature.Latitude, feature.Longitude )
+	}
+}
+
 func exeChecksum() string {
-	path := try1( os.Executable() )
-	f := try1( os.Open( path ) )
+	path := must1( os.Executable() )
+	f := must1( os.Open( path ) )
 	defer f.Close()
 
 	hasher := fnv.New64a()
-	_ = try1( io.Copy( hasher, f ) )
+	_ = must1( io.Copy( hasher, f ) )
 
 	return hex.EncodeToString( hasher.Sum( nil ) )
 }
@@ -299,7 +327,7 @@ func thumbhashToBase64Png( thumb []byte ) string {
 	// https://github.com/evanw/thumbhash/blob/a652ce6ed691242f459f468f0a8756cda3b90a82/js/thumbhash.js#L234
 	// https://stackoverflow.com/a/69353504 - lots of bad stuff, mixed dec/hex, "IDHR", zlib header is "120 1" not "0 0"
 	png := new( strings.Builder )
-	png.Write( []byte { 137, 80, 78, 71, 13, 10, 26, 10 } )
+	png.Write( []byte{ 137, 80, 78, 71, 13, 10, 26, 10 } )
 
 	{
 		ihdr := new( bytes.Buffer )
@@ -417,50 +445,64 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, route []string ) {
 }
 
 func uploadPhotos( w http.ResponseWriter, r *http.Request, route []string ) {
+	const megabyte = 1000 * 1000
+	try( r.ParseMultipartForm( 10 * megabyte ) )
+
+	fmt.Printf( "%d\n", len( r.MultipartForm.File[ "photos" ] ) )
+	for _, header := range r.MultipartForm.File[ "photos" ] {
+		f := try1( header.Open() )
+		defer f.Close()
+
+		contents := try1( io.ReadAll( f ) )
+
+		fmt.Printf( "%s -> %d\n", header.Filename, len( contents ) )
+	}
+
+	http.Redirect( w, r, r.URL.Path, http.StatusSeeOther )
 }
 
 func admin( w http.ResponseWriter, r *http.Request, route []string ) {
 }
 
-func geocode() {
-	resp := try1( http.Get( "https://api.mapbox.com/search/geocode/v6/forward?q=Los%20Angeles&access_token=pk.eyJ1IjoibWlrZWpzYXZhZ2UiLCJhIjoiY2x6bGZ0ajI0MDI2YTJrcG5tc2tmazZ1ZCJ9.vMTIB8J0J9fAiI2IrNrc5w" ) )
-	body := try1( ioutil.ReadAll( resp.Body ) )
-	fmt.Printf( "%s\n", body )
-	var decoded MapboxGeocodingResponse
-	try( json.Unmarshal( []byte( body ), &decoded ) )
-
-	for _, feature := range decoded.Features {
-		fmt.Printf( "%s %f,%f\n", feature.Address, feature.Latitude, feature.Longitude )
-	}
-}
-
 type Route struct {
-	Url *regexp.Regexp
-	Method string
+	Url     *regexp.Regexp
+	Method  string
 	Handler func( http.ResponseWriter, *http.Request, []string )
 }
 
 func startHttpServer( addr string, routes []Route ) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc( "/", func( w http.ResponseWriter, r *http.Request ) {
-		for _, route := range routes {
-			if r.Method != route.Method {
-				continue
-			}
-
-			if matches := route.Url.FindStringSubmatch( r.URL.Path ); len( matches ) > 0 {
-				route.Handler( w, r, matches[ 1: ] )
+		defer func() {
+			if r := recover(); r != nil {
+				log.Print( r )
+				http.Error( w, "Internal Server Error", http.StatusInternalServerError )
 				return
+			}
+		}()
+
+		is405 := false
+
+		for _, route := range routes {
+			if matches := route.Url.FindStringSubmatch( r.URL.Path ); len( matches ) > 0 {
+				if r.Method == route.Method {
+					route.Handler( w, r, matches[1:] )
+					return
+				}
+
+				is405 = true
 			}
 		}
 
-		w.Header().Set( "Content-Type", "text/plain" )
-		w.WriteHeader( http.StatusNotFound )
-		io.WriteString( w, "Not found\n" )
+		if is405 {
+			http.Error( w, "Method Not Allowed", http.StatusMethodNotAllowed )
+		} else {
+			http.Error( w, "Not Found", http.StatusNotFound )
+		}
 	} )
 
-	http_server := &http.Server {
-		Addr: addr,
+	http_server := &http.Server{
+		Addr:    addr,
 		Handler: mux,
 	}
 
@@ -481,10 +523,10 @@ func templateAdd( a int, b int ) int {
 func main() {
 	checksum = exeChecksum()
 
-	template_funcs := template.FuncMap {
+	template_funcs := template.FuncMap{
 		"add": templateAdd,
 	}
-	templates = try1( template.New( "dummy" ).Funcs( template_funcs ).ParseFS( template_sources, "*" ) )
+	templates = must1( template.New( "dummy" ).Funcs( template_funcs ).ParseFS( template_sources, "*" ) )
 
 	{
 		path := "file::memory:?cache=shared"
@@ -503,19 +545,19 @@ func main() {
 	defer db.Close()
 
 	{
-		f := try1( os.Open( "DSCN0025.jpg" ) )
+		f := must1( os.Open( "DSCN0025.jpg" ) )
 		defer f.Close()
 
-		exif := try1( exif.Decode( f ) )
-		lat, long := try2( exif.LatLong() )
+		exif := must1( exif.Decode( f ) )
+		lat, long := must2( exif.LatLong() )
 		fmt.Printf( "%f %f\n", lat, long )
 
-		_ = try1( f.Seek( 0, io.SeekStart ) )
+		_ = must1( f.Seek( 0, io.SeekStart ) )
 
-		decoded := try1( StbLoad( f ) )
+		decoded := must1( StbLoad( f ) )
 		thumbnail := StbResize( decoded, 456, 123 )
 
-		try( StbWriteJpg( "thumbnail.jpg", thumbnail, 80 ) )
+		must( StbWriteJpg( "thumbnail.jpg", thumbnail, 80 ) )
 	}
 
 	initTables()
@@ -525,21 +567,21 @@ func main() {
 		m.AddFunc( "css", minify_css.Minify )
 		m.AddFunc( "js", minify_js.Minify )
 
-		alpinejs = try1( m.String( "js", string( try1( js.ReadFile( "alpine-3.14.1.js" ) ) ) ) )
-		thumbhashjs = try1( m.String( "js", strings.ReplaceAll( string( try1( js.ReadFile( "thumbhash.js" ) ) ), "export function", "function" ) ) )
+		alpinejs = must1( m.String( "js", string( must1( js.ReadFile( "alpine-3.14.1.js" ) ) ) ) )
+		thumbhashjs = must1( m.String( "js", strings.ReplaceAll( string( must1( js.ReadFile( "thumbhash.js" ) ) ), "export function", "function" ) ) )
 	}
 
-	public_http_server := startHttpServer( "127.0.0.1:5678", []Route{
-		Route { regexp.MustCompile( "^/Special:checksum$" ), "GET", getChecksum },
-		Route { regexp.MustCompile( "^/Special:image/(.+)$" ), "GET", getImage },
-		Route { regexp.MustCompile( "^/Special:thumbnail/(.+)$" ), "GET", getThumbnail },
-		// Route { regexp.MustCompile( "^/Special:geocode$" ), "GET", geocode },
-		Route { regexp.MustCompile( "^/([^:]*?)$" ), "GET", viewAlbum },
-		Route { regexp.MustCompile( "^/([^:]*?)/upload$" ), "POST", uploadPhotos },
+	public_http_server := startHttpServer( "127.0.0.1:5678", []Route {
+		{ regexp.MustCompile( "^/Special:checksum$" ), "GET", getChecksum },
+		{ regexp.MustCompile( "^/Special:image/( .+ )$" ), "GET", getImage },
+		{ regexp.MustCompile( "^/Special:thumbnail/( .+ )$" ), "GET", getThumbnail },
+		// { regexp.MustCompile( "^/Special:geocode$" ), "GET", geocode },
+		{ regexp.MustCompile( "^/( [^:]+ )$" ), "GET", viewAlbum },
+		{ regexp.MustCompile( "^/( [^:]+ )$" ), "POST", uploadPhotos },
 	} )
 
-	private_http_server := startHttpServer( "127.0.0.1:12345", []Route{
-		Route { regexp.MustCompile( "^/$" ), "GET", admin },
+	private_http_server := startHttpServer( "127.0.0.1:12345", []Route {
+		{ regexp.MustCompile( "^/$" ), "GET", admin },
 	} )
 
 	done := make( chan os.Signal, 1 )
@@ -552,6 +594,6 @@ func main() {
 		cancel()
 	}()
 
-	try( public_http_server.Shutdown( ctx ) )
-	try( private_http_server.Shutdown( ctx ) )
+	must( public_http_server.Shutdown( ctx ) )
+	must( private_http_server.Shutdown( ctx ) )
 }
