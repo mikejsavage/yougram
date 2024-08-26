@@ -101,7 +101,7 @@ func exec( query string, args ...interface{} ) {
 }
 
 func initTables() {
-	const application_id = -1524217918
+	const application_id = -133015034
 	const schema_version = 1
 
 	{
