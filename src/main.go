@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"embed"
 	"encoding/base64"
@@ -18,10 +19,10 @@ import (
 	"image"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
@@ -30,6 +31,7 @@ import (
 	"github.com/galdor/go-thumbhash"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rwcarlsen/goexif/exif"
+	"github.com/rwcarlsen/goexif/tiff"
 	"github.com/tdewolff/minify/v2"
 	minify_css "github.com/tdewolff/minify/v2/css"
 	minify_js "github.com/tdewolff/minify/v2/js"
@@ -60,6 +62,13 @@ var alpinejs string
 var thumbhashjs string
 
 var checksum string
+
+func sel[ T any ]( p bool, t T, f T ) T {
+	if p {
+		return t
+	}
+	return f
+}
 
 func must( err error ) {
 	if err != nil {
@@ -98,6 +107,11 @@ func exec( query string, args ...interface{} ) {
 	if err != nil {
 		log.Fatalf( "%+v: %s", err, query )
 	}
+}
+
+func query( query string, args ...interface{} ) error {
+	_, err := db.Exec( query, args... )
+	return err
 }
 
 func initTables() {
@@ -167,12 +181,13 @@ func initTables() {
 			id INTEGER PRIMARY KEY,
 			album_id INTEGER NULL,
 			filename TEXT NOT NULL,
-			date INTEGER NOT NULL,
+			date INTEGER NULL,
 			latitude REAL NULL CHECK( latitude >= -90 AND latitude <= 90 ),
 			longitude REAL NULL CHECK( longitude >= -180 AND longitude < 180 ),
 			sha256 BLOB NOT NULL CHECK( length( sha256 ) = 32 ),
 			thumbhash BLOB NOT NULL,
 			thumbnail BLOB NOT NULL,
+			image BLOB NOT NULL,
 			FOREIGN KEY( album_id ) REFERENCES albums( id )
 		) STRICT
 		`
@@ -186,14 +201,27 @@ func initTables() {
 		f := must1( os.Open( "DSCF2994.jpeg" ) )
 		defer f.Close()
 
-		decoded := must1( StbLoad( f ) )
-		scale := 512.0 / float32( min( decoded.Rect.Dx(), decoded.Rect.Dy() ) )
-		thumbnail := StbResize( decoded, int( float32( decoded.Rect.Dx() ) * scale ), int( float32( decoded.Rect.Dy() ) * scale ) )
-		thumbnail_jpg := must1( StbToJpg( thumbnail, 80 ) )
+		jpg := must1( io.ReadAll( f ) )
 
-		thumbnail2 := thumbhash.EncodeImage( decoded )
+		must( addPhotoToAlbum( jpg, 2, "DSCF2994.jpeg" ) )
+	}
 
-		exec( "INSERT INTO photos ( album_id, filename, date, latitude, longitude, sha256, thumbhash, thumbnail ) VALUES ( 1, 'DSCF2994.jpeg', strftime( '%s', '2024-12-31' ), 0, 0, x'cc85f99cd694c63840ff359e13610390f85c4ea0b315fc2b033e5839e7591949', $1, $2 )", thumbnail2, thumbnail_jpg )
+	{
+		f := must1( os.Open( "DSCN0025.jpg" ) )
+		defer f.Close()
+
+		jpg := must1( io.ReadAll( f ) )
+
+		must( addPhotoToAlbum( jpg, 2, "DSCN0025.jpg" ) )
+	}
+
+	{
+		f := must1( os.Open( "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG" ) )
+		defer f.Close()
+
+		jpg := must1( io.ReadAll( f ) )
+
+		must( addPhoto( jpg, sql.Null[ int64 ] { }, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG" ) )
 	}
 
 	// {
@@ -276,12 +304,12 @@ func getChecksum( w http.ResponseWriter, r *http.Request, route []string ) {
 }
 
 func getImage( w http.ResponseWriter, r *http.Request, route []string ) {
-	var album_name string
-	var image_filename string
+	var filename string
+	var image []byte
 	{
 		raw_sha256 := try1( hex.DecodeString( route[ 0 ] ) )
-		row := db.QueryRow( "SELECT albums.name, photos.filename FROM photos, albums WHERE photos.sha256 = $1 AND albums.id = photos.album_id", raw_sha256 )
-		err := row.Scan( &album_name, &image_filename )
+		row := db.QueryRow( "SELECT filename, image FROM photos WHERE sha256 = $1", raw_sha256 )
+		err := row.Scan( &filename, &image )
 		if err != nil {
 			if errors.Is( err, sql.ErrNoRows ) {
 				http404( w )
@@ -291,9 +319,9 @@ func getImage( w http.ResponseWriter, r *http.Request, route []string ) {
 		}
 	}
 
-	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s\"", image_filename ) )
+	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s\"", filename ) )
 	w.Header().Set( "Content-Type", "image/jpeg" )
-	http.ServeFile( w, r, filepath.Join( album_name, image_filename ) )
+	w.Write( image )
 }
 
 func getThumbnail( w http.ResponseWriter, r *http.Request, route []string ) {
@@ -444,6 +472,183 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, route []string ) {
 	try( templates.ExecuteTemplate( w, "album.html", context ) )
 }
 
+type LatLong struct {
+	Latitude float64
+	Longitude float64
+}
+
+func degToRad( d float64 ) float64 {
+	return d * math.Pi / 180.0
+}
+
+func angleDiff( a float64, b float64 ) float64 {
+	d := math.Mod( math.Abs( a - b ), 360.0 )
+	if d > 180 {
+		d = 360 - d
+	}
+	return d
+}
+
+func distance( a LatLong, b LatLong ) float64 {
+	const earth_radius float64 = 6371
+	dlat := degToRad( angleDiff( a.Latitude, b.Latitude ) )
+	dlong := degToRad( angleDiff( a.Longitude, b.Longitude ) )
+	return earth_radius * math.Acos( math.Cos( dlat ) * math.Cos( dlong ) )
+}
+
+type ExifOrientation int
+
+const (
+	ExifOrientation_Identity ExifOrientation = 1
+	ExifOrientation_FlipHorizontal ExifOrientation = 2
+	ExifOrientation_Rotate180 ExifOrientation = 3
+	ExifOrientation_FlipVertical ExifOrientation = 4
+	ExifOrientation_Transpose ExifOrientation = 5
+	ExifOrientation_Rotate270 ExifOrientation = 6
+	ExifOrientation_OppositeTranspose ExifOrientation = 7
+	ExifOrientation_Rotate90 ExifOrientation = 8
+)
+
+func exifOrientation( data *exif.Exif ) ( ExifOrientation, error ) {
+	tag, err := data.Get( exif.Orientation )
+	if err != nil {
+		return ExifOrientation_Identity, err
+	}
+
+	if tag.Format() != tiff.IntVal || tag.Count != 1 {
+		return ExifOrientation_Identity, errors.New( "EXIF Orientation not an int" )
+	}
+
+	orientation, err := tag.Int( 0 )
+	if err != nil {
+		return ExifOrientation_Identity, err
+	}
+
+	if ExifOrientation( orientation ) < ExifOrientation_Identity || ExifOrientation( orientation ) > ExifOrientation_Rotate90 {
+		return ExifOrientation_Identity, errors.New( "EXIF orientation out of range" )
+	}
+
+	return ExifOrientation( orientation ), nil
+}
+
+func reorient( img *image.RGBA, orientation ExifOrientation ) *image.RGBA {
+	if orientation == ExifOrientation_Identity {
+		return img
+	}
+
+	type Walker struct {
+		Origin image.Point
+		Dx image.Point
+		Dy image.Point
+	}
+
+	var walkers = map[ ExifOrientation ] Walker {
+		ExifOrientation_FlipHorizontal:    { image.Point { -1, +1 }, image.Point { -1, +0 }, image.Point { +0, +1 } },
+		ExifOrientation_Rotate180:         { image.Point { -1, -1 }, image.Point { -1, +0 }, image.Point { +0, -1 } },
+		ExifOrientation_FlipVertical:      { image.Point { +1, -1 }, image.Point { +1, +0 }, image.Point { +0, -1 } },
+		ExifOrientation_Transpose:         { image.Point { +1, +1 }, image.Point { +0, +1 }, image.Point { +1, +0 } },
+		ExifOrientation_Rotate270:         { image.Point { -1, +1 }, image.Point { +0, +1 }, image.Point { -1, +0 } },
+		ExifOrientation_OppositeTranspose: { image.Point { -1, -1 }, image.Point { +0, -1 }, image.Point { -1, +0 } },
+		ExifOrientation_Rotate90:          { image.Point { +1, -1 }, image.Point { +0, -1 }, image.Point { +1, +0 } },
+	}
+
+	walker := walkers[ orientation ]
+	swapdims := walker.Dx.X == 0
+	reoriented := image.NewRGBA( image.Rect( 0, 0, sel( swapdims, img.Rect.Dy(), img.Rect.Dx() ), sel( swapdims, img.Rect.Dx(), img.Rect.Dy() ) ) )
+	origin := image.Point {
+		X: sel( walker.Origin.X == 1, 0, reoriented.Rect.Dx() - 1 ),
+		Y: sel( walker.Origin.Y == 1, 0, reoriented.Rect.Dy() - 1 ),
+	}
+
+	for y := 0; y < img.Rect.Dy(); y++ {
+		for x := 0; x < img.Rect.Dx(); x++ {
+			cursor := origin.Add( walker.Dx.Mul( x ) ).Add( walker.Dy.Mul( y ) )
+			reoriented.SetRGBA( cursor.X, cursor.Y, img.RGBAAt( x, y ) )
+		}
+	}
+
+	return reoriented
+}
+
+func addPhoto( data []byte, album_id sql.Null[ int64 ], filename string ) error {
+	decoded, err := StbLoad( data )
+	if err != nil {
+		return err
+	}
+
+	sha256 := sha256.Sum256( data )
+
+	var date sql.Null[ time.Time ]
+	var latitude sql.Null[ float64 ]
+	var longitude sql.Null[ float64 ]
+	orientation := ExifOrientation_Identity
+
+	exif, err := exif.Decode( bytes.NewReader( data ) )
+	if err == nil {
+		maybe_orientation, err := exifOrientation( exif )
+		if err == nil {
+			orientation = maybe_orientation
+		}
+
+		maybe_date, err := exif.DateTime()
+		if err == nil {
+			date = sql.Null[ time.Time ] { maybe_date, true }
+		}
+
+		maybe_latitude, maybe_longitude, err := exif.LatLong()
+		if err == nil {
+			latitude = sql.Null[ float64 ] { maybe_latitude, true }
+			longitude = sql.Null[ float64 ] { maybe_longitude, true }
+		}
+	}
+
+	if !album_id.Valid && date.Valid && latitude.Valid {
+		rows := try1( db.Query( "SELECT album_id, latitude, longitude, radius FROM auto_assign_rules WHERE start_date <= $1 AND end_date >= $1 ORDER BY end_date - start_date ASC", date.V.Unix() ) )
+		defer rows.Close()
+
+		for rows.Next() {
+			var id int64
+			var rule_latitude float64
+			var rule_longitude float64
+			var radius float64
+			try( rows.Scan( &id, &rule_latitude, &rule_longitude, &radius ) )
+
+			if distance( LatLong { latitude.V, longitude.V }, LatLong { rule_latitude, rule_longitude } ) > radius {
+				continue
+			}
+
+			album_id = sql.Null[ int64 ] { id, true }
+			break
+		}
+	}
+
+	const thumbnail_size = 512.0
+
+	reoriented := reorient( decoded, orientation )
+
+	scale := thumbnail_size / float32( min( reoriented.Rect.Dx(), reoriented.Rect.Dy() ) )
+	thumbnail := StbResize( reoriented, int( float32( reoriented.Rect.Dx() ) * scale ), int( float32( reoriented.Rect.Dy() ) * scale ) )
+	thumbnail_jpg := must1( StbToJpg( thumbnail, 85 ) )
+
+	thumbhash := thumbhash.EncodeImage( reoriented )
+
+	q := `
+	INSERT INTO photos ( album_id, filename, date, latitude, longitude, sha256, thumbhash, thumbnail, image )
+	VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9 )
+	`
+
+	err = query( q, album_id, filename, sql.Null[ int64 ] { date.V.Unix(), date.Valid }, latitude, longitude, sha256[ : ], thumbhash, thumbnail_jpg, data )
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func addPhotoToAlbum( data []byte, album_id int64, filename string ) error {
+	return addPhoto( data, sql.Null[ int64 ] { album_id, true }, filename )
+}
+
 func uploadPhotos( w http.ResponseWriter, r *http.Request, route []string ) {
 	const megabyte = 1000 * 1000
 	try( r.ParseMultipartForm( 10 * megabyte ) )
@@ -465,8 +670,8 @@ func admin( w http.ResponseWriter, r *http.Request, route []string ) {
 }
 
 type Route struct {
-	Url     *regexp.Regexp
-	Method  string
+	Url *regexp.Regexp
+	Method string
 	Handler func( http.ResponseWriter, *http.Request, []string )
 }
 
@@ -486,7 +691,7 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 		for _, route := range routes {
 			if matches := route.Url.FindStringSubmatch( r.URL.Path ); len( matches ) > 0 {
 				if r.Method == route.Method {
-					route.Handler( w, r, matches[1:] )
+					route.Handler( w, r, matches[ 1: ] )
 					return
 				}
 
@@ -543,22 +748,6 @@ func main() {
 		}
 	}
 	defer db.Close()
-
-	{
-		f := must1( os.Open( "DSCN0025.jpg" ) )
-		defer f.Close()
-
-		exif := must1( exif.Decode( f ) )
-		lat, long := must2( exif.LatLong() )
-		fmt.Printf( "%f %f\n", lat, long )
-
-		_ = must1( f.Seek( 0, io.SeekStart ) )
-
-		decoded := must1( StbLoad( f ) )
-		thumbnail := StbResize( decoded, 456, 123 )
-
-		must( StbWriteJpg( "thumbnail.jpg", thumbnail, 80 ) )
-	}
 
 	initTables()
 

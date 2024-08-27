@@ -20,7 +20,7 @@ import (
 	"unsafe"
 )
 
-func StbLoad( f *os.File ) ( *image.RGBA, error ) {
+func StbLoadFile( f *os.File ) ( *image.RGBA, error ) {
 	fd, err := C.dup( C.int( f.Fd() ) )
 	if err != nil {
 		return nil, err
@@ -36,6 +36,21 @@ func StbLoad( f *os.File ) ( *image.RGBA, error ) {
 
 	var w, h C.int
 	data := C.stbi_load_from_file( c_file, &w, &h, nil, C.int( 4 ) )
+	if data == nil {
+		return nil, errors.New( C.GoString( C.stbi_failure_reason() ) )
+	}
+	defer C.stbi_image_free( unsafe.Pointer( data ) )
+
+	return &image.RGBA {
+		Pix: C.GoBytes( unsafe.Pointer( data ), w * h * 4 ),
+		Stride: int( w ) * 4,
+		Rect: image.Rect( 0, 0, int( w ), int( h ) ),
+	}, nil
+}
+
+func StbLoad( jpg []byte ) ( *image.RGBA, error ) {
+	var w, h C.int
+	data := C.stbi_load_from_memory( ( *C.uchar )( unsafe.Pointer( &jpg[ 0 ] ) ), C.int( len( jpg ) ), &w, &h, nil, C.int( 4 ) )
 	if data == nil {
 		return nil, errors.New( C.GoString( C.stbi_failure_reason() ) )
 	}
