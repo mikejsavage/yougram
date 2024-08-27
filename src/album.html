@@ -36,21 +36,21 @@ h1, h2 {
 
 .photo-fullscreen {
 	background: rgba( 26, 26, 26, 0.75 );
-	position: absolute;
+	position: fixed;
 	top: 0;
 	left: 0;
-	width: 100%;
-	height: 100%;
-	padding: 2.5vmax;
+	width: 100vw;
+	height: 100vh;
 	display: flex;
 	justify-content: center;
 	align-items: center;
 }
 
 .photo-fullscreen img {
-	width: 100%;
-	height: 100%;
+	width: 100vw;
+	max-height: 100vh;
 	object-fit: contain;
+	padding: 2.5vmax;
 	user-select: none;
 }
 
@@ -68,7 +68,6 @@ h1, h2 {
 
 .stack {
 	display: grid;
-	width: 100%;
 }
 
 .stack > * {
