@@ -180,7 +180,7 @@ func initTables() {
 	}
 
 	exec( "INSERT INTO albums ( name, readonly_url, readwrite_url ) VALUES ( 'France 2024', 'france-2024', 'aaaaaaaaaaaaaaaa' ), ( 'Helsinki 2024', 'helsinki-2024', 'bbbbbbbbbbbbbbbb' )" )
-	exec( "INSERT INTO auto_assign_rules ( album_id, start_date, end_date, latitude, longitude, radius ) VALUES ( 2, strftime( '%s', '2024-01-01' ), strftime( '%s', '2024-12-31' ), 60, 24, 50 )" )
+	exec( "INSERT INTO auto_assign_rules ( album_id, start_date, end_date, latitude, longitude, radius ) VALUES ( 2, strftime( '%s', '2024-01-01' ), strftime( '%s', '2024-12-31' ), 60.1699, 24.9384, 50 )" )
 
 	{
 		f := must1( os.Open( "DSCF2994.jpeg" ) )
