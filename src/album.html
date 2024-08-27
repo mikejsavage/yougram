@@ -101,7 +101,7 @@ function MakeThumbhash( img, thumbhash ) {
 <div class="photos" x-data="{ fullscreen: null }">
 	{{ range $i, $photo := .Photos }}
 		<div class="photo" x-data="{ thumbhash: '{{ .Thumbhash }}' }">
-			<template x-if="fullscreen === 0">
+			<template x-if="fullscreen === {{ $i }}">
 				<div class="photo-fullscreen"
 					@click="fullscreen = null"
 					@keydown.window.escape="fullscreen = null"
