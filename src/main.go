@@ -633,7 +633,7 @@ func addPhoto( data []byte, album_id sql.Null[ int64 ], filename string ) error 
 	thumbhash := thumbhash.EncodeImage( reoriented )
 
 	q := `
-	INSERT INTO photos ( album_id, filename, date, latitude, longitude, sha256, thumbhash, thumbnail, image )
+	INSERT OR IGNORE INTO photos ( album_id, filename, date, latitude, longitude, sha256, thumbhash, thumbnail, image )
 	VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9 )
 	`
 
