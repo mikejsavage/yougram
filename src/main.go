@@ -573,11 +573,11 @@ func main() {
 
 	public_http_server := startHttpServer( "127.0.0.1:5678", []Route {
 		{ regexp.MustCompile( "^/Special:checksum$" ), "GET", getChecksum },
-		{ regexp.MustCompile( "^/Special:image/( .+ )$" ), "GET", getImage },
-		{ regexp.MustCompile( "^/Special:thumbnail/( .+ )$" ), "GET", getThumbnail },
+		{ regexp.MustCompile( "^/Special:image/(.+)$" ), "GET", getImage },
+		{ regexp.MustCompile( "^/Special:thumbnail/(.+)$" ), "GET", getThumbnail },
 		// { regexp.MustCompile( "^/Special:geocode$" ), "GET", geocode },
-		{ regexp.MustCompile( "^/( [^:]+ )$" ), "GET", viewAlbum },
-		{ regexp.MustCompile( "^/( [^:]+ )$" ), "POST", uploadPhotos },
+		{ regexp.MustCompile( "^/([^:]+)$" ), "GET", viewAlbum },
+		{ regexp.MustCompile( "^/([^:]+)$" ), "POST", uploadPhotos },
 	} )
 
 	private_http_server := startHttpServer( "127.0.0.1:12345", []Route {
