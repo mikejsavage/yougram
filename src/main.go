@@ -292,8 +292,8 @@ func cors( w http.ResponseWriter ) {
 	w.Header().Set( "Access-Control-Allow-Origin", "*" )
 }
 
-func http404( w http.ResponseWriter ) {
-	http.Error( w, "Not Found", http.StatusNotFound )
+func httpError( w http.ResponseWriter, status int ) {
+	http.Error( w, http.StatusText( status ), status )
 }
 
 func getChecksum( w http.ResponseWriter, r *http.Request, route []string ) {
@@ -309,7 +309,7 @@ func getImage( w http.ResponseWriter, r *http.Request, route []string ) {
 		err := row.Scan( &filename, &image )
 		if err != nil {
 			if errors.Is( err, sql.ErrNoRows ) {
-				http404( w )
+				httpError( w, http.StatusNotFound )
 				return
 			}
 			log.Fatal( err )
@@ -329,7 +329,7 @@ func getThumbnail( w http.ResponseWriter, r *http.Request, route []string ) {
 		err := row.Scan( &thumbnail )
 		if err != nil {
 			if errors.Is( err, sql.ErrNoRows ) {
-				http404( w )
+				httpError( w, http.StatusNotFound )
 				return
 			}
 			log.Fatal( err )
@@ -349,7 +349,7 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, route []string ) {
 		err := row.Scan( &id, &name, &readonly )
 		if err != nil {
 			if errors.Is( err, sql.ErrNoRows ) {
-				http404( w )
+				httpError( w, http.StatusNotFound )
 				return
 			}
 			log.Fatal( err )
@@ -607,7 +607,7 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 		defer func() {
 			if r := recover(); r != nil {
 				log.Print( r )
-				http.Error( w, "Internal Server Error", http.StatusInternalServerError )
+				httpError( w, http.StatusInternalServerError )
 				return
 			}
 		}()
@@ -626,9 +626,9 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 		}
 
 		if is405 {
-			http.Error( w, "Method Not Allowed", http.StatusMethodNotAllowed )
+			httpError( w, http.StatusMethodNotAllowed )
 		} else {
-			http.Error( w, "Not Found", http.StatusNotFound )
+			httpError( w, http.StatusNotFound )
 		}
 	} )
 
