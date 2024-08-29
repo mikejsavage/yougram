@@ -36,26 +36,13 @@ import (
 
 var db *sql.DB
 
-// //go:embed style.css
-// var stylesheet string
-//
-// //go:embed main.js
-// var js string
-//
-// //go:embed favicon16.png
-// var favicon16 []byte
-// var favicon16_base64 string
-//
-// //go:embed logo_minified.svg
-// var logo string
-
 //go:embed *.html
 var template_sources embed.FS
 var templates *template.Template
 
-//go:embed *.js
-var js embed.FS
+//go:embed alpine-3.14.1.js
 var alpinejs string
+//go:embed thumbhash.js
 var thumbhashjs string
 
 var checksum string
@@ -679,11 +666,10 @@ func main() {
 
 	{
 		m := minify.New()
-		m.AddFunc( "css", minify_css.Minify )
+		// m.AddFunc( "css", minify_css.Minify )
 		m.AddFunc( "js", minify_js.Minify )
 
-		alpinejs = must1( m.String( "js", string( must1( js.ReadFile( "alpine-3.14.1.js" ) ) ) ) )
-		thumbhashjs = must1( m.String( "js", strings.ReplaceAll( string( must1( js.ReadFile( "thumbhash.js" ) ) ), "export function", "function" ) ) )
+		thumbhashjs = must1( m.String( "js", strings.ReplaceAll( thumbhashjs, "export function", "function" ) ) )
 	}
 
 	public_http_server := startHttpServer( "127.0.0.1:5678", []Route {
