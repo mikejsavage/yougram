@@ -1,5 +1,5 @@
 <script>
-let checksum = {{ .Checksum }};
+let checksum = "{{ .Checksum }}";
 setInterval( function() {
     fetch( "/Special:checksum" ).then( function( res ) {
 		return res.ok ? res.text() : null;

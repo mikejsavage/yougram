@@ -31,19 +31,22 @@ import (
 	"github.com/rwcarlsen/goexif/tiff"
 	"github.com/tdewolff/minify/v2"
 	minify_css "github.com/tdewolff/minify/v2/css"
+	minify_html "github.com/tdewolff/minify/v2/html"
 	minify_js "github.com/tdewolff/minify/v2/js"
 )
 
 var db *sql.DB
 
-//go:embed *.html
-var template_sources embed.FS
-var templates *template.Template
-
 //go:embed alpine-3.14.1.js
 var alpinejs string
 //go:embed thumbhash.js
 var thumbhashjs string
+
+var minifier *minify.M
+
+//go:embed *.html
+var template_sources embed.FS
+var templates *template.Template
 
 var checksum string
 
@@ -369,20 +372,24 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, route []string ) {
 	context := struct {
 		Title string
 		AlpineJS template.JS
-		ThumbhashJS template.JS
+		ThumbhashJS template.HTML
 		AlbumURL string
 		Checksum string
 		Photos []Photo
 	}{
 		Title: name,
 		AlpineJS: template.JS( alpinejs ),
-		ThumbhashJS: template.JS( thumbhashjs ),
+		ThumbhashJS: template.HTML( thumbhashjs ),
 		AlbumURL: route[ 0 ],
 		Checksum: checksum,
 		Photos: photos,
 	}
 
-	try( templates.ExecuteTemplate( w, "album.html", context ) )
+	var page bytes.Buffer
+	try( templates.ExecuteTemplate( &page, "album.html", context ) )
+
+	minified := try1( minifier.String( "html", page.String() ) )
+	_ = try1( w.Write( []byte( minified ) ) )
 }
 
 type LatLong struct {
@@ -634,17 +641,8 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 	return http_server
 }
 
-func templateAdd( a int, b int ) int {
-	return a + b
-}
-
 func main() {
 	checksum = exeChecksum()
-
-	template_funcs := template.FuncMap{
-		"add": templateAdd,
-	}
-	templates = must1( template.New( "dummy" ).Funcs( template_funcs ).ParseFS( template_sources, "*" ) )
 
 	{
 		path := "file::memory:?cache=shared"
@@ -665,11 +663,43 @@ func main() {
 	initTables()
 
 	{
-		m := minify.New()
-		// m.AddFunc( "css", minify_css.Minify )
-		m.AddFunc( "js", minify_js.Minify )
+		minifier = minify.New()
+		minifier.AddFunc( "css", minify_css.Minify )
+		minifier.AddFunc( "html", minify_html.Minify )
+		minifier.AddFunc( "js", minify_js.Minify )
 
-		thumbhashjs = must1( m.String( "js", strings.ReplaceAll( thumbhashjs, "export function", "function" ) ) )
+		thumbhashjs = "<script>" + must1( minifier.String( "js", strings.ReplaceAll( thumbhashjs, "export function", "function" ) ) ) + "</script>"
+
+		css_finder := regexp.MustCompile( "(?s)<style>.*?</style>" )
+		minifyStyleTag := func( css string ) string {
+			trimmed := strings.TrimPrefix( strings.TrimSuffix( css, "</style>" ), "<style>" )
+			return "<style>" + must1( minifier.String( "css", trimmed ) ) + "</style>"
+		}
+
+		script_finder := regexp.MustCompile( "(?s)<script>.*?</script>" )
+		minifyScriptTag := func( js string ) string {
+			trimmed := strings.TrimPrefix( strings.TrimSuffix( js, "</script>" ), "<script>" )
+			return "<script>" + must1( minifier.String( "js", trimmed ) ) + "</script>"
+		}
+
+		minifyTemplate := func( filename string ) string {
+			f := must1( template_sources.Open( filename ) )
+			defer f.Close()
+
+			minified := string( must1( io.ReadAll( f ) ) )
+			minified = css_finder.ReplaceAllStringFunc( minified, minifyStyleTag )
+			minified = script_finder.ReplaceAllStringFunc( minified, minifyScriptTag )
+
+			return minified
+		}
+
+		template_funcs := template.FuncMap{
+			"add": func( a int, b int ) int { return a + b },
+		}
+		templates = template.New( "dummy" ).Funcs( template_funcs )
+		for _, f := range must1( template_sources.ReadDir( "." ) ) {
+			templates.New( f.Name() ).Parse( minifyTemplate( f.Name() ) )
+		}
 	}
 
 	public_http_server := startHttpServer( "127.0.0.1:5678", []Route {
