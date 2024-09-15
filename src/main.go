@@ -692,7 +692,7 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 	} )
 
 	http_server := &http.Server{
-		Addr:    addr,
+		Addr: addr,
 		Handler: mux,
 	}
 
