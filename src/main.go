@@ -590,7 +590,7 @@ func admin( w http.ResponseWriter, r *http.Request, route []string ) {
 }
 
 type Route struct {
-	Url *regexp.Regexp
+	Regex *regexp.Regexp
 	Method string
 	Handler func( http.ResponseWriter, *http.Request, []string )
 }
@@ -609,7 +609,7 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 		is405 := false
 
 		for _, route := range routes {
-			if matches := route.Url.FindStringSubmatch( r.URL.Path ); len( matches ) > 0 {
+			if matches := route.Regex.FindStringSubmatch( r.URL.Path ); len( matches ) > 0 {
 				if r.Method == route.Method {
 					route.Handler( w, r, matches[ 1: ] )
 					return
