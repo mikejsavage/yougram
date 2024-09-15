@@ -14,17 +14,21 @@ import (
 	"hash/fnv"
 	"html/template"
 	"image"
+	"image/draw"
 	"io"
 	"log"
 	"math"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
 	"time"
 
+
+	"github.com/adrium/goheif"
 	"github.com/galdor/go-thumbhash"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rwcarlsen/goexif/exif"
@@ -174,7 +178,8 @@ func initTables() {
 			sha256 BLOB NOT NULL CHECK( length( sha256 ) = 32 ),
 			thumbhash BLOB NOT NULL,
 			thumbnail BLOB NOT NULL,
-			image BLOB NOT NULL,
+			jpeg BLOB NOT NULL,
+			heic BLOB NULL,
 			FOREIGN KEY( album_id ) REFERENCES albums( id )
 		) STRICT
 		`
@@ -293,10 +298,11 @@ func getChecksum( w http.ResponseWriter, r *http.Request, route []string ) {
 func getImage( w http.ResponseWriter, r *http.Request, route []string ) {
 	var filename string
 	var image []byte
+	var is_heif bool
 	{
 		raw_sha256 := try1( hex.DecodeString( route[ 0 ] ) )
-		row := db.QueryRow( "SELECT filename, image FROM photos WHERE sha256 = $1", raw_sha256 )
-		err := row.Scan( &filename, &image )
+		row := db.QueryRow( "SELECT filename, jpeg, heic IS NOT NULL FROM photos WHERE sha256 = $1", raw_sha256 )
+		err := row.Scan( &filename, &image, &is_heif )
 		if err != nil {
 			if errors.Is( err, sql.ErrNoRows ) {
 				httpError( w, http.StatusNotFound )
@@ -304,6 +310,10 @@ func getImage( w http.ResponseWriter, r *http.Request, route []string ) {
 			}
 			log.Fatal( err )
 		}
+	}
+
+	if is_heif {
+		filename = strings.TrimSuffix( filename, filepath.Ext( filename ) ) + ".jpg"
 	}
 
 	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s\"", filename ) )
@@ -491,9 +501,28 @@ func reorient( img *image.RGBA, orientation ExifOrientation ) *image.RGBA {
 }
 
 func addPhoto( data []byte, album_id sql.Null[ int64 ], filename string ) error {
-	decoded, err := StbLoad( data )
-	if err != nil {
-		return err
+	before := time.Now()
+	fmt.Printf( "addPhoto( %s )\n", filename )
+
+	is_heif := strings.HasSuffix( strings.ToLower( filename ), ".heic" )
+
+	var decoded *image.RGBA
+	var err error
+	if is_heif {
+		ycbcr, err := goheif.Decode( bytes.NewReader( data ) )
+		fmt.Printf( "\tdecoded HEIF %dms\n", time.Now().Sub( before ).Milliseconds() )
+		if err != nil {
+			return nil
+		}
+
+		decoded = image.NewRGBA( ycbcr.Bounds() )
+		draw.Draw( decoded, decoded.Bounds(), ycbcr, ycbcr.Bounds().Min, draw.Src )
+		fmt.Printf( "\tyCbCr -> RGBA %dms\n", time.Now().Sub( before ).Milliseconds() )
+	} else {
+		decoded, err = StbLoad( data )
+		if err != nil {
+			return err
+		}
 	}
 
 	sha256 := sha256.Sum256( data )
@@ -503,7 +532,14 @@ func addPhoto( data []byte, album_id sql.Null[ int64 ], filename string ) error 
 	var longitude sql.Null[ float64 ]
 	orientation := ExifOrientation_Identity
 
-	exif, err := exif.Decode( bytes.NewReader( data ) )
+	var exif_src []byte
+	if is_heif {
+		exif_src, _ = goheif.ExtractExif( bytes.NewReader( data ) )
+	} else {
+		exif_src = data
+	}
+
+	exif, err := exif.Decode( bytes.NewReader( exif_src ) )
 	if err == nil {
 		maybe_orientation, err := exifOrientation( exif )
 		if err == nil {
@@ -521,6 +557,7 @@ func addPhoto( data []byte, album_id sql.Null[ int64 ], filename string ) error 
 			longitude = sql.Null[ float64 ] { maybe_longitude, true }
 		}
 	}
+	fmt.Printf( "\torientation %d\n", orientation )
 
 	if !album_id.Valid && date.Valid && latitude.Valid {
 		rows := try1( db.Query( "SELECT album_id, latitude, longitude, radius FROM auto_assign_rules WHERE start_date <= $1 AND end_date >= $1 ORDER BY end_date - start_date ASC", date.V.Unix() ) )
@@ -542,25 +579,46 @@ func addPhoto( data []byte, album_id sql.Null[ int64 ], filename string ) error 
 		}
 	}
 
+	fmt.Printf( "\tEXIF decoded %dms\n", time.Now().Sub( before ).Milliseconds() )
+
 	const thumbnail_size = 512.0
 
 	reoriented := reorient( decoded, orientation )
+	fmt.Printf( "\treoriented %dms\n", time.Now().Sub( before ).Milliseconds() )
 
 	scale := thumbnail_size / float32( min( reoriented.Rect.Dx(), reoriented.Rect.Dy() ) )
 	thumbnail := StbResize( reoriented, int( float32( reoriented.Rect.Dx() ) * scale ), int( float32( reoriented.Rect.Dy() ) * scale ) )
-	thumbnail_jpg := must1( StbToJpg( thumbnail, 85 ) )
+	thumbnail_jpg := must1( StbToJpg( thumbnail, 75 ) )
+	fmt.Printf( "\tthumbnail %dms %d -> %d\n", time.Now().Sub( before ).Milliseconds(), len( data ), len( thumbnail_jpg ) )
 
-	thumbhash := thumbhash.EncodeImage( reoriented )
+	thumbhash := thumbhash.EncodeImage( thumbnail )
 
-	q := `
-	INSERT OR IGNORE INTO photos ( album_id, filename, date, latitude, longitude, sha256, thumbhash, thumbnail, image )
-	VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9 )
-	`
+	fmt.Printf( "\tthumbhash %dms\n", time.Now().Sub( before ).Milliseconds() )
 
-	err = query( q, album_id, filename, sql.Null[ int64 ] { date.V.Unix(), date.Valid }, latitude, longitude, sha256[ : ], thumbhash, thumbnail_jpg, data )
+	var q string
+	var jpeg []byte
+
+	if is_heif {
+		q = `
+		INSERT OR IGNORE INTO photos ( album_id, filename, date, latitude, longitude, sha256, thumbhash, thumbnail, heic, jpeg )
+		VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10 )
+		`
+
+		jpeg = must1( StbToJpg( reoriented, 95 ) )
+		fmt.Printf( "\theic -> jpeg %dms %d -> %d\n", time.Now().Sub( before ).Milliseconds(), len( data ), len( jpeg ) )
+	} else {
+		q = `
+		INSERT OR IGNORE INTO photos ( album_id, filename, date, latitude, longitude, sha256, thumbhash, thumbnail, jpeg )
+		VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9 )
+		`
+	}
+
+	err = query( q, album_id, filename, sql.Null[ int64 ] { date.V.Unix(), date.Valid }, latitude, longitude, sha256[ : ], thumbhash, thumbnail_jpg, data, jpeg )
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf( "\tdone %dms\n", time.Now().Sub( before ).Milliseconds() )
 
 	return nil
 }

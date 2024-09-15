@@ -1,3 +1,5 @@
+github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786 h1:zvgtcRb2B5gynWjm+Fc9oJZPHXwmcgyH0xCcNm6Rmo4=
+github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786/go.mod h1:aKVJoQ0cc9K5Xb058XSnnAxXLliR97qbSqWBlm5ca1E=
 github.com/galdor/go-thumbhash v1.0.0 h1:Q7xSnaDvSC91SuNmQI94JuUVHva29FDdA4/PkV0EHjU=
 github.com/galdor/go-thumbhash v1.0.0/go.mod h1:gEK2wZqIxS2W4mXNf48lPl6HWjX0vWsH1LpK/cU74Ho=
 github.com/mattn/go-sqlite3 v1.14.22 h1:2gZY6PC6kBnID23Tichd1K+Z0oS6nE/XwU+Vz/5o4kU=
