@@ -291,6 +291,10 @@ func httpError( w http.ResponseWriter, status int ) {
 	http.Error( w, http.StatusText( status ), status )
 }
 
+func cacheControlImmutable( w http.ResponseWriter ) {
+	w.Header().Set( "Cache-Control", "max-age=31536000, immutable" )
+}
+
 func getChecksum( w http.ResponseWriter, r *http.Request, route []string ) {
 	io.WriteString( w, checksum )
 }
@@ -316,6 +320,7 @@ func getImage( w http.ResponseWriter, r *http.Request, route []string ) {
 		filename = strings.TrimSuffix( filename, filepath.Ext( filename ) ) + ".jpg"
 	}
 
+	cacheControlImmutable( w )
 	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s\"", filename ) )
 	w.Header().Set( "Content-Type", "image/jpeg" )
 	w.Write( image )
@@ -336,6 +341,8 @@ func getThumbnail( w http.ResponseWriter, r *http.Request, route []string ) {
 		}
 	}
 
+	cacheControlImmutable( w )
+	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"thumb_%s.jpg\"", route[ 0 ] ) )
 	w.Header().Set( "Content-Type", "image/jpeg" )
 	_ = try1( w.Write( thumbnail ) )
 }
