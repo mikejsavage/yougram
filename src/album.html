@@ -1,44 +1,27 @@
-<!DOCTYPE html>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{{ .Title }}</title>
-
-{{ template "autorefresh.html" . }}
-<script src="https://unpkg.com/alpinejs@3.14.1" defer></script>
-{{ .ThumbhashJS }}
-
 <style>
-* {
-	box-sizing: border-box;
-}
-
-body {
-	font-family: sans-serif;
-	line-height: 1.5;
-	margin: 0;
-}
-
-body:has( .photo-fullscreen ) {
-	overflow: hidden;
-}
-
-h1, h2 {
-	margin: 1rem;
-}
-
 .photos {
-	display: flex;
-	flex-wrap: wrap;
+	display: grid;
+	grid-template-columns: repeat( 3, 1fr );
 	gap: 0.5rem;
+	padding: 0.5rem;
 }
 
-.photo {
-	flex: 1;
-	min-width: 20vmax;
-	max-width: 25vmax;
+@media screen and (min-width: 700px) {
+	.photos { grid-template-columns: repeat( 4, 1fr ); }
 }
 
-.photo-fullscreen {
+@media screen and (min-width: 1400px) {
+	.photos { grid-template-columns: repeat( 5, 1fr ); }
+}
+
+.thumbnail img {
+	aspect-ratio: 1;
+	width: 100%;
+	object-fit: cover;
+	object-position: 50% 50%;
+}
+
+.fullscreen {
 	background: rgba( 26, 26, 26, 0.75 );
 	position: fixed;
 	top: 0;
@@ -50,24 +33,12 @@ h1, h2 {
 	align-items: center;
 }
 
-.photo-fullscreen img {
+.fullscreen img {
 	width: 100vw;
 	max-height: 100vh;
 	object-fit: contain;
 	padding: 2.5vmax;
 	user-select: none;
-}
-
-.photo-description {
-	color: #fff;
-	padding: 0.5rem;
-}
-
-.thumbnail img {
-	aspect-ratio: 1;
-	width: 100%;
-	object-fit: cover;
-	object-position: 50% 50%;
 }
 
 .stack {
@@ -80,12 +51,153 @@ h1, h2 {
 }
 </style>
 
-<h1>{{ .Title }}</h1>
+<aside>
+	<h1>{{ .Title }}</h1>
+	<span>Oct 2023 &ndash; Jan 2025</span>
+	<span>26 photos and 4 videos</span>
 
-<form action="/{{ .AlbumURL }}" method="POST" enctype="multipart/form-data">
-	<input type="file" name="photos" multiple>
-	<input type="submit">
-</form>
+	<span class="spacer"></span>
+
+	<button>Album settings</button>
+
+	<div x-data="{ show_dialog: false, sharing: true }">
+		<style>
+		@scope {
+			button {
+				white-space: nowrap;
+			}
+
+			button.open {
+				background: white;
+			}
+
+			div {
+				position: absolute;
+				right: 10px;
+				top: 50px;
+				width: 15rem;
+				border-radius: 0.5rem;
+				padding: 0.5rem;
+				background: #fff;
+				border: 1px solid #ccc;
+				box-shadow: 0 0 10px #666;
+			}
+		}
+		</style>
+
+		<button @click="show_dialog = !show_dialog" :class="show_dialog ? 'open' : ''">
+			<span :style="{ color: sharing ? 'var(--green)' : 'var(--red)' }">&#9679;</span>
+			Sharing
+		</button>
+
+		<div x-cloak x-show="show_dialog" @click.away="show_dialog = false" class="dialog">
+			<button x-text="sharing ? 'Disable sharing' : 'Enable sharing'" @click="sharing = !sharing"></button><br>
+			Read-only link: fdsa.com<br>
+			Read-write link: asdf.com<br>
+		</div>
+	</div>
+
+	{{ if .ShowUpload }}
+		<button>Upload</button>
+	{{ end }}
+</aside>
+
+<!-- {{ if .ShowUpload }} -->
+<!-- 	<script> -->
+<!-- 	function MakeUploadForm() { -->
+<!-- 		return { -->
+<!-- 			files: [ ], -->
+<!--  -->
+<!-- 			Upload( idx ) { -->
+<!-- 				if( idx >= this.files.length ) { -->
+<!-- 					return; -->
+<!-- 				} -->
+<!--  -->
+<!-- 				const xhr = new XMLHttpRequest(); -->
+<!-- 				xhr.open( "POST", window.location.pathname, true ); -->
+<!-- 				xhr.upload.onprogress = e => this.files[ idx ].progress = e.loaded / e.total; -->
+<!-- 				xhr.onload = () => { -->
+<!-- 					this.files[ idx ].progress = 1; -->
+<!-- 					this.Upload( idx + 1 ); -->
+<!-- 				}; -->
+<!--  -->
+<!-- 				let data = new FormData(); -->
+<!-- 				data.append( "photos", this.files[ idx ].file ); -->
+<!--  -->
+<!-- 				xhr.send( data ); -->
+<!--  -->
+<!-- 				this.files[ idx ].xhr = xhr; -->
+<!-- 			}, -->
+<!--  -->
+<!-- 			async Changed( e ) { -->
+<!-- 				let first_new = this.files.length; -->
+<!--  -->
+<!-- 				for( const file of e.target.files ) { -->
+<!-- 					let promise = new Promise( function( resolve ) { -->
+<!-- 						let reader = new FileReader(); -->
+<!-- 						reader.onload = function( e ) { -->
+<!-- 							resolve( e.target.result ); -->
+<!-- 						}; -->
+<!-- 						reader.readAsDataURL( file ); -->
+<!-- 					} ); -->
+<!--  -->
+<!-- 					this.files.push( { -->
+<!-- 						file: file, -->
+<!-- 						name: file.name, -->
+<!-- 						thumbnail: await promise, -->
+<!-- 						progress: 0, -->
+<!-- 					} ); -->
+<!-- 				} -->
+<!--  -->
+<!-- 				this.Upload( first_new ); -->
+<!-- 			}, -->
+<!--  -->
+<!-- 			Cancel( idx ) { -->
+<!-- 			}, -->
+<!-- 		}; -->
+<!-- 	} -->
+<!-- 	</script> -->
+<!--  -->
+<!-- 	<header x-data="MakeUploadForm()"> -->
+<!-- 		<style> -->
+<!-- 		@scope { -->
+<!-- 			:scope { -->
+<!-- 				background: red; -->
+<!-- 				position: sticky; -->
+<!-- 				top: 0; -->
+<!-- 				padding: 1rem; -->
+<!-- 				margin-bottom: 1rem; -->
+<!-- 			} -->
+<!--  -->
+<!-- 			img { -->
+<!-- 				aspect-ratio: 1; -->
+<!-- 				width: 2rem; -->
+<!-- 				object-fit: cover; -->
+<!-- 				object-position: 50% 50%; -->
+<!-- 				vertical-align: middle; -->
+<!-- 				margin: 0.25rem 0; -->
+<!-- 			} -->
+<!-- 		} -->
+<!-- 		</style> -->
+<!--  -->
+<!-- 		<b>This link lets you add and remove photos, pls don't share it</b> -->
+<!--  -->
+<!-- 		<form action="/{{ .AlbumURL }}" method="POST" enctype="multipart/form-data"> -->
+<!-- 			<label>Add photos <input type="file" name="photos" multiple @change="Changed" x-show="false"></label> -->
+<!--  -->
+<!-- 			<template x-for="(file, i) in files"> -->
+<!-- 				<div> -->
+<!-- 					<img :src="file.thumbnail"> -->
+<!-- 					<span x-text="Math.floor( file.progress * 100 )"></span>% -->
+<!-- 					<span x-text="file.name"></span> -->
+<!-- 					<button @click.prevent="Cancel( i )">Cancel</button> -->
+<!-- 				</div> -->
+<!-- 			</template> -->
+<!--  -->
+<!-- 			<div x-show="false"><input type="submit"></div> -->
+<!-- 		</form> -->
+<!-- 	</header> -->
+<!-- {{ end }} -->
 
 <script>
 function MakeThumbhash( img, thumbhash ) {
@@ -102,7 +214,7 @@ function MakeThumbhash( img, thumbhash ) {
 	{{ range $i, $photo := .Photos }}
 		<div class="photo" x-data="{ thumbhash: '{{ .Thumbhash }}' }">
 			<template x-if="fullscreen === {{ $i }}">
-				<div class="photo-fullscreen"
+				<div class="fullscreen"
 					@click="fullscreen = null"
 					@keydown.window.escape="fullscreen = null"
 					{{ if gt $i 0 }} @keydown.window.left="fullscreen = {{ add $i -1 }}" {{ end }}

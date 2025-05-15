@@ -5,7 +5,7 @@ ifeq ($(shell uname -s),Linux)
 endif
 
 all: src/*
-	go build -o mikegram $(GOFLAGS) src/*.go
+	go build -C src -o ../mikegram $(GOFLAGS)
 
 clean:
 	rm mikegram

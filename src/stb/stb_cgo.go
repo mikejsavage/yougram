@@ -1,4 +1,4 @@
-package main
+package stb
 
 /*
 #cgo LDFLAGS: -lm

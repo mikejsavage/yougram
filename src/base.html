@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ .Title }}</title>
+
+{{ template "autorefresh.html" . }}
+<script src="https://unpkg.com/alpinejs@3.14.9" defer></script>
+<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+{{ .ThumbhashJS }}
+
+<style>
+:root {
+	--red: #ff5733;
+	--green: #40d39c;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	font-family: sans-serif;
+	line-height: 1.5;
+	margin: 0;
+}
+
+body:has( .fullscreen ) {
+	overflow: hidden;
+}
+
+nav {
+	position: fixed;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 15rem;
+	background: #eee;
+	border-right: 1px solid #ccc;
+	padding: 0.5rem;
+}
+
+nav div {
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+}
+
+hr {
+	width: 50%;
+	border-color: transparent;
+}
+
+main {
+	margin-left: 15rem;
+}
+
+aside {
+	position: sticky;
+	top: 0;
+	padding: 0.5rem;
+	border-bottom: 1px solid #ccc;
+
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 1rem;
+}
+
+h1 {
+	margin: 0;
+	padding: 0;
+}
+
+.spacer {
+	flex-grow: 1;
+}
+
+button {
+	padding: 0.25rem 0.5rem;
+}
+
+[x-cloak] {
+	display: none !important;
+}
+
+@keyframes spinning {
+	0%   { left: 0; }
+	25%  { left: 0.1rem; }
+	75%  { left: -0.1rem; }
+	100% { left: 0; }
+}
+
+.spinning {
+	position: relative;
+	animation spinning 0.15 infinite;
+}
+</style>
+
+<nav>
+	<div><b>Mikegram</b></div>
+	<div><a href="/Special:logout">Log out</a></div>
+
+	<hr>
+
+	<div><a href="/">All photos</a></div>
+	<div>People</div>
+	<div><a href="/Special:trash">Deleted</a></div>
+	<div><a href="/Special:duplicates">Duplicates</a></div>
+
+	<hr>
+
+	<div>2022 Copenhagen</div>
+	<div>2023 Stockholm/Oslo</div>
+	<div>2024 France</div>
+	<div>2025 Really really really long album</div>
+
+</nav>
+
+<main>
+	{{ .Body }}
+</main>

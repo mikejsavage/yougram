@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Virtual scroll test</title>
+<script src="https://unpkg.com/alpinejs@3.14.9" defer></script>
+
+<style>
+:root {
+	--red: #ff5733;
+	--green: #40d39c;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	font-family: sans-serif;
+	line-height: 1.5;
+	margin: 0;
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat( 3, 1fr );
+	gap: 0.5rem;
+	padding: 0.5rem;
+	position: relative;
+	width: calc( 100% - 2.5rem );
+}
+
+.timeline {
+	position: fixed;
+	top: 0;
+	right: 0;
+	height: calc( 100% - 1lh );
+	padding: 0 0.5rem;
+	font-size: 80%;
+}
+
+.timeline div {
+	position: relative;
+}
+
+@media screen and (min-width: 700px) {
+	.grid { grid-template-columns: repeat( 4, 1fr ); }
+}
+
+@media screen and (min-width: 1400px) {
+	.grid { grid-template-columns: repeat( 5, 1fr ); }
+}
+
+img, div.dummy {
+	aspect-ratio: 1;
+	width: 100%;
+	object-fit: cover;
+	object-position: 50% 50%;
+}
+</style>
+
+<script>
+function MakePhotos() {
+	let photos = [ ];
+	for( let i = 0; i < 50000; i++ ) {
+		photos.push( "DSCN0025.jpg" );
+	}
+	return photos;
+}
+
+function StripPx( size ) {
+	return size.replace( /px$/, "" );
+}
+
+function GridSpec() {
+	let cols = window.getComputedStyle( document.querySelector( ".grid" ) )[ "grid-template-columns" ].split( " " );
+	let gap = window.getComputedStyle( document.querySelector( ".grid" ) )[ "gap" ];
+	return { cols: cols.length, row_height: parseFloat( StripPx( cols[ 0 ] ) ), gap: parseFloat( StripPx( gap ) ) };
+}
+
+function UpdateLayout( data ) {
+	// TODO: account for grid pos on page
+	let grid = GridSpec();
+
+	let top = window.visualViewport.pageTop - window.visualViewport.height * 0.5;
+	let bottom = window.visualViewport.pageTop + window.visualViewport.height * 1.5;
+
+	let row_height = parseFloat( grid.row_height ) + parseFloat( grid.gap );
+
+	let last_row = Math.ceil( data.photos.length / grid.cols );
+	let top_row = Math.max( 0, Math.min( last_row, Math.floor( top / row_height ) ) );
+	let bottom_row = Math.min( last_row, Math.ceil( bottom / row_height ) );
+
+	data.visible_range = [
+		Math.min( data.photos.length, top_row * grid.cols ),
+		Math.min( data.photos.length, bottom_row * grid.cols ),
+	];
+
+	data.height = ( grid.row_height * last_row + grid.gap * Math.max( 0, last_row - 1 ) ) + "px";
+	data.top = ( grid.row_height * top_row + grid.gap * Math.max( 0, top_row - 1 ) ) + "px";
+}
+</script>
+
+<div class="photos" x-data="{ photos: MakePhotos(), base_year: 2014, year_transitions: [ 0.1, 0.3, 0.5, 0.6, 0.9 ], visible_range: [0, 0], height: 0, top: 0 }"
+	:style="{ height: height }"
+	x-init="UpdateLayout( $data )"
+	@scroll.window="UpdateLayout( $data )"
+	@resize.window="UpdateLayout( $data )"
+>
+	<div class="grid" :style="{ top: top }">
+		<template x-for="i in visible_range[ 1 ] - visible_range[ 0 ] - 1">
+			<img :src="photos[ visible_range[ 0 ] + i ]">
+		</template>
+	</div>
+
+	<div class="timeline">
+		<template x-for="(t, i) in year_transitions">
+			<div :style="{ top: ( 1 - t ) * 100 + '%' }" x-text="base_year + i"></div>
+		</template>
+	</div>
+</div>

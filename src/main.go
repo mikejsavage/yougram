@@ -23,26 +23,31 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
 
+	"mikegram/stb"
 
 	"github.com/adrium/goheif"
 	"github.com/galdor/go-thumbhash"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/tiff"
 	"github.com/tdewolff/minify/v2"
+	"github.com/fsnotify/fsnotify"
 	minify_css "github.com/tdewolff/minify/v2/css"
 	minify_html "github.com/tdewolff/minify/v2/html"
 	minify_js "github.com/tdewolff/minify/v2/js"
+	_ "modernc.org/sqlite"
 )
 
 var db *sql.DB
 
-//go:embed alpine-3.14.1.js
+//go:embed alpine-3.14.9.js
 var alpinejs string
+//go:embed htmx-2.0.4.js
+var htmx string
 //go:embed thumbhash.js
 var thumbhashjs string
 
@@ -93,29 +98,31 @@ func try2[ T1 any, T2 any ]( v1 T1, v2 T2, err error ) ( T1, T2 ) {
 	return v1, v2
 }
 
-func exec( query string, args ...interface{} ) {
-	_, err := db.Exec( query, args... )
+func exec( ctx context.Context, query string, args ...interface{} ) {
+	_, err := db.ExecContext( ctx, query, args... )
 	if err != nil {
 		log.Fatalf( "%+v: %s", err, query )
 	}
 }
 
-func query( query string, args ...interface{} ) error {
-	_, err := db.Exec( query, args... )
+func query( ctx context.Context, query string, args ...interface{} ) error {
+	_, err := db.ExecContext( ctx, query, args... )
 	return err
 }
 
 func initTables() {
+	ctx := context.Background()
+
 	const application_id = -133015034
 	const schema_version = 1
 
 	{
 		var id int32
-		row := db.QueryRow( "PRAGMA application_id" )
+		row := db.QueryRowContext( ctx, "PRAGMA application_id" )
 		must( row.Scan( &id ) )
 
 		var version int32
-		row = db.QueryRow( "PRAGMA user_version" )
+		row = db.QueryRowContext( ctx, "PRAGMA user_version" )
 		must( row.Scan( &version ) )
 
 		if id != 0 && version != 0 {
@@ -123,18 +130,33 @@ func initTables() {
 				log.Fatal( "This doesn't look like a ggwiki DB" )
 			}
 
-			if version != schema_version {
+			if version < schema_version {
+				log.Fatal( "You are using an older basedgram than the DB" )
+			}
+			if version > schema_version {
 				log.Fatal( "Guess we gotta migrate lol" )
 			}
 		}
 	}
 
-	exec( fmt.Sprintf( "PRAGMA application_id = %d", application_id ) )
-	exec( fmt.Sprintf( "PRAGMA user_version = %d", schema_version ) )
+	exec( ctx, fmt.Sprintf( "PRAGMA application_id = %d", application_id ) )
+	exec( ctx, fmt.Sprintf( "PRAGMA user_version = %d", schema_version ) )
 
-	exec( "PRAGMA foreign_keys = ON" )
-	exec( "PRAGMA journal_mode = WAL" )
-	exec( "PRAGMA synchronous = NORMAL" )
+	exec( ctx, "PRAGMA foreign_keys = ON" )
+	exec( ctx, "PRAGMA journal_mode = WAL" )
+	exec( ctx, "PRAGMA synchronous = NORMAL" )
+
+	{
+		q := `
+		CREATE TABLE IF NOT EXISTS users (
+			id INTEGER PRIMARY KEY,
+			username TEXT NOT NULL UNIQUE CHECK( username <> '' ),
+			password TEXT NOT NULL,
+			cookie TEXT NOT NULL
+		) STRICT
+		`
+		exec( ctx, q )
+	}
 
 	{
 		// TODO: favicon from first photo
@@ -142,11 +164,12 @@ func initTables() {
 		CREATE TABLE IF NOT EXISTS albums (
 			id INTEGER PRIMARY KEY,
 			name TEXT NOT NULL UNIQUE CHECK( name <> '' ),
-			readonly_url TEXT NOT NULL UNIQUE CHECK( readonly_url <> '' ),
-			readwrite_url TEXT NOT NULL UNIQUE CHECK( length( readwrite_url ) >= 16 )
+			url TEXT NOT NULL UNIQUE CHECK( url <> '' ),
+			secret TEXT NOT NULL UNIQUE CHECK( length( secret ) >= 16 ),
+			secret_valid_until INTEGER NOT NULL
 		) STRICT
 		`
-		exec( q ) // TODO: constrain these to never overlap? or maybe we can pick in the app which one has the tighest constraints and use that.
+		exec( ctx, q ) // TODO: constrain these to never overlap? or maybe we can pick in the app which one has the tighest constraints and use that.
 	}
 
 	{
@@ -163,7 +186,7 @@ func initTables() {
 			FOREIGN KEY( album_id ) REFERENCES albums( id )
 		) STRICT
 		`
-		exec( q )
+		exec( ctx, q )
 	}
 
 	{
@@ -183,38 +206,16 @@ func initTables() {
 			FOREIGN KEY( album_id ) REFERENCES albums( id )
 		) STRICT
 		`
-		exec( q )
+		exec( ctx, q )
 	}
 
-	exec( "INSERT INTO albums ( name, readonly_url, readwrite_url ) VALUES ( 'France 2024', 'france-2024', 'aaaaaaaaaaaaaaaa' ), ( 'Helsinki 2024', 'helsinki-2024', 'bbbbbbbbbbbbbbbb' )" )
-	exec( "INSERT INTO auto_assign_rules ( album_id, start_date, end_date, latitude, longitude, radius ) VALUES ( 2, strftime( '%s', '2024-01-01' ), strftime( '%s', '2024-12-31' ), 60.1699, 24.9384, 50 )" )
+	exec( ctx, "INSERT INTO users ( username, password, cookie ) VALUES ( 'mike', 'gg', '123' )" )
+	exec( ctx, "INSERT INTO albums ( name, url, secret, secret_valid_until ) VALUES ( 'France 2024', 'france-2024', 'aaaaaaaaaaaaaaaa', strftime( '%s', '2999-01-01' ) ), ( 'Helsinki 2024', 'helsinki-2024', 'bbbbbbbbbbbbbbbb', strftime( '%s', '2999-01-01' ) )" )
+	exec( ctx, "INSERT INTO auto_assign_rules ( album_id, start_date, end_date, latitude, longitude, radius ) VALUES ( 2, strftime( '%s', '2024-01-01' ), strftime( '%s', '2024-12-31' ), 60.1699, 24.9384, 50 )" )
 
-	{
-		f := must1( os.Open( "DSCF2994.jpeg" ) )
-		defer f.Close()
-
-		jpg := must1( io.ReadAll( f ) )
-
-		must( addPhotoToAlbum( jpg, 2, "DSCF2994.jpeg" ) )
-	}
-
-	{
-		f := must1( os.Open( "DSCN0025.jpg" ) )
-		defer f.Close()
-
-		jpg := must1( io.ReadAll( f ) )
-
-		must( addPhotoToAlbum( jpg, 2, "DSCN0025.jpg" ) )
-	}
-
-	{
-		f := must1( os.Open( "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG" ) )
-		defer f.Close()
-
-		jpg := must1( io.ReadAll( f ) )
-
-		must( addPhoto( jpg, sql.Null[ int64 ] { }, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG" ) )
-	}
+	must( addFileToAlbum( ctx, "DSCN0025.jpg", 2 ) )
+	must( addFile( ctx, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } ) )
+	must( addFile( ctx, "IMG_2330.HEIC", sql.Null[ int64 ] { } ) )
 
 	// {
 	//  tx, err := db.Begin()
@@ -231,6 +232,32 @@ func initTables() {
 	//      log.Fatal( err )
 	//  }
 	// }
+}
+
+func initFSWatcher() *fsnotify.Watcher {
+	watcher := must1( fsnotify.NewWatcher() )
+
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if ok && event.Has( fsnotify.Create ) {
+					fmt.Printf( "new file %s\n", event.Name )
+				}
+
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Println( "error:", err )
+			}
+		}
+	}()
+
+	must( os.MkdirAll( "incoming", 0o755 ) )
+	must( watcher.Add( "incoming" ) )
+
+	return watcher
 }
 
 type MapboxGeocodingFeature struct {
@@ -347,20 +374,35 @@ func getThumbnail( w http.ResponseWriter, r *http.Request, route []string ) {
 	_ = try1( w.Write( thumbnail ) )
 }
 
-func viewAlbum( w http.ResponseWriter, r *http.Request, route []string ) {
+func findAlbum( route []string ) ( bool, int64, string, bool ) {
 	var id int64
 	var name string
-	var readonly bool
+	var secret string
+	var secret_valid_until int64
 	{
-		row := db.QueryRow( "SELECT id, name, readonly_url = $1 FROM albums WHERE readonly_url = $1 OR readwrite_url = $1", route[ 0 ] )
-		err := row.Scan( &id, &name, &readonly )
+		row := db.QueryRow( "SELECT id, name, secret, secret_valid_until FROM albums WHERE url = $1", route[ 0 ] )
+		err := row.Scan( &id, &name, &secret, &secret_valid_until )
 		if err != nil {
 			if errors.Is( err, sql.ErrNoRows ) {
-				httpError( w, http.StatusNotFound )
-				return
+				return false, 0, "", false
 			}
 			log.Fatal( err )
 		}
+	}
+
+	writeable := len( route ) == 2 && route[ 1 ] == secret && time.Now().Before( time.Unix( secret_valid_until, 0 ) )
+
+	return true, id, name, writeable
+}
+
+func viewLibrary( w http.ResponseWriter, r *http.Request, route []string ) {
+}
+
+func viewAlbum( w http.ResponseWriter, r *http.Request, route []string ) {
+	exists, id, name, writeable := findAlbum( route )
+	if !exists {
+		httpError( w, http.StatusNotFound )
+		return
 	}
 
 	type Photo struct {
@@ -386,24 +428,39 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, route []string ) {
 		}
 	}
 
-	context := struct {
-		Title string
-		AlpineJS template.JS
-		ThumbhashJS template.HTML
-		AlbumURL string
-		Checksum string
-		Photos []Photo
-	}{
-		Title: name,
-		AlpineJS: template.JS( alpinejs ),
-		ThumbhashJS: template.HTML( thumbhashjs ),
-		AlbumURL: route[ 0 ],
-		Checksum: checksum,
-		Photos: photos,
+	var album bytes.Buffer
+	{
+		context := struct {
+			Title string
+			AlbumURL string
+			Photos []Photo
+			ShowUpload bool
+		}{
+			Title: name,
+			AlbumURL: route[ 0 ],
+			Photos: photos,
+			ShowUpload: writeable,
+		}
+		try( templates.ExecuteTemplate( &album, "album.html", context ) )
 	}
 
 	var page bytes.Buffer
-	try( templates.ExecuteTemplate( &page, "album.html", context ) )
+	{
+		context := struct {
+			Title string
+			Checksum string
+			AlpineJS template.JS
+			ThumbhashJS template.HTML
+			Body template.HTML
+		}{
+			Title: name,
+			Checksum: checksum,
+			AlpineJS: template.JS( alpinejs + htmx ),
+			ThumbhashJS: template.HTML( thumbhashjs ),
+			Body: template.HTML( album.String() ),
+		}
+		try( templates.ExecuteTemplate( &page, "base.html", context ) )
+	}
 
 	minified := try1( minifier.String( "html", page.String() ) )
 	_ = try1( w.Write( []byte( minified ) ) )
@@ -507,7 +564,7 @@ func reorient( img *image.RGBA, orientation ExifOrientation ) *image.RGBA {
 	return reoriented
 }
 
-func addPhoto( data []byte, album_id sql.Null[ int64 ], filename string ) error {
+func addPhoto( ctx context.Context, data []byte, album_id sql.Null[ int64 ], filename string ) error {
 	before := time.Now()
 	fmt.Printf( "addPhoto( %s )\n", filename )
 
@@ -526,7 +583,7 @@ func addPhoto( data []byte, album_id sql.Null[ int64 ], filename string ) error 
 		draw.Draw( decoded, decoded.Bounds(), ycbcr, ycbcr.Bounds().Min, draw.Src )
 		fmt.Printf( "\tyCbCr -> RGBA %dms\n", time.Now().Sub( before ).Milliseconds() )
 	} else {
-		decoded, err = StbLoad( data )
+		decoded, err = stb.StbLoad( data )
 		if err != nil {
 			return err
 		}
@@ -594,8 +651,8 @@ func addPhoto( data []byte, album_id sql.Null[ int64 ], filename string ) error 
 	fmt.Printf( "\treoriented %dms\n", time.Now().Sub( before ).Milliseconds() )
 
 	scale := thumbnail_size / float32( min( reoriented.Rect.Dx(), reoriented.Rect.Dy() ) )
-	thumbnail := StbResize( reoriented, int( float32( reoriented.Rect.Dx() ) * scale ), int( float32( reoriented.Rect.Dy() ) * scale ) )
-	thumbnail_jpg := must1( StbToJpg( thumbnail, 75 ) )
+	thumbnail := stb.StbResize( reoriented, int( float32( reoriented.Rect.Dx() ) * scale ), int( float32( reoriented.Rect.Dy() ) * scale ) )
+	thumbnail_jpg := must1( stb.StbToJpg( thumbnail, 75 ) )
 	fmt.Printf( "\tthumbnail %dms %d -> %d\n", time.Now().Sub( before ).Milliseconds(), len( data ), len( thumbnail_jpg ) )
 
 	thumbhash := thumbhash.EncodeImage( thumbnail )
@@ -611,7 +668,7 @@ func addPhoto( data []byte, album_id sql.Null[ int64 ], filename string ) error 
 		VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10 )
 		`
 
-		jpeg = must1( StbToJpg( reoriented, 95 ) )
+		jpeg = must1( stb.StbToJpg( reoriented, 95 ) )
 		fmt.Printf( "\theic -> jpeg %dms %d -> %d\n", time.Now().Sub( before ).Milliseconds(), len( data ), len( jpeg ) )
 	} else {
 		q = `
@@ -620,7 +677,7 @@ func addPhoto( data []byte, album_id sql.Null[ int64 ], filename string ) error 
 		`
 	}
 
-	err = query( q, album_id, filename, sql.Null[ int64 ] { date.V.Unix(), date.Valid }, latitude, longitude, sha256[ : ], thumbhash, thumbnail_jpg, data, jpeg )
+	err = query( ctx, q, album_id, filename, sql.Null[ int64 ] { date.V.Unix(), date.Valid }, latitude, longitude, sha256[ : ], thumbhash, thumbnail_jpg, data, jpeg )
 	if err != nil {
 		return err
 	}
@@ -630,34 +687,114 @@ func addPhoto( data []byte, album_id sql.Null[ int64 ], filename string ) error 
 	return nil
 }
 
-func addPhotoToAlbum( data []byte, album_id int64, filename string ) error {
-	return addPhoto( data, sql.Null[ int64 ] { album_id, true }, filename )
+func addFile( ctx context.Context, path string, album_id sql.Null[ int64 ] ) error {
+		f := must1( os.Open( path ) )
+		defer f.Close()
+		img := must1( io.ReadAll( f ) )
+		return addPhoto( ctx, img, album_id, path )
+}
+
+func addFileToAlbum( ctx context.Context, path string, album_id int64 ) error {
+	return addFile( ctx, path, sql.Null[ int64 ] { album_id, true } )
 }
 
 func uploadPhotos( w http.ResponseWriter, r *http.Request, route []string ) {
+	exists, id, _, writeable := findAlbum( route )
+	if !exists {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+
+	if !writeable {
+		httpError( w, http.StatusUnauthorized )
+		return
+	}
+
 	const megabyte = 1000 * 1000
 	try( r.ParseMultipartForm( 10 * megabyte ) )
 
-	fmt.Printf( "%d\n", len( r.MultipartForm.File[ "photos" ] ) )
 	for _, header := range r.MultipartForm.File[ "photos" ] {
 		f := try1( header.Open() )
 		defer f.Close()
 
 		contents := try1( io.ReadAll( f ) )
 
-		fmt.Printf( "%s -> %d\n", header.Filename, len( contents ) )
+		fmt.Printf( "%s -> %d %d\n", header.Filename, len( contents ), id )
 	}
 
 	http.Redirect( w, r, r.URL.Path, http.StatusSeeOther )
 }
 
-func admin( w http.ResponseWriter, r *http.Request, route []string ) {
+func login( w http.ResponseWriter, r *http.Request ) {
+	context := struct {
+		Checksum string
+	}{
+		Checksum: checksum,
+	}
+
+	var page bytes.Buffer
+	try( templates.ExecuteTemplate( &page, "login.html", context ) )
+
+	minified := try1( minifier.String( "html", page.String() ) )
+	_ = try1( w.Write( []byte( minified ) ) )
+}
+
+func setAuthCookie( w http.ResponseWriter, auth string ) {
+	expiration := -1
+	if auth != "" {
+		expiration = int( ( 365 * 24 * time.Hour ).Seconds() )
+	}
+
+	cookie := http.Cookie {
+		Name: "auth",
+		Value: auth,
+		Path: "/",
+		MaxAge: expiration,
+		Secure: true,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	}
+
+	http.SetCookie( w, &cookie )
+}
+
+func authenticate( w http.ResponseWriter, r *http.Request, route []string ) {
+	form_username := r.PostFormValue( "username" )
+	form_password := r.PostFormValue( "password" )
+	row := db.QueryRow( "SELECT password, cookie FROM users WHERE username = $1", form_username )
+
+	var password string
+	var cookie string
+	err := row.Scan( &password, &cookie )
+	if err != nil {
+		if errors.Is( err, sql.ErrNoRows ) {
+			http.Error( w, "Incorrect username", http.StatusOK )
+			return
+		}
+		log.Fatal( err )
+	}
+
+	if form_password != password {
+		http.Error( w, "Incorrect password", http.StatusOK )
+		return
+	}
+
+	setAuthCookie( w, cookie )
+
+	// w.Header().Set( "HX-Refresh", "true" )
+	w.Header().Set( "HX-Redirect", "/helsinki-2024/bbbbbbbbbbbbbbbb" )
+}
+
+func logout( w http.ResponseWriter, r *http.Request, route []string ) {
+	setAuthCookie( w, "" )
+	http.Redirect( w, r, "/", http.StatusSeeOther )
 }
 
 type Route struct {
 	Regex *regexp.Regexp
 	Method string
 	Handler func( http.ResponseWriter, *http.Request, []string )
+	RequireAuth bool
 }
 
 func startHttpServer( addr string, routes []Route ) *http.Server {
@@ -676,6 +813,33 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 		for _, route := range routes {
 			if matches := route.Regex.FindStringSubmatch( r.URL.Path ); len( matches ) > 0 {
 				if r.Method == route.Method {
+					if route.RequireAuth {
+						var userid int64
+						var username string
+						cookie, err := r.Cookie( "auth" )
+						authed := false
+						if err == nil {
+							row := db.QueryRow( "SELECT id, username FROM users WHERE cookie = $1", cookie.Value )
+							err := row.Scan( &userid, &username )
+							if err == nil {
+								authed = true
+							} else if !errors.Is( err, sql.ErrNoRows ) {
+								log.Fatal( err )
+							}
+						}
+
+						if !authed {
+							if r.Method == "GET" {
+								login( w, r )
+							} else {
+								httpError( w, http.StatusForbidden )
+							}
+							return
+						}
+
+						setAuthCookie( w, cookie.Value )
+					}
+
 					route.Handler( w, r, matches[ 1: ] )
 					return
 				}
@@ -707,6 +871,8 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 }
 
 func main() {
+	runtime.GOMAXPROCS( 2 )
+
 	checksum = exeChecksum()
 
 	{
@@ -716,12 +882,7 @@ func main() {
 		} else {
 			fmt.Println( "Using in memory database. Nothing will be saved when you quit the server!" )
 		}
-
-		var err error
-		db, err = sql.Open( "sqlite3", path )
-		if err != nil {
-			log.Fatal( err )
-		}
+		db = must1( sql.Open( "sqlite", path ) )
 	}
 	defer db.Close()
 
@@ -767,18 +928,31 @@ func main() {
 		}
 	}
 
-	public_http_server := startHttpServer( "127.0.0.1:5678", []Route {
-		{ regexp.MustCompile( "^/Special:checksum$" ), "GET", getChecksum },
-		{ regexp.MustCompile( "^/Special:image/(.+)$" ), "GET", getImage },
-		{ regexp.MustCompile( "^/Special:thumbnail/(.+)$" ), "GET", getThumbnail },
+	fs_watcher := initFSWatcher()
+	defer fs_watcher.Close()
+
+	private_http_server := startHttpServer( "0.0.0.0:5678", []Route {
+		{ regexp.MustCompile( "^/Special:authenticate$" ), "POST", authenticate, false },
+		{ regexp.MustCompile( "^/Special:checksum$" ), "GET", getChecksum, false },
+		{ regexp.MustCompile( "^/Special:image/([^/]+)$" ), "GET", getImage, true },
+		{ regexp.MustCompile( "^/Special:logout$" ), "GET", logout, true },
+		{ regexp.MustCompile( "^/Special:thumbnail/([^/]+)$" ), "GET", getThumbnail, true },
 		// { regexp.MustCompile( "^/Special:geocode$" ), "GET", geocode },
-		{ regexp.MustCompile( "^/([^:]+)$" ), "GET", viewAlbum },
-		{ regexp.MustCompile( "^/([^:]+)$" ), "POST", uploadPhotos },
+
+		{ regexp.MustCompile( "^/$" ), "GET", viewLibrary, true },
+		{ regexp.MustCompile( "^/([^:/]+)$" ), "GET", viewAlbum, true },
+		{ regexp.MustCompile( "^/([^:/]+)/([^/]+)$" ), "GET", viewAlbum, true },
+		{ regexp.MustCompile( "^/([^:/]+)/([^/]+)$" ), "POST", uploadPhotos, true },
 	} )
 
-	private_http_server := startHttpServer( "127.0.0.1:12345", []Route {
-		{ regexp.MustCompile( "^/$" ), "GET", admin },
+	guest_http_server := startHttpServer( "0.0.0.0:5679", []Route {
+		{ regexp.MustCompile( "^/Special:image/([^/]+)$" ), "GET", getImage, true },
+		{ regexp.MustCompile( "^/Special:thumbnail/([^/]+)$" ), "GET", getThumbnail, true },
+		{ regexp.MustCompile( "^/([^:/]+)$" ), "GET", viewAlbum, true },
+		{ regexp.MustCompile( "^/([^:/]+)/([^/]+)$" ), "GET", viewAlbum, true },
 	} )
+
+	fmt.Printf( "http://localhost:5678/\n" )
 
 	done := make( chan os.Signal, 1 )
 	signal.Notify( done, syscall.SIGINT, syscall.SIGTERM )
@@ -790,6 +964,6 @@ func main() {
 		cancel()
 	}()
 
-	must( public_http_server.Shutdown( ctx ) )
 	must( private_http_server.Shutdown( ctx ) )
+	must( guest_http_server.Shutdown( ctx ) )
 }
