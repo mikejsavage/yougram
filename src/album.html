@@ -102,102 +102,102 @@
 	{{ end }}
 </aside>
 
-<!-- {{ if .ShowUpload }} -->
-<!-- 	<script> -->
-<!-- 	function MakeUploadForm() { -->
-<!-- 		return { -->
-<!-- 			files: [ ], -->
-<!--  -->
-<!-- 			Upload( idx ) { -->
-<!-- 				if( idx >= this.files.length ) { -->
-<!-- 					return; -->
-<!-- 				} -->
-<!--  -->
-<!-- 				const xhr = new XMLHttpRequest(); -->
-<!-- 				xhr.open( "POST", window.location.pathname, true ); -->
-<!-- 				xhr.upload.onprogress = e => this.files[ idx ].progress = e.loaded / e.total; -->
-<!-- 				xhr.onload = () => { -->
-<!-- 					this.files[ idx ].progress = 1; -->
-<!-- 					this.Upload( idx + 1 ); -->
-<!-- 				}; -->
-<!--  -->
-<!-- 				let data = new FormData(); -->
-<!-- 				data.append( "photos", this.files[ idx ].file ); -->
-<!--  -->
-<!-- 				xhr.send( data ); -->
-<!--  -->
-<!-- 				this.files[ idx ].xhr = xhr; -->
-<!-- 			}, -->
-<!--  -->
-<!-- 			async Changed( e ) { -->
-<!-- 				let first_new = this.files.length; -->
-<!--  -->
-<!-- 				for( const file of e.target.files ) { -->
-<!-- 					let promise = new Promise( function( resolve ) { -->
-<!-- 						let reader = new FileReader(); -->
-<!-- 						reader.onload = function( e ) { -->
-<!-- 							resolve( e.target.result ); -->
-<!-- 						}; -->
-<!-- 						reader.readAsDataURL( file ); -->
-<!-- 					} ); -->
-<!--  -->
-<!-- 					this.files.push( { -->
-<!-- 						file: file, -->
-<!-- 						name: file.name, -->
-<!-- 						thumbnail: await promise, -->
-<!-- 						progress: 0, -->
-<!-- 					} ); -->
-<!-- 				} -->
-<!--  -->
-<!-- 				this.Upload( first_new ); -->
-<!-- 			}, -->
-<!--  -->
-<!-- 			Cancel( idx ) { -->
-<!-- 			}, -->
-<!-- 		}; -->
-<!-- 	} -->
-<!-- 	</script> -->
-<!--  -->
-<!-- 	<header x-data="MakeUploadForm()"> -->
-<!-- 		<style> -->
-<!-- 		@scope { -->
-<!-- 			:scope { -->
-<!-- 				background: red; -->
-<!-- 				position: sticky; -->
-<!-- 				top: 0; -->
-<!-- 				padding: 1rem; -->
-<!-- 				margin-bottom: 1rem; -->
-<!-- 			} -->
-<!--  -->
-<!-- 			img { -->
-<!-- 				aspect-ratio: 1; -->
-<!-- 				width: 2rem; -->
-<!-- 				object-fit: cover; -->
-<!-- 				object-position: 50% 50%; -->
-<!-- 				vertical-align: middle; -->
-<!-- 				margin: 0.25rem 0; -->
-<!-- 			} -->
-<!-- 		} -->
-<!-- 		</style> -->
-<!--  -->
-<!-- 		<b>This link lets you add and remove photos, pls don't share it</b> -->
-<!--  -->
-<!-- 		<form action="/{{ .AlbumURL }}" method="POST" enctype="multipart/form-data"> -->
-<!-- 			<label>Add photos <input type="file" name="photos" multiple @change="Changed" x-show="false"></label> -->
-<!--  -->
-<!-- 			<template x-for="(file, i) in files"> -->
-<!-- 				<div> -->
-<!-- 					<img :src="file.thumbnail"> -->
-<!-- 					<span x-text="Math.floor( file.progress * 100 )"></span>% -->
-<!-- 					<span x-text="file.name"></span> -->
-<!-- 					<button @click.prevent="Cancel( i )">Cancel</button> -->
-<!-- 				</div> -->
-<!-- 			</template> -->
-<!--  -->
-<!-- 			<div x-show="false"><input type="submit"></div> -->
-<!-- 		</form> -->
-<!-- 	</header> -->
-<!-- {{ end }} -->
+{{ if .ShowUpload }}
+	<script>
+	function MakeUploadForm() {
+		return {
+			files: [ ],
+
+			Upload( idx ) {
+				if( idx >= this.files.length ) {
+					return;
+				}
+
+				const xhr = new XMLHttpRequest();
+				xhr.open( "POST", window.location.pathname, true );
+				xhr.upload.onprogress = e => this.files[ idx ].progress = e.loaded / e.total;
+				xhr.onload = () => {
+					this.files[ idx ].progress = 1;
+					this.Upload( idx + 1 );
+				};
+
+				let data = new FormData();
+				data.append( "photos", this.files[ idx ].file );
+
+				xhr.send( data );
+
+				this.files[ idx ].xhr = xhr;
+			},
+
+			async Changed( e ) {
+				let first_new = this.files.length;
+
+				for( const file of e.target.files ) {
+					let promise = new Promise( function( resolve ) {
+						let reader = new FileReader();
+						reader.onload = function( e ) {
+							resolve( e.target.result );
+						};
+						reader.readAsDataURL( file );
+					} );
+
+					this.files.push( {
+						file: file,
+						name: file.name,
+						thumbnail: await promise,
+						progress: 0,
+					} );
+				}
+
+				this.Upload( first_new );
+			},
+
+			Cancel( idx ) {
+			},
+		};
+	}
+	</script>
+
+	<header x-data="MakeUploadForm()">
+		<style>
+		@scope {
+			:scope {
+				background: red;
+				position: sticky;
+				top: 0;
+				padding: 1rem;
+				margin-bottom: 1rem;
+			}
+
+			img {
+				aspect-ratio: 1;
+				width: 2rem;
+				object-fit: cover;
+				object-position: 50% 50%;
+				vertical-align: middle;
+				margin: 0.25rem 0;
+			}
+		}
+		</style>
+
+		<b>This link lets you add and remove photos, pls don't share it</b>
+
+		<form action="/{{ .AlbumURL }}" method="POST" enctype="multipart/form-data">
+			<label>Add photos <input type="file" name="photos" multiple @change="Changed" x-show="false"></label>
+
+			<template x-for="(file, i) in files">
+				<div>
+					<img :src="file.thumbnail">
+					<span x-text="Math.floor( file.progress * 100 )"></span>%
+					<span x-text="file.name"></span>
+					<button @click.prevent="Cancel( i )">Cancel</button>
+				</div>
+			</template>
+
+			<div x-show="false"><input type="submit"></div>
+		</form>
+	</header>
+{{ end }}
 
 <script>
 function MakeThumbhash( img, thumbhash ) {
@@ -222,15 +222,15 @@ function MakeThumbhash( img, thumbhash ) {
 				>
 					<div class="stack">
 						<img x-init="MakeThumbhash( $el, thumbhash )">
-						<img src="/Special:thumbnail/{{ .SHA256 }}" onload="this.previousElementSibling.remove()" @error="$el.remove()">
-						<img src="/Special:image/{{ .SHA256 }}" onload="this.previousElementSibling.remove()" @error="$el.remove()">
+						<img src="/Special:thumbnail/{{ .ID }}" onload="this.previousElementSibling.remove()" @error="$el.remove()">
+						<img src="/Special:image/{{ .ID }}" onload="this.previousElementSibling.remove()" @error="$el.remove()">
 					</div>
 				</div>
 			</template>
 
-			<a class="thumbnail stack" href="/Special:image/{{ .SHA256 }}" @click.prevent="fullscreen = {{ $i }}">
+			<a class="thumbnail stack" href="/Special:image/{{ .ID }}" @click.prevent="fullscreen = {{ $i }}">
 				<img x-init="MakeThumbhash( $el, thumbhash )">
-				<img src="/Special:thumbnail/{{ .SHA256 }}" loading="lazy" onload="this.previousElementSibling.remove()">
+				<img src="/Special:thumbnail/{{ .ID }}" loading="lazy" onload="this.previousElementSibling.remove()">
 			</a>
 		</div>
 	{{ end }}
