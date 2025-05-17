@@ -433,7 +433,7 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, route []string, user Use
 			ThumbhashJS: template.HTML( thumbhashjs ),
 			Body: template.HTML( album_html.String() ),
 		}
-		try( templates.ExecuteTemplate( &page, "base.html", context ) )
+		try( templates.ExecuteTemplate( &page, "base_sidebar.html", context ) )
 	}
 
 	minified := try1( minifier.String( "html", page.String() ) )
