@@ -1,6 +1,5 @@
 package main
 
-import "database/sql"
 import "mikegram/sqlc"
 
 type AlbumOwnership int
@@ -10,7 +9,7 @@ const (
 	AlbumOwnership_Guest
 )
 
-templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, owner sql.NullString, ownership AlbumOwnership, can_upload bool ) {
+templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwnership, can_upload bool ) {
 	<style>
 	.photos {
 		display: grid;
@@ -66,8 +65,8 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, owner sql.Null
 
 	<aside>
 		<h1>{ album.Name }</h1>
-		if owner.Valid {
-			<span>{ owner.String }'s album</span>
+		if ownership != AlbumOwnership_Owned {
+			<span>{ album.OwnerUsername }'s album</span>
 		}
 		<span>Oct 2023 &ndash; Jan 2025</span>
 		<span>{ len( photos ) } { sel( len( photos ) == 1, "photo", "photos" ) }</span>
@@ -143,8 +142,8 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, owner sql.Null
 
 	if can_upload && ownership == AlbumOwnership_Guest {
 		<b>
-			This page lets you add and remove photos so don't share it with random, give them
-			<a href="asdf">this read only link</a>
+			This page lets you add and remove photos so don't share it with randoms, give them
+			<a href={ templ.URL( album.ReadonlySecret ) }>this read only link</a>
 			instead!!
 		</b>
 	}
@@ -227,7 +226,7 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, owner sql.Null
 			}
 			</style>
 
-			<form action="/{{ .AlbumURL }}" method="POST" enctype="multipart/form-data">
+			<form method="POST" enctype="multipart/form-data">
 				<label>Add photos <input type="file" name="photos" multiple @change="Changed" x-show="false"></label>
 
 				<template x-for="(file, i) in files">
@@ -338,13 +337,13 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, owner sql.Null
 }
 
 templ ownedAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {
-	@albumTemplate( album, photos, sql.NullString { }, AlbumOwnership_Owned, true )
+	@albumTemplate( album, photos, AlbumOwnership_Owned, true )
 }
 
 templ sharedAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {
-	@albumTemplate( album, photos, sql.NullString { "mum", true }, AlbumOwnership_SharedWithMe, true )
+	@albumTemplate( album, photos, AlbumOwnership_SharedWithMe, true )
 }
 
 templ guestAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, can_upload bool ) {
-	@albumTemplate( album, photos, sql.NullString { "mum", true }, AlbumOwnership_Guest, can_upload )
+	@albumTemplate( album, photos, AlbumOwnership_Guest, can_upload )
 }

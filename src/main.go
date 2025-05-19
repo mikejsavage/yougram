@@ -193,14 +193,6 @@ func initDB() {
 		Cookie: "123",
 	} ) )
 
-	for i := 0; i < 4; i++ {
-		must( queries.CreateUser( ctx, sqlc.CreateUserParams {
-			Username: norm.NFKC.String( "user" + strconv.Itoa( i ) ),
-			Password: norm.NFKC.String( "gg" ),
-			Cookie: "123",
-		} ) )
-	}
-
 	must( queries.CreateAlbum( ctx, sqlc.CreateAlbumParams {
 		Owner: 1,
 		Name: "France 2024",

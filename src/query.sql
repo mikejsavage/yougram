@@ -88,7 +88,10 @@ WHERE ( albums.shared OR albums.owner = ? )
 ORDER BY albums.name;
 
 -- name: GetAlbumByURL :one
-SELECT id, owner, name, shared, readonly_secret, readwrite_secret FROM albums WHERE url_slug = ?;
+SELECT albums.id, owner, users.username AS owner_username, albums.name, shared, readonly_secret, readwrite_secret
+FROM albums
+INNER JOIN users ON albums.owner = users.id
+WHERE url_slug = ?;
 
 -- name: GetAlbumOwnerByID :one
 SELECT owner, shared FROM albums WHERE id = ?;
