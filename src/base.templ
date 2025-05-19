@@ -1,0 +1,174 @@
+package main
+
+import "fmt"
+import "strings"
+import "mikegram/sqlc"
+
+templ autorefresh( checksum string ) {
+	<script>
+		let checksum = "{{ checksum }}";
+		setInterval( function() {
+			fetch( "/Special:checksum" ).then( function( res ) {
+				return res.ok ? res.text() : null;
+			} ).then( function( cs ) {
+				if( cs != null && cs != checksum ) {
+					location.reload();
+				}
+			} ).catch( function() { } );
+		}, 1000 );
+	</script>
+}
+
+templ navlinkComplex( current_url string, link templ.SafeURL, text templ.Component ) {
+	if strings.HasPrefix( current_url, string( link ) ) {
+		<a class="curr" href={ link }>@text</a>
+	} else {
+		<a href={ link }>@text</a>
+	}
+}
+
+templ navlink( current_url string, link templ.SafeURL, text string ) {
+	if strings.HasPrefix( current_url, string( link ) ) {
+		<a class="curr" href={ link }>{ text }</a>
+	} else {
+		<a href={ link }>{ text }</a>
+	}
+}
+
+templ sidebarAlbum( album sqlc.GetAlbumsForUserRow ) {
+	<img src={ fmt.Sprintf( "/Special:thumbnail/%d", album.KeyPhotoAssetID ) } style="height: 1lh" /> { album.Name }
+}
+
+templ sidebarAlbums( user User, current_url string ) {
+	{{ albums, err := queries.GetAlbumsForUser( ctx, user.ID ) }}
+	{{ if err != nil { return err } }}
+
+	for _, album := range albums {
+		<div>@navlinkComplex( current_url, templ.URL( album.UrlSlug ), sidebarAlbum( album ) )</div>
+	}
+}
+
+templ baseWithSidebar( user User, checksum string, current_url string, title string, body templ.Component ) {
+	<!DOCTYPE html>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>{ title }</title>
+
+	@autorefresh( checksum )
+	<script src="/Special:alpinejs-3.14.9.js" defer></script>
+	<script src="/Special:htmx-2.0.4.js"></script>
+	<script src="/Special:thumbhash-1.0.0.js"></script>
+
+	<style>
+	:root {
+		--red: #ff5733;
+		--green: #40d39c;
+	}
+
+	* {
+		box-sizing: border-box;
+	}
+
+	body {
+		font-family: sans-serif;
+		line-height: 1.5;
+		margin: 0;
+	}
+
+	body:has( .fullscreen ) {
+		overflow: hidden;
+	}
+
+	nav {
+		position: fixed;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: 15rem;
+		background: #eee;
+		border-right: 1px solid #ccc;
+		padding: 0.5rem;
+	}
+
+	nav div {
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		overflow: hidden;
+	}
+
+	nav .curr {
+		background: red;
+		font-weight: bold;
+	}
+
+	hr {
+		width: 50%;
+		border-color: transparent;
+	}
+
+	main {
+		margin-left: 15rem;
+	}
+
+	aside {
+		position: sticky;
+		top: 0;
+		padding: 0.5rem;
+		border-bottom: 1px solid #ccc;
+
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	h1 {
+		margin: 0;
+		padding: 0;
+	}
+
+	.spacer {
+		flex-grow: 1;
+	}
+
+	button {
+		padding: 0.25rem 0.5rem;
+	}
+
+	[x-cloak] {
+		display: none !important;
+	}
+
+	@keyframes spinning {
+		0%   { left: 0; }
+		25%  { left: 0.1rem; }
+		75%  { left: -0.1rem; }
+		100% { left: 0; }
+	}
+
+	.spinning {
+		position: relative;
+		animation spinning 0.15 infinite;
+	}
+	</style>
+
+	<nav>
+		<div><b>Mikegram</b></div>
+		<div><a href="/Special:logout">Log out</a></div>
+
+		<hr>
+
+		<div>@navlink( current_url, "/", "Everything" )</div>
+		<div>People</div>
+		<div>@navlink( current_url, "/Special:trash", "Deleted" )</div>
+		<div><a href="/Special:duplicates">Duplicates</a></div>
+
+		<hr>
+
+		@sidebarAlbums( user, current_url )
+	</nav>
+
+	<main>
+		@body
+	</main>
+}

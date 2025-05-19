@@ -45,6 +45,7 @@ type Photo struct {
 	ID           int64
 	Owner        sql.NullInt64
 	CreatedAt    int64
+	DeleteAt     sql.NullInt64
 	PrimaryAsset int64
 	Thumbnail    []byte
 	Thumbhash    []byte

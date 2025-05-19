@@ -43,9 +43,10 @@ WHERE photo_assets.asset_id = ? AND photos.owner = ? AND photos.id = photo_asset
 -- name: GetPhoto :one
 SELECT assets.sha256, assets.type, assets.original_filename FROM photos, assets
 WHERE photos.id = ? AND assets.id = IFNULL( photos.primary_asset,
-	( SELECT assets.id FROM assets, photo_assets, photos
-	WHERE photos.id = ? AND photo_assets.photo_id = photos.id AND photo_assets.asset_id = assets.id AND assets.type != "raw"
-	ORDER BY assets.created_at LIMIT 1 ) );
+	( SELECT id FROM assets
+	INNER JOIN photo_assets ON photo_assets.asset_id = assets.id
+	WHERE photo_assets.photo_id = photos.id AND assets.type != "raw"
+	ORDER BY assets.created_at DESC LIMIT 1 ) );
 
 -- name: GetThumbnail :one
 SELECT thumbnail FROM photos WHERE id = ?;
@@ -65,10 +66,28 @@ INSERT INTO albums (
 INSERT OR IGNORE INTO album_photos ( album_id, photo_id ) VALUES ( ?, ? );
 
 -- name: GetAlbumsForUser :many
-SELECT name, url_slug, key_photo FROM albums WHERE shared OR owner = ?;
+SELECT albums.name, albums.url_slug, assets.sha256 AS key_photo_sha256 FROM albums
+LEFT OUTER JOIN photos ON photos.id = IFNULL( albums.key_photo, (
+	SELECT photo_id FROM album_photos
+	INNER JOIN photos ON photos.id = album_photos.photo_id
+	WHERE album_photos.album_id = albums.id
+	ORDER BY photos.date_taken DESC LIMIT 1
+) )
+LEFT OUTER JOIN assets ON assets.id = IFNULL( photos.primary_asset, (
+	SELECT asset_id FROM photo_assets
+	INNER JOIN assets AS lol ON lol.id = photo_assets.asset_id
+	WHERE photo_assets.photo_id = photos.id AND lol.type != "raw"
+	ORDER BY lol.created_at DESC LIMIT 1
+) )
+WHERE ( albums.shared OR albums.owner = ? )
+ORDER BY albums.name;
+
 
 -- name: GetAlbumByURL :one
 SELECT id, owner, name, shared, readonly_secret, readwrite_secret FROM albums WHERE url_slug = ?;
+
+-- name: GetAlbumOwnerByID :one
+SELECT owner, shared FROM albums WHERE id = ?;
 
 -- name: GetAlbumOwner :one
 SELECT owner FROM albums WHERE id = ?;
@@ -88,3 +107,6 @@ SELECT
 	autoassign_longitude AS longitude,
 	autoassign_radius AS radius
 FROM albums WHERE ? BETWEEN autoassign_start_date AND autoassign_end_date;
+
+-- name: SetAlbumIsShared :exec
+UPDATE albums SET shared = ? WHERE id = ?;

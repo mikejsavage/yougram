@@ -33,6 +33,7 @@ import (
 	"mikegram/sqlc"
 	"mikegram/stb"
 
+	"github.com/a-h/templ"
 	"golang.org/x/text/unicode/norm"
 	"github.com/adrium/goheif"
 	"github.com/galdor/go-thumbhash"
@@ -53,11 +54,11 @@ var queries *sqlc.Queries
 //go:embed schema.sql
 var db_schema string
 
-//go:embed alpine-3.14.9.js
+//go:embed vendor_js/alpine-3.14.9.js
 var alpinejs string
-//go:embed htmx-2.0.4.js
-var htmx string
-//go:embed thumbhash.js
+//go:embed vendor_js/htmx-2.0.4.js
+var htmxjs string
+//go:embed vendor_js/thumbhash.js
 var thumbhashjs string
 
 var minifier *minify.M
@@ -289,6 +290,7 @@ func httpError( w http.ResponseWriter, status int ) {
 }
 
 func cacheControlImmutable( w http.ResponseWriter ) {
+	// 60 * 60 * 24 * 365 = 31536000
 	w.Header().Set( "Cache-Control", "max-age=31536000, immutable" )
 }
 
@@ -305,7 +307,7 @@ func getImage( w http.ResponseWriter, r *http.Request, route []string, user User
 		return
 	}
 
-	photo, err := queries.GetPhoto( r.Context(), sqlc.GetPhotoParams { image_id, image_id } )
+	photo, err := queries.GetPhoto( r.Context(), image_id )
 	if err != nil {
 		if errors.Is( err, sql.ErrNoRows ) {
 			httpError( w, http.StatusNotFound )
@@ -342,6 +344,7 @@ func getThumbnail( w http.ResponseWriter, r *http.Request, route []string, user 
 		log.Fatal( err )
 	}
 
+	// TODO: this is not immutable if we select by ID
 	cacheControlImmutable( w )
 	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"thumb_%s.jpg\"", route[ 0 ] ) )
 	w.Header().Set( "Content-Type", "image/jpeg" )
@@ -356,7 +359,10 @@ type User struct {
 type AlbumMetadata struct {
 	ID int64
 	Name string
-	Writeable bool
+	Shared bool
+	ReadonlySecret string
+	ReadwriteSecret string
+	GuestWriteable bool
 }
 
 func findAlbum( ctx context.Context, user User, route []string ) ( AlbumMetadata, int ) {
@@ -375,11 +381,55 @@ func findAlbum( ctx context.Context, user User, route []string ) ( AlbumMetadata
 	return AlbumMetadata {
 		ID: album.ID,
 		Name: album.Name,
-		Writeable: true,
+		Shared: album.Shared == 1,
+		ReadonlySecret: sel( album.ReadonlySecret.Valid, album.ReadonlySecret.String, "" ),
+		ReadwriteSecret: sel( album.ReadwriteSecret.Valid, album.ReadwriteSecret.String, "" ),
+		GuestWriteable: true,
 	}, http.StatusOK
 }
 
+func shareAlbum( w http.ResponseWriter, r *http.Request, route []string, user User ) {
+	album_id, err := strconv.ParseInt( r.PostFormValue( "album_id" ), 10, 64 )
+	if err != nil {
+		fmt.Printf( "cya1 [%s]\n", r.PostFormValue( "album_id" ) )
+		httpError( w, http.StatusBadRequest )
+		return
+	}
+
+	shared, err := strconv.ParseUint( r.PostFormValue( "share" ), 10, 1 )
+	if err != nil {
+		fmt.Printf( "%v cya2 [%s]\n", err, r.PostFormValue( "share" ) )
+		httpError( w, http.StatusBadRequest )
+		return
+	}
+
+	album, err := queries.GetAlbumOwnerByID( r.Context(), album_id )
+	if err != nil {
+	}
+	if album.Owner != user.ID {
+		httpError( w, http.StatusForbidden )
+		return
+	}
+
+	try( queries.SetAlbumIsShared( r.Context(), sqlc.SetAlbumIsSharedParams {
+		Shared: int64( shared ),
+		ID: album_id,
+	} ) )
+
+	w.Header().Set( "HX-Trigger", sel( shared == 0, "album:stop_sharing", "album:start_sharing" ) )
+}
+
 func viewLibrary( w http.ResponseWriter, r *http.Request, route []string, user User ) {
+	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		_, err := io.WriteString(w, "lolz")
+		return err
+	})
+	try( baseWithSidebar( user, checksum, r.URL.Path, "hi", body ).Render( r.Context(), w ) )
+}
+
+type Photo struct {
+	ID int64 `json:"id"`
+	Thumbhash string `json:"thumbhash"`
 }
 
 func viewAlbum( w http.ResponseWriter, r *http.Request, route []string, user User ) {
@@ -389,12 +439,7 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, route []string, user Use
 		return
 	}
 
-	type Photo struct {
-		ID int64
-		Thumbhash string
-	}
-
-	var photos []Photo
+	photos := []Photo { }
 	for _, photo := range must1( queries.GetAlbumPhotos( r.Context(), album.ID ) ) {
 		photos = append( photos, Photo {
 			ID: photo.ID,
@@ -402,42 +447,8 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, route []string, user Use
 		} )
 	}
 
-	var album_html bytes.Buffer
-	{
-		context := struct {
-			Title string
-			AlbumURL string
-			Photos []Photo
-			ShowUpload bool
-		}{
-			Title: album.Name,
-			AlbumURL: route[ 0 ],
-			Photos: photos,
-			ShowUpload: album.Writeable,
-		}
-		try( templates.ExecuteTemplate( &album_html, "album.html", context ) )
-	}
-
-	var page bytes.Buffer
-	{
-		context := struct {
-			Title string
-			Checksum string
-			AlpineJS template.JS
-			ThumbhashJS template.HTML
-			Body template.HTML
-		}{
-			Title: album.Name,
-			Checksum: checksum,
-			AlpineJS: template.JS( alpinejs + htmx ),
-			ThumbhashJS: template.HTML( thumbhashjs ),
-			Body: template.HTML( album_html.String() ),
-		}
-		try( templates.ExecuteTemplate( &page, "base_sidebar.html", context ) )
-	}
-
-	minified := try1( minifier.String( "html", page.String() ) )
-	_ = try1( w.Write( []byte( minified ) ) )
+	album_templ := renderAlbum( album, photos )
+	try( baseWithSidebar( user, checksum, r.URL.Path, album.Name, album_templ ).Render( r.Context(), w ) )
 }
 
 type LatLong struct {
@@ -744,7 +755,7 @@ func addFileToAlbum( ctx context.Context, path string, album_id int64 ) error {
 
 func uploadPhotos( w http.ResponseWriter, r *http.Request, route []string, user User ) {
 	album, http_status := findAlbum( r.Context(), user, route )
-	if http_status != http.StatusOK || !album.Writeable {
+	if http_status != http.StatusOK || !album.GuestWriteable {
 		httpError( w, sel( http_status == http.StatusOK, http.StatusForbidden, http_status ) )
 		return
 	}
@@ -877,6 +888,13 @@ func requireAuth( handler func( w http.ResponseWriter, r *http.Request, route []
 	}
 }
 
+func serveString( content string ) func( w http.ResponseWriter, r *http.Request, route []string ) {
+	return func( w http.ResponseWriter, r *http.Request, route []string ) {
+		cacheControlImmutable( w )
+		_ = try1( w.Write( []byte( content ) ) )
+	}
+}
+
 func startHttpServer( addr string, routes []Route ) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc( "/", func( w http.ResponseWriter, r *http.Request ) {
@@ -954,7 +972,7 @@ func main() {
 		minifier.AddFunc( "html", minify_html.Minify )
 		minifier.AddFunc( "js", minify_js.Minify )
 
-		thumbhashjs = "<script>" + must1( minifier.String( "js", strings.ReplaceAll( thumbhashjs, "export function", "function" ) ) ) + "</script>"
+		thumbhashjs = must1( minifier.String( "js", strings.ReplaceAll( thumbhashjs, "export function", "function" ) ) )
 
 		css_finder := regexp.MustCompile( "(?s)<style>.*?</style>" )
 		minifyStyleTag := func( css string ) string {
@@ -981,6 +999,9 @@ func main() {
 
 		template_funcs := template.FuncMap{
 			"add": func( a int, b int ) int { return a + b },
+			"IsCurrentPage": func( current string, link string ) bool {
+				return strings.HasPrefix( current, link )
+			},
 		}
 		templates = template.New( "dummy" ).Funcs( template_funcs )
 		for _, f := range must1( template_sources.ReadDir( "." ) ) {
@@ -998,6 +1019,12 @@ func main() {
 		{ regexp.MustCompile( "^/Special:logout$" ), "GET", requireAuth( logout ) },
 		{ regexp.MustCompile( "^/Special:thumbnail/([^/]+)$" ), "GET", requireAuth( getThumbnail ) },
 		// { regexp.MustCompile( "^/Special:geocode$" ), "GET", geocode },
+
+		{ regexp.MustCompile( "^/Special:share$" ), "POST", requireAuth( shareAlbum ) },
+
+		{ regexp.MustCompile( "^/Special:alpinejs-3\\.14\\.9\\.js$" ), "GET", serveString( alpinejs ) },
+		{ regexp.MustCompile( "^/Special:htmx-2\\.0\\.4\\.js$" ), "GET", serveString( htmxjs ) },
+		{ regexp.MustCompile( "^/Special:thumbhash-1\\.0\\.0\\.js$" ), "GET", serveString( thumbhashjs ) },
 
 		{ regexp.MustCompile( "^/$" ), "GET", requireAuth( viewLibrary ) },
 		{ regexp.MustCompile( "^/([^:/]+)$" ), "GET", requireAuth( viewAlbum ) },

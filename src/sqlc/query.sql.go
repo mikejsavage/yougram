@@ -276,6 +276,22 @@ func (q *Queries) GetAlbumOwner(ctx context.Context, id int64) (int64, error) {
 	return owner, err
 }
 
+const getAlbumOwnerByID = `-- name: GetAlbumOwnerByID :one
+SELECT owner, shared FROM albums WHERE id = ?
+`
+
+type GetAlbumOwnerByIDRow struct {
+	Owner  int64
+	Shared int64
+}
+
+func (q *Queries) GetAlbumOwnerByID(ctx context.Context, id int64) (GetAlbumOwnerByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getAlbumOwnerByID, id)
+	var i GetAlbumOwnerByIDRow
+	err := row.Scan(&i.Owner, &i.Shared)
+	return i, err
+}
+
 const getAlbumPhotos = `-- name: GetAlbumPhotos :many
 SELECT photos.id, photos.thumbhash
 FROM photos, album_photos
@@ -312,13 +328,27 @@ func (q *Queries) GetAlbumPhotos(ctx context.Context, albumID int64) ([]GetAlbum
 }
 
 const getAlbumsForUser = `-- name: GetAlbumsForUser :many
-SELECT name, url_slug, key_photo FROM albums WHERE shared OR owner = ?
+SELECT albums.name, albums.url_slug, assets.sha256 AS key_photo_sha256 FROM albums
+LEFT OUTER JOIN photos ON photos.id = IFNULL( albums.key_photo, (
+	SELECT photo_id FROM album_photos
+	INNER JOIN photos ON photos.id = album_photos.photo_id
+	WHERE album_photos.album_id = albums.id
+	ORDER BY photos.date_taken DESC LIMIT 1
+) )
+LEFT OUTER JOIN assets ON assets.id = IFNULL( photos.primary_asset, (
+	SELECT asset_id FROM photo_assets
+	INNER JOIN assets AS lol ON lol.id = photo_assets.asset_id
+	WHERE photo_assets.photo_id = photos.id AND lol.type != "raw"
+	ORDER BY lol.created_at DESC LIMIT 1
+) )
+WHERE ( albums.shared OR albums.owner = ? )
+ORDER BY albums.name
 `
 
 type GetAlbumsForUserRow struct {
-	Name     string
-	UrlSlug  string
-	KeyPhoto sql.NullInt64
+	Name           string
+	UrlSlug        string
+	KeyPhotoSha256 []byte
 }
 
 func (q *Queries) GetAlbumsForUser(ctx context.Context, owner int64) ([]GetAlbumsForUserRow, error) {
@@ -330,7 +360,7 @@ func (q *Queries) GetAlbumsForUser(ctx context.Context, owner int64) ([]GetAlbum
 	var items []GetAlbumsForUserRow
 	for rows.Next() {
 		var i GetAlbumsForUserRow
-		if err := rows.Scan(&i.Name, &i.UrlSlug, &i.KeyPhoto); err != nil {
+		if err := rows.Scan(&i.Name, &i.UrlSlug, &i.KeyPhotoSha256); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -380,15 +410,11 @@ func (q *Queries) GetAssetPhotos(ctx context.Context, arg GetAssetPhotosParams) 
 const getPhoto = `-- name: GetPhoto :one
 SELECT assets.sha256, assets.type, assets.original_filename FROM photos, assets
 WHERE photos.id = ? AND assets.id = IFNULL( photos.primary_asset,
-	( SELECT assets.id FROM assets, photo_assets, photos
-	WHERE photos.id = ? AND photo_assets.photo_id = photos.id AND photo_assets.asset_id = assets.id AND assets.type != "raw"
-	ORDER BY assets.created_at LIMIT 1 ) )
+	( SELECT id FROM assets
+	INNER JOIN photo_assets ON photo_assets.asset_id = assets.id
+	WHERE photo_assets.photo_id = photos.id AND assets.type != "raw"
+	ORDER BY assets.created_at DESC LIMIT 1 ) )
 `
-
-type GetPhotoParams struct {
-	ID   int64
-	ID_2 int64
-}
 
 type GetPhotoRow struct {
 	Sha256           []byte
@@ -396,8 +422,8 @@ type GetPhotoRow struct {
 	OriginalFilename string
 }
 
-func (q *Queries) GetPhoto(ctx context.Context, arg GetPhotoParams) (GetPhotoRow, error) {
-	row := q.db.QueryRowContext(ctx, getPhoto, arg.ID, arg.ID_2)
+func (q *Queries) GetPhoto(ctx context.Context, id int64) (GetPhotoRow, error) {
+	row := q.db.QueryRowContext(ctx, getPhoto, id)
 	var i GetPhotoRow
 	err := row.Scan(&i.Sha256, &i.Type, &i.OriginalFilename)
 	return i, err
@@ -448,5 +474,19 @@ type ResetPasswordParams struct {
 
 func (q *Queries) ResetPassword(ctx context.Context, arg ResetPasswordParams) error {
 	_, err := q.db.ExecContext(ctx, resetPassword, arg.Password, arg.Cookie)
+	return err
+}
+
+const setAlbumIsShared = `-- name: SetAlbumIsShared :exec
+UPDATE albums SET shared = ? WHERE id = ?
+`
+
+type SetAlbumIsSharedParams struct {
+	Shared int64
+	ID     int64
+}
+
+func (q *Queries) SetAlbumIsShared(ctx context.Context, arg SetAlbumIsSharedParams) error {
+	_, err := q.db.ExecContext(ctx, setAlbumIsShared, arg.Shared, arg.ID)
 	return err
 }

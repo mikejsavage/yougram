@@ -4,9 +4,9 @@
 <title>{{ .Title }}</title>
 
 {{ template "autorefresh.html" . }}
-<script src="https://unpkg.com/alpinejs@3.14.9" defer></script>
-<script src="https://unpkg.com/htmx.org@2.0.4"></script>
-{{ .ThumbhashJS }}
+<script src="/Special:alpinejs-3.14.9.js" defer></script>
+<script src="/Special:htmx-2.0.4.js"></script>
+<script src="/Special:thumbhash-1.0.0.js"></script>
 
 <style>
 :root {
@@ -96,6 +96,14 @@ button {
 }
 </style>
 
+{{ define "navlink" }}
+	{{ if ( IsCurrentPage .PageURL .URL ) }}
+		<a class="current" href="{{ .URL }}">{{ .Text }}</a>
+	{{ else }}
+		<a href="{{ .URL }}">{{ .Text }}</a>
+	{{ end }}
+{{ end }}
+
 <nav>
 	<div><b>Mikegram</b></div>
 	<div><a href="/Special:logout">Log out</a></div>
@@ -104,7 +112,7 @@ button {
 
 	<div><a href="/">All photos</a></div>
 	<div>People</div>
-	<div><a href="/Special:trash">Deleted</a></div>
+	<div>{{ template "navlink" ( a "/Special:trash" "Deleted" ) }}</div>
 	<div><a href="/Special:duplicates">Duplicates</a></div>
 
 	<hr>

@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS assets (
 	id INTEGER PRIMARY KEY,
-	sha256 BLOB CHECK( length( sha256 ) == 32 ),
+	sha256 BLOB CHECK( length( sha256 ) = 32 ),
 	created_at INTEGER NOT NULL,
 	original_filename TEXT NOT NULL,
 	type TEXT NOT NULL CHECK( type = "jpeg" OR type = "heif" OR type = "raw" ),
@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS photos (
 	id INTEGER PRIMARY KEY,
 	owner INTEGER REFERENCES users( id ),
 	created_at INTEGER NOT NULL,
+	delete_at INTEGER,
 
 	primary_asset INTEGER NOT NULL REFERENCES assets( id ),
 	thumbnail BLOB NOT NULL,

@@ -4,9 +4,13 @@ ifeq ($(shell uname -s),Linux)
 	GOFLAGS += -ldflags="-extldflags=-static" -tags sqlite_omit_load_extension,osusergo,netgo -gcflags "-N -l"
 endif
 
-all: mikegram
+all:
+	sqlc generate
+	templ generate -path src
+	go build -C src -o ../mikegram $(GOFLAGS)
 
 mikegram: src/* src/stb/* src/sqlc/*
+	templ generate -path src
 	go build -C src -o ../mikegram $(GOFLAGS)
 
 src/sqlc/query.sql.go: src/schema.sql src/query.sql
