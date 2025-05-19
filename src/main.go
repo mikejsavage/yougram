@@ -776,17 +776,7 @@ func uploadPhotos( w http.ResponseWriter, r *http.Request, route []string, user 
 }
 
 func loginForm( w http.ResponseWriter, r *http.Request ) {
-	context := struct {
-		Checksum string
-	}{
-		Checksum: checksum,
-	}
-
-	var page bytes.Buffer
-	try( templates.ExecuteTemplate( &page, "login.html", context ) )
-
-	minified := try1( minifier.String( "html", page.String() ) )
-	_ = try1( w.Write( []byte( minified ) ) )
+	try( loginFormTemplate( checksum ).Render( r.Context(), w ) )
 }
 
 func setAuthCookies( w http.ResponseWriter, username string, auth string ) {

@@ -36,7 +36,7 @@ templ navlink( current_url string, link templ.SafeURL, text string ) {
 }
 
 templ sidebarAlbum( album sqlc.GetAlbumsForUserRow ) {
-	<img src={ fmt.Sprintf( "/Special:thumbnail/%d", album.KeyPhotoAssetID ) } style="height: 1lh" /> { album.Name }
+	<img src={ fmt.Sprintf( "/Special:thumbnail/%d", album.KeyPhotoSha256 ) } style="height: 1lh" /> { album.Name }
 }
 
 templ sidebarAlbums( user User, current_url string ) {
