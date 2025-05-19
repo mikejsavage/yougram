@@ -6,14 +6,13 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"database/sql"
-	"embed"
+	_ "embed"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/fnv"
-	"html/template"
 	"image"
 	"image/draw"
 	"io"
@@ -42,8 +41,6 @@ import (
 	// "github.com/evanoberholster/imagemeta" TODO
 	"github.com/tdewolff/minify/v2"
 	"github.com/fsnotify/fsnotify"
-	minify_css "github.com/tdewolff/minify/v2/css"
-	minify_html "github.com/tdewolff/minify/v2/html"
 	minify_js "github.com/tdewolff/minify/v2/js"
 	_ "modernc.org/sqlite"
 )
@@ -62,10 +59,6 @@ var htmxjs string
 var thumbhashjs string
 
 var minifier *minify.M
-
-//go:embed *.html
-var template_sources embed.FS
-var templates *template.Template
 
 var checksum string
 
@@ -301,7 +294,7 @@ func getChecksum( w http.ResponseWriter, r *http.Request, route []string ) {
 // TODO: func canViewImage( user, route[ 0 ] ) ( bool, httpstatus )
 
 func getImage( w http.ResponseWriter, r *http.Request, route []string, user User ) {
-	image_id, err := strconv.ParseInt( route[ 0 ], 10, 64 )
+	image_id, err := strconv.ParseInt( r.PathValue( "image" ), 10, 64 )
 	if err != nil {
 		httpError( w, http.StatusBadRequest )
 		return
@@ -329,7 +322,7 @@ func getImage( w http.ResponseWriter, r *http.Request, route []string, user User
 }
 
 func getThumbnail( w http.ResponseWriter, r *http.Request, route []string, user User ) {
-	image_id, err := strconv.ParseInt( route[ 0 ], 10, 64 )
+	image_id, err := strconv.ParseInt( r.PathValue( "image" ), 10, 64 )
 	if err != nil {
 		httpError( w, http.StatusBadRequest )
 		return
@@ -346,7 +339,7 @@ func getThumbnail( w http.ResponseWriter, r *http.Request, route []string, user 
 
 	// TODO: this is not immutable if we select by ID
 	cacheControlImmutable( w )
-	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"thumb_%s.jpg\"", route[ 0 ] ) )
+	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"thumb_%s.jpg\"", r.PathValue( "image" ) ) )
 	w.Header().Set( "Content-Type", "image/jpeg" )
 	_ = try1( w.Write( thumbnail ) )
 }
@@ -365,8 +358,8 @@ type AlbumMetadata struct {
 	GuestWriteable bool
 }
 
-func findAlbum( ctx context.Context, user User, route []string ) ( AlbumMetadata, int ) {
-	album, err := queries.GetAlbumByURL( ctx, route[ 0 ] )
+func findAlbum( ctx context.Context, user User, slug string ) ( AlbumMetadata, int ) {
+	album, err := queries.GetAlbumByURL( ctx, slug )
 	if err != nil {
 		if errors.Is( err, sql.ErrNoRows ) {
 			return AlbumMetadata { }, http.StatusNotFound
@@ -433,7 +426,7 @@ type Photo struct {
 }
 
 func viewAlbum( w http.ResponseWriter, r *http.Request, route []string, user User ) {
-	album, http_status := findAlbum( r.Context(), user, route )
+	album, http_status := findAlbum( r.Context(), user, r.PathValue( "album" ) )
 	if http_status != http.StatusOK {
 		httpError( w, http_status )
 		return
@@ -447,7 +440,7 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, route []string, user Use
 		} )
 	}
 
-	album_templ := renderAlbum( album, photos )
+	album_templ := albumTemplate( album, photos )
 	try( baseWithSidebar( user, checksum, r.URL.Path, album.Name, album_templ ).Render( r.Context(), w ) )
 }
 
@@ -754,7 +747,7 @@ func addFileToAlbum( ctx context.Context, path string, album_id int64 ) error {
 }
 
 func uploadPhotos( w http.ResponseWriter, r *http.Request, route []string, user User ) {
-	album, http_status := findAlbum( r.Context(), user, route )
+	album, http_status := findAlbum( r.Context(), user, r.PathValue( "album" ) )
 	if http_status != http.StatusOK || !album.GuestWriteable {
 		httpError( w, sel( http_status == http.StatusOK, http.StatusForbidden, http_status ) )
 		return
@@ -825,7 +818,6 @@ func authenticate( w http.ResponseWriter, r *http.Request, route []string ) {
 	}
 
 	setAuthCookies( w, form_username, cookie )
-
 	w.Header().Set( "HX-Refresh", "true" )
 }
 
@@ -835,12 +827,12 @@ func logout( w http.ResponseWriter, r *http.Request, route []string, user User )
 }
 
 type Route struct {
-	Regex *regexp.Regexp
 	Method string
+	Route string
 	Handler func( http.ResponseWriter, *http.Request, []string )
 }
 
-func requireAuth( handler func( w http.ResponseWriter, r *http.Request, route []string, user User ) ) func( w http.ResponseWriter, r *http.Request, route []string ) {
+func requireAuth( handler func( http.ResponseWriter, *http.Request, []string, User ) ) func( http.ResponseWriter, *http.Request, []string ) {
 	return func( w http.ResponseWriter, r *http.Request, route []string ) {
 		authed := false
 
@@ -878,7 +870,7 @@ func requireAuth( handler func( w http.ResponseWriter, r *http.Request, route []
 	}
 }
 
-func serveString( content string ) func( w http.ResponseWriter, r *http.Request, route []string ) {
+func serveString( content string ) func( http.ResponseWriter, *http.Request, []string ) {
 	return func( w http.ResponseWriter, r *http.Request, route []string ) {
 		cacheControlImmutable( w )
 		_ = try1( w.Write( []byte( content ) ) )
@@ -886,6 +878,11 @@ func serveString( content string ) func( w http.ResponseWriter, r *http.Request,
 }
 
 func startHttpServer( addr string, routes []Route ) *http.Server {
+	regexes := make( []*regexp.Regexp, len( routes ) )
+	for i, route := range routes {
+		regexes[ i ] = regexp.MustCompile( "^" + route.Route + "$" )
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc( "/", func( w http.ResponseWriter, r *http.Request ) {
 		defer func() {
@@ -898,8 +895,8 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 
 		is405 := false
 
-		for _, route := range routes {
-			if matches := route.Regex.FindStringSubmatch( r.URL.Path ); len( matches ) > 0 {
+		for i, route := range routes {
+			if matches := regexes[ i ].FindStringSubmatch( r.URL.Path ); len( matches ) > 0 {
 				if r.Method == route.Method {
 					route.Handler( w, r, matches[ 1: ] )
 					return
@@ -958,75 +955,39 @@ func main() {
 
 	{
 		minifier = minify.New()
-		minifier.AddFunc( "css", minify_css.Minify )
-		minifier.AddFunc( "html", minify_html.Minify )
 		minifier.AddFunc( "js", minify_js.Minify )
-
 		thumbhashjs = must1( minifier.String( "js", strings.ReplaceAll( thumbhashjs, "export function", "function" ) ) )
-
-		css_finder := regexp.MustCompile( "(?s)<style>.*?</style>" )
-		minifyStyleTag := func( css string ) string {
-			trimmed := strings.TrimPrefix( strings.TrimSuffix( css, "</style>" ), "<style>" )
-			return "<style>" + must1( minifier.String( "css", trimmed ) ) + "</style>"
-		}
-
-		script_finder := regexp.MustCompile( "(?s)<script>.*?</script>" )
-		minifyScriptTag := func( js string ) string {
-			trimmed := strings.TrimPrefix( strings.TrimSuffix( js, "</script>" ), "<script>" )
-			return "<script>" + must1( minifier.String( "js", trimmed ) ) + "</script>"
-		}
-
-		minifyTemplate := func( filename string ) string {
-			f := must1( template_sources.Open( filename ) )
-			defer f.Close()
-
-			minified := string( must1( io.ReadAll( f ) ) )
-			minified = css_finder.ReplaceAllStringFunc( minified, minifyStyleTag )
-			minified = script_finder.ReplaceAllStringFunc( minified, minifyScriptTag )
-
-			return minified
-		}
-
-		template_funcs := template.FuncMap{
-			"add": func( a int, b int ) int { return a + b },
-			"IsCurrentPage": func( current string, link string ) bool {
-				return strings.HasPrefix( current, link )
-			},
-		}
-		templates = template.New( "dummy" ).Funcs( template_funcs )
-		for _, f := range must1( template_sources.ReadDir( "." ) ) {
-			templates.New( f.Name() ).Parse( minifyTemplate( f.Name() ) )
-		}
 	}
 
 	fs_watcher := initFSWatcher()
 	defer fs_watcher.Close()
 
 	private_http_server := startHttpServer( "0.0.0.0:5678", []Route {
-		{ regexp.MustCompile( "^/Special:authenticate$" ), "POST", authenticate },
-		{ regexp.MustCompile( "^/Special:checksum$" ), "GET", getChecksum },
-		{ regexp.MustCompile( "^/Special:image/([^/]+)$" ), "GET", requireAuth( getImage ) },
-		{ regexp.MustCompile( "^/Special:logout$" ), "GET", requireAuth( logout ) },
-		{ regexp.MustCompile( "^/Special:thumbnail/([^/]+)$" ), "GET", requireAuth( getThumbnail ) },
-		// { regexp.MustCompile( "^/Special:geocode$" ), "GET", geocode },
+		{ "POST", "/Special:authenticate", authenticate },
+		{ "GET",  "/Special:logout", requireAuth( logout ) },
+		{ "GET",  "/Special:checksum", getChecksum },
 
-		{ regexp.MustCompile( "^/Special:share$" ), "POST", requireAuth( shareAlbum ) },
+		{ "GET",  "/Special:alpinejs-3\\.14\\.9\\.js", serveString( alpinejs ) },
+		{ "GET",  "/Special:htmx-2\\.0\\.4\\.js", serveString( htmxjs ) },
+		{ "GET",  "/Special:thumbhash-1\\.0\\.0\\.js", serveString( thumbhashjs ) },
 
-		{ regexp.MustCompile( "^/Special:alpinejs-3\\.14\\.9\\.js$" ), "GET", serveString( alpinejs ) },
-		{ regexp.MustCompile( "^/Special:htmx-2\\.0\\.4\\.js$" ), "GET", serveString( htmxjs ) },
-		{ regexp.MustCompile( "^/Special:thumbhash-1\\.0\\.0\\.js$" ), "GET", serveString( thumbhashjs ) },
+		{ "GET",  "/Special:image/([^/]+)", requireAuth( getImage ) },
+		{ "GET",  "/Special:thumbnail/([^/]+)", requireAuth( getThumbnail ) },
+		// { "GET", "^/Special:geocode$", geocode },
 
-		{ regexp.MustCompile( "^/$" ), "GET", requireAuth( viewLibrary ) },
-		{ regexp.MustCompile( "^/([^:/]+)$" ), "GET", requireAuth( viewAlbum ) },
-		{ regexp.MustCompile( "^/([^:/]+)/([^/]+)$" ), "GET", requireAuth( viewAlbum ) },
-		{ regexp.MustCompile( "^/([^:/]+)/([^/]+)$" ), "POST", requireAuth( uploadPhotos ) },
+		{ "POST", "/Special:share", requireAuth( shareAlbum ) },
+
+		{ "GET",  "/", requireAuth( viewLibrary ) },
+		{ "GET",  "/([^:/]+)", requireAuth( viewAlbum ) },
+		{ "GET",  "/([^:/]+)/([^/]+)", requireAuth( viewAlbum ) },
+		{ "POST", "/([^:/]+)/([^/]+)", requireAuth( uploadPhotos ) },
 	} )
 
 	guest_http_server := startHttpServer( "0.0.0.0:5679", []Route {
-		// { regexp.MustCompile( "^/Special:image/([^/]+)$" ), "GET", getImage },
-		// { regexp.MustCompile( "^/Special:thumbnail/([^/]+)$" ), "GET", getThumbnail },
-		// { regexp.MustCompile( "^/([^:/]+)$" ), "GET", viewAlbum },
-		// { regexp.MustCompile( "^/([^:/]+)/([^/]+)$" ), "GET", viewAlbum },
+		// { "GET", "^/Special:image/([^/]+)$", getImage },
+		// { "GET", "^/Special:thumbnail/([^/]+)$", getThumbnail },
+		// { "GET", "^/([^:/]+)$", viewAlbum },
+		// { "GET", "^/([^:/]+)/([^/]+)$", viewAlbum },
 	} )
 
 	fmt.Printf( "http://localhost:5678/\n" )

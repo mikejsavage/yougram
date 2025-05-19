@@ -19,16 +19,23 @@ templ autorefresh( checksum string ) {
 	</script>
 }
 
-templ navlinkComplex( current_url string, link templ.SafeURL, text templ.Component ) {
-	if strings.HasPrefix( current_url, string( link ) ) {
+func isCurrentPage( current_url string, link templ.SafeURL, match_prefix bool ) bool {
+	if match_prefix {
+		return strings.HasPrefix( current_url, string( link ) )
+	}
+	return string( link ) == current_url
+}
+
+templ navlinkComplex( current_url string, link templ.SafeURL, text templ.Component, match_prefix bool ) {
+	if isCurrentPage( current_url, link, match_prefix ) {
 		<a class="curr" href={ link }>@text</a>
 	} else {
 		<a href={ link }>@text</a>
 	}
 }
 
-templ navlink( current_url string, link templ.SafeURL, text string ) {
-	if strings.HasPrefix( current_url, string( link ) ) {
+templ navlink( current_url string, link templ.SafeURL, text string, match_prefix bool ) {
+	if isCurrentPage( current_url, link, match_prefix ) {
 		<a class="curr" href={ link }>{ text }</a>
 	} else {
 		<a href={ link }>{ text }</a>
@@ -36,7 +43,8 @@ templ navlink( current_url string, link templ.SafeURL, text string ) {
 }
 
 templ sidebarAlbum( album sqlc.GetAlbumsForUserRow ) {
-	<img src={ fmt.Sprintf( "/Special:thumbnail/%d", album.KeyPhotoSha256 ) } style="height: 1lh" /> { album.Name }
+	<img src={ fmt.Sprintf( "/Special:thumbnail/%d", album.KeyPhotoSha256 ) } style="height: 1lh" />
+	{ album.Name }
 }
 
 templ sidebarAlbums( user User, current_url string ) {
@@ -44,7 +52,7 @@ templ sidebarAlbums( user User, current_url string ) {
 	{{ if err != nil { return err } }}
 
 	for _, album := range albums {
-		<div>@navlinkComplex( current_url, templ.URL( album.UrlSlug ), sidebarAlbum( album ) )</div>
+		@navlinkComplex( current_url, templ.URL( "/" + album.UrlSlug ), sidebarAlbum( album ), true )
 	}
 }
 
@@ -80,6 +88,8 @@ templ baseWithSidebar( user User, checksum string, current_url string, title str
 	}
 
 	nav {
+		display: flex;
+		flex-direction: column;
 		position: fixed;
 		left: 0;
 		top: 0;
@@ -90,6 +100,15 @@ templ baseWithSidebar( user User, checksum string, current_url string, title str
 		padding: 0.5rem;
 	}
 
+	nav a {
+		color: black;
+		text-decoration: none;
+	}
+
+	nav a:hover {
+		text-decoration: underline;
+	}
+
 	nav div {
 		white-space: nowrap;
 		text-overflow: ellipsis;
@@ -97,7 +116,6 @@ templ baseWithSidebar( user User, checksum string, current_url string, title str
 	}
 
 	nav .curr {
-		background: red;
 		font-weight: bold;
 	}
 
@@ -153,15 +171,13 @@ templ baseWithSidebar( user User, checksum string, current_url string, title str
 	</style>
 
 	<nav>
-		<div><b>Mikegram</b></div>
-		<div><a href="/Special:logout">Log out</a></div>
+		<b>{ user.Username }gram</b>
+		<a href="/Special:logout">Log out</a>
 
 		<hr>
 
-		<div>@navlink( current_url, "/", "Everything" )</div>
-		<div>People</div>
-		<div>@navlink( current_url, "/Special:trash", "Deleted" )</div>
-		<div><a href="/Special:duplicates">Duplicates</a></div>
+		@navlink( current_url, "/", "Everything", false )
+		@navlink( current_url, "/Special:deleted", "Deleted", false )
 
 		<hr>
 

@@ -1,6 +1,6 @@
 package main
 
-templ renderAlbum( album AlbumMetadata, photos []Photo ) {
+templ albumTemplate( album AlbumMetadata, photos []Photo ) {
 	<style>
 	.photos {
 		display: grid;
@@ -178,6 +178,7 @@ templ renderAlbum( album AlbumMetadata, photos []Photo ) {
 		}
 		</script>
 
+		/*
 		<header x-data="MakeUploadForm()">
 			<style>
 			@scope {
@@ -217,6 +218,7 @@ templ renderAlbum( album AlbumMetadata, photos []Photo ) {
 				<div x-show="false"><input type="submit"></div>
 			</form>
 		</header>
+		*/
 	}
 
 	<script>
@@ -228,9 +230,7 @@ templ renderAlbum( album AlbumMetadata, photos []Photo ) {
 		}
 		img.src = thumbHashToDataURL( u8_thumbhash );
 	}
-	</script>
 
-	<script>
 	document.addEventListener( "alpine:init", () => {
 		Alpine.data( "photos", () => ( {
 			photos: {{ photos }},

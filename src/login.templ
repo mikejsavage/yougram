@@ -29,65 +29,6 @@ templ loginFormTemplate( checksum string ) {
 		margin: 0;
 	}
 
-	form {
-		background-image: url("https://f.mikejsavage.co.uk/DSCF1748.png");
-		background-position: center;
-		background-size: 100%;
-		color: white;
-		border: 2px solid #333;
-		padding: 5rem;
-		border-radius: 50%;
-		aspect-ratio: 1;
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		box-shadow: 0 0 4px #333;
-		gap: 1rem;
-	}
-
-	input, button {
-		border: 0;
-		border-radius: 0;
-		display: block;
-		font-size: 1rem;
-		padding: 0.5rem;
-	}
-
-	input {
-		width: 100%;
-	}
-
-	input:not([type]), input[type=text], input[type=password] {
-		border: 0;
-		border-radius: 0.5rem;
-		padding: 0.5rem;
-		background: #ffffff44;
-		color: white;
-	}
-
-	::placeholder {
-		color: #bbb;
-		text-shadow: 0 0 2px #333;
-	}
-
-	button {
-		background: #fff;
-		margin: 0 auto;
-		/* box-shadow: 0 0 5px cyan; */
-	}
-
-	h1 {
-		padding: 0;
-		margin: 0;
-		text-align: center;
-	}
-
-	label {
-		display: block;
-		margin-block: 0.5lh;
-		text-shadow: 0 0 4px #333;
-	}
-
 	@keyframes spinning {
 		0%   { left: 0; }
 		25%  { left: 0.1rem; }
@@ -95,7 +36,7 @@ templ loginFormTemplate( checksum string ) {
 		100% { left: 0; }
 	}
 
-	button:disabled {
+	input[type=password]:disabled {
 		position: relative;
 		animation: spinning 0.15s infinite;
 	}
@@ -105,51 +46,99 @@ templ loginFormTemplate( checksum string ) {
 		hx-post="/Special:authenticate"
 		hx-target="#error"
 		hx-swap="textContent"
-		hx-disabled-elt="find button"
+		hx-disabled-elt="find input"
 		hx-on::before-request="htmx.find('#error').innerText = ''"
 	>
 		<style>
 		@scope {
-			h1, input, ::placeholder {
-				text-shadow: 0 0 4px #333;
-			}
-
-			:not(button) {
-				width: 20rem;
-			}
-
-			input, button {
-				backdrop-filter: blur(4px);
-			}
-
-			#error:empty {
-				display: none;
-			}
-			#error {
-				background: #ff5733;
-				color: #fff;
+			:scope {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 0.5rem;
+				font-size: 150%;
+				max-width: 100%;
 				padding: 0.5rem;
 			}
 
-			button {
-				border-radius: 50%;
-				aspect-ratio: 1;
-				background: red;
-				color: transparent;
-				text-shadow: 0 0 0 #fff, 0 0 2px #333;
-				font-size: 300%;
+			h1 {
+				padding: 0;
+				margin: 0;
+				text-align: center;
 			}
 
-			button:enabled {
+			.users {
+				display: flex;
+				gap: 1rem;
+				justify-content: center;
+			}
+
+			.users label {
+				color: #666;
 				cursor: pointer;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				padding: 1rem;
+			}
+
+			.users img {
+				aspect-ratio: 1;
+				height: 2lh;
+				border-radius: 50%;
+				object-fit: contain;
+				filter: grayscale( 100% );
+			}
+
+			.users input[type=radio] {
+				display: none;
+			}
+
+			.users label:has( input:checked ) {
+				color: black;
+				font-weight: bold;
+			}
+
+			.users label:has( input:checked ) img {
+				filter: none;
+			}
+
+			input[type=password] {
+				border: 2px solid #000;
+				border-radius: 0;
+				font-size: 100%;
+				padding: 0.5rem;
+				width: 100%;
+				max-width: 20rem;
+			}
+
+			:scope:not(:has(input:checked)) input[type=password] {
+				visibility: hidden;
+			}
+
+			#error {
+				color: #ff5733;
+				padding: 0 0.5rem;
+				height: 1lh;
 			}
 		}
 		</style>
 
-		<h1>Scoutgram</h1>
-		<input type="text" name="username" placeholder="Username">
-		<input type="password" name="password" placeholder="Password">
+		<h1><span id="subtitle">you</span>gram</h1>
+		<noscript>Sorry but nothing works without Javascript</noscript>
+		<div class="users">
+			<label onclick="document.getElementById( 'password' ).focus(); document.getElementById( 'subtitle' ).innerText = 'mike';">
+				<input type="radio" name="username" value="mike">
+				<img src="https://f.mikejsavage.co.uk/DSCF1748.png">
+				mike
+			</label>
+			<label onclick="document.getElementById( 'password' ).focus(); document.getElementById( 'subtitle' ).innerText = 'mum';">
+				<input type="radio" name="username" value="mum">
+				<img src="https://f.mikejsavage.co.uk/DSCF1748.png">
+				mum
+			</label>
+		</div>
+		<input type="password" id="password" name="password" placeholder="Password">
 		<div id="error"></div>
-		<button type="submit">&#x1F43E;</button>
 	</form>
 }
