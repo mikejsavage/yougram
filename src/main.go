@@ -130,6 +130,16 @@ func just[ T any ]( x T ) sql.Null[ T ] {
 	return sql.Null[ T ] { x, true }
 }
 
+func queryOptional[ T any ]( row T, err error ) sql.Null[ T ] {
+	if err != nil {
+		if errors.Is( err, sql.ErrNoRows ) {
+			return sql.Null[ T ] { }
+		}
+		log.Fatal( err )
+	}
+	return just( row )
+}
+
 func initDB() {
 	ctx := context.Background()
 
@@ -176,16 +186,16 @@ func initDB() {
 		Name: "France 2024",
 		UrlSlug: "france-2024",
 		Shared: 1,
-		ReadonlySecret: sql.NullString { "aaaaaaaa", true },
-		ReadwriteSecret: sql.NullString { "bbbbbbbb", true },
+		ReadonlySecret: "aaaaaaaa",
+		ReadwriteSecret: "bbbbbbbb",
 	} ) )
 	must( queries.CreateAlbum( ctx, sqlc.CreateAlbumParams {
 		Owner: 1,
 		Name: "Helsinki 2024",
 		UrlSlug: "helsinki-2024",
 		Shared: 0,
-		ReadonlySecret: sql.NullString { "aaaaaaaa", true },
-		ReadwriteSecret: sql.NullString { "bbbbbbbb", true },
+		ReadonlySecret: "aaaaaaaa",
+		ReadwriteSecret: "bbbbbbbb",
 		AutoassignStartDate: sql.NullInt64 { time.Date( 2024, time.January, 1, 0, 0, 0, 0, time.UTC ).Unix(), true },
 		AutoassignEndDate: sql.NullInt64 { time.Date( 2024, time.December, 31, 0, 0, 0, 0, time.UTC ).Unix(), true },
 		AutoassignLatitude: sql.NullFloat64 { 60.1699, true },
@@ -287,61 +297,53 @@ func cacheControlImmutable( w http.ResponseWriter ) {
 	w.Header().Set( "Cache-Control", "max-age=31536000, immutable" )
 }
 
-func getChecksum( w http.ResponseWriter, r *http.Request, route []string ) {
+func getChecksum( w http.ResponseWriter, r *http.Request ) {
 	io.WriteString( w, checksum )
 }
 
-// TODO: func canViewImage( user, route[ 0 ] ) ( bool, httpstatus )
-
-func getImage( w http.ResponseWriter, r *http.Request, route []string, user User ) {
+func getImage( w http.ResponseWriter, r *http.Request, user User ) {
 	image_id, err := strconv.ParseInt( r.PathValue( "image" ), 10, 64 )
 	if err != nil {
 		httpError( w, http.StatusBadRequest )
 		return
 	}
 
-	photo, err := queries.GetPhoto( r.Context(), image_id )
-	if err != nil {
-		if errors.Is( err, sql.ErrNoRows ) {
-			httpError( w, http.StatusNotFound )
-			return
-		}
-		log.Fatal( err )
+	photo := queryOptional( queries.GetPhoto( r.Context(), image_id ) )
+	if !photo.Valid {
+		httpError( w, http.StatusNotFound )
+		return
 	}
 
 	// TODO: serve heif if possible
-	filename := "assets/" + hex.EncodeToString( photo.Sha256 ) + sel( photo.Type == "heif", ".heif.jpg", ".jpg" )
+	filename := "assets/" + hex.EncodeToString( photo.V.Sha256 ) + sel( photo.V.Type == "heif", ".heif.jpg", ".jpg" )
 	f := try1( os.Open( filename ) )
 	defer f.Close()
 
 	cacheControlImmutable( w )
-	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s\"", photo.OriginalFilename ) )
+	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s\"", photo.V.OriginalFilename ) )
 	w.Header().Set( "Content-Type", "image/jpeg" )
 
 	_ = try1( io.Copy( w, f ) )
 }
 
-func getThumbnail( w http.ResponseWriter, r *http.Request, route []string, user User ) {
+func getThumbnail( w http.ResponseWriter, r *http.Request, user User ) {
 	image_id, err := strconv.ParseInt( r.PathValue( "image" ), 10, 64 )
 	if err != nil {
 		httpError( w, http.StatusBadRequest )
 		return
 	}
 
-	thumbnail, err := queries.GetThumbnail( r.Context(), image_id )
-	if err != nil {
-		if errors.Is( err, sql.ErrNoRows ) {
-			httpError( w, http.StatusNotFound )
-			return
-		}
-		log.Fatal( err )
+	thumbnail := queryOptional( queries.GetThumbnail( r.Context(), image_id ) )
+	if !thumbnail.Valid {
+		httpError( w, http.StatusNotFound )
+		return
 	}
 
 	// TODO: this is not immutable if we select by ID
 	cacheControlImmutable( w )
 	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"thumb_%s.jpg\"", r.PathValue( "image" ) ) )
 	w.Header().Set( "Content-Type", "image/jpeg" )
-	_ = try1( w.Write( thumbnail ) )
+	_ = try1( w.Write( thumbnail.V ) )
 }
 
 type User struct {
@@ -349,39 +351,7 @@ type User struct {
 	Username string
 }
 
-type AlbumMetadata struct {
-	ID int64
-	Name string
-	Shared bool
-	ReadonlySecret string
-	ReadwriteSecret string
-	GuestWriteable bool
-}
-
-func findAlbum( ctx context.Context, user User, slug string ) ( AlbumMetadata, int ) {
-	album, err := queries.GetAlbumByURL( ctx, slug )
-	if err != nil {
-		if errors.Is( err, sql.ErrNoRows ) {
-			return AlbumMetadata { }, http.StatusNotFound
-		}
-		panic( err )
-	}
-
-	if album.Owner != user.ID && album.Shared == 0 {
-		return AlbumMetadata { }, http.StatusForbidden
-	}
-
-	return AlbumMetadata {
-		ID: album.ID,
-		Name: album.Name,
-		Shared: album.Shared == 1,
-		ReadonlySecret: sel( album.ReadonlySecret.Valid, album.ReadonlySecret.String, "" ),
-		ReadwriteSecret: sel( album.ReadwriteSecret.Valid, album.ReadwriteSecret.String, "" ),
-		GuestWriteable: true,
-	}, http.StatusOK
-}
-
-func shareAlbum( w http.ResponseWriter, r *http.Request, route []string, user User ) {
+func shareAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	album_id, err := strconv.ParseInt( r.PostFormValue( "album_id" ), 10, 64 )
 	if err != nil {
 		fmt.Printf( "cya1 [%s]\n", r.PostFormValue( "album_id" ) )
@@ -412,7 +382,7 @@ func shareAlbum( w http.ResponseWriter, r *http.Request, route []string, user Us
 	w.Header().Set( "HX-Trigger", sel( shared == 0, "album:stop_sharing", "album:start_sharing" ) )
 }
 
-func viewLibrary( w http.ResponseWriter, r *http.Request, route []string, user User ) {
+func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		_, err := io.WriteString(w, "lolz")
 		return err
@@ -425,23 +395,32 @@ type Photo struct {
 	Thumbhash string `json:"thumbhash"`
 }
 
-func viewAlbum( w http.ResponseWriter, r *http.Request, route []string, user User ) {
-	album, http_status := findAlbum( r.Context(), user, r.PathValue( "album" ) )
-	if http_status != http.StatusOK {
-		httpError( w, http_status )
+func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
+	album := queryOptional( queries.GetAlbumByURL( r.Context(), r.PathValue( "album" ) ) )
+
+	if !album.Valid {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+
+	if album.V.Owner != user.ID && album.V.Shared == 0 {
+		httpError( w, http.StatusForbidden )
 		return
 	}
 
 	photos := []Photo { }
-	for _, photo := range must1( queries.GetAlbumPhotos( r.Context(), album.ID ) ) {
+	for _, photo := range must1( queries.GetAlbumPhotos( r.Context(), album.V.ID ) ) {
 		photos = append( photos, Photo {
 			ID: photo.ID,
 			Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
 		} )
 	}
 
-	album_templ := albumTemplate( album, photos )
-	try( baseWithSidebar( user, checksum, r.URL.Path, album.Name, album_templ ).Render( r.Context(), w ) )
+	album_templ := albumTemplate( album.V, photos )
+	try( baseWithSidebar( user, checksum, r.URL.Path, album.V.Name, album_templ ).Render( r.Context(), w ) )
+}
+
+func viewAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
 }
 
 type LatLong struct {
@@ -746,10 +725,14 @@ func addFileToAlbum( ctx context.Context, path string, album_id int64 ) error {
 	return addFile( ctx, path, sql.Null[ int64 ] { album_id, true } )
 }
 
-func uploadPhotos( w http.ResponseWriter, r *http.Request, route []string, user User ) {
-	album, http_status := findAlbum( r.Context(), user, r.PathValue( "album" ) )
-	if http_status != http.StatusOK || !album.GuestWriteable {
-		httpError( w, sel( http_status == http.StatusOK, http.StatusForbidden, http_status ) )
+func uploadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
+	album := queryOptional( queries.GetAlbumByURL( r.Context(), r.PathValue( "album" ) ) )
+	if !album.Valid {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+	if album.V.Owner != user.ID {
+		httpError( w, http.StatusForbidden )
 		return
 	}
 
@@ -762,7 +745,7 @@ func uploadPhotos( w http.ResponseWriter, r *http.Request, route []string, user 
 
 		contents := try1( io.ReadAll( f ) )
 
-		fmt.Printf( "%s -> %d %d\n", header.Filename, len( contents ), album.ID )
+		fmt.Printf( "%s -> %d %d\n", header.Filename, len( contents ), album.V.ID )
 	}
 
 	http.Redirect( w, r, r.URL.Path, http.StatusSeeOther )
@@ -796,44 +779,32 @@ func setAuthCookies( w http.ResponseWriter, username string, auth string ) {
 	http.SetCookie( w, &cookie )
 }
 
-func authenticate( w http.ResponseWriter, r *http.Request, route []string ) {
+func authenticate( w http.ResponseWriter, r *http.Request ) {
 	form_username := norm.NFKC.String( r.PostFormValue( "username" ) )
 	form_password := norm.NFKC.String( r.PostFormValue( "password" ) )
-	row := db.QueryRow( "SELECT password, cookie FROM users WHERE username = $1", form_username )
 
-	var password string
-	var cookie string
-	err := row.Scan( &password, &cookie )
-	if err != nil {
-		if errors.Is( err, sql.ErrNoRows ) {
-			http.Error( w, "Incorrect username", http.StatusOK )
-			return
-		}
-		log.Fatal( err )
+	user := queryOptional( queries.GetUserAuthDetails( r.Context(), form_username ) )
+	if !user.Valid {
+		http.Error( w, "Incorrect username", http.StatusOK )
+		return
 	}
 
-	if form_password != password {
+	if form_password != user.V.Password {
 		http.Error( w, "Incorrect password", http.StatusOK )
 		return
 	}
 
-	setAuthCookies( w, form_username, cookie )
+	setAuthCookies( w, form_username, user.V.Cookie )
 	w.Header().Set( "HX-Refresh", "true" )
 }
 
-func logout( w http.ResponseWriter, r *http.Request, route []string, user User ) {
+func logout( w http.ResponseWriter, r *http.Request, user User ) {
 	setAuthCookies( w, "", "" )
 	http.Redirect( w, r, "/", http.StatusSeeOther )
 }
 
-type Route struct {
-	Method string
-	Route string
-	Handler func( http.ResponseWriter, *http.Request, []string )
-}
-
-func requireAuth( handler func( http.ResponseWriter, *http.Request, []string, User ) ) func( http.ResponseWriter, *http.Request, []string ) {
-	return func( w http.ResponseWriter, r *http.Request, route []string ) {
+func requireAuth( handler func( http.ResponseWriter, *http.Request, User ) ) func( http.ResponseWriter, *http.Request ) {
+	return func( w http.ResponseWriter, r *http.Request ) {
 		authed := false
 
 		username, err_username := r.Cookie( "username" )
@@ -842,16 +813,14 @@ func requireAuth( handler func( http.ResponseWriter, *http.Request, []string, Us
 		var user User
 
 		if err_username == nil && err_auth == nil {
-			row, err := queries.GetUserAuthDetails( r.Context(), username.Value )
-			if err == nil {
+			row := queryOptional( queries.GetUserAuthDetails( r.Context(), username.Value ) )
+			if row.Valid {
 				// subtle.WithDataIndependentTiming( func() { // needs very very new go
-					if subtle.ConstantTimeCompare( []byte( auth.Value ), []byte( row.Cookie ) ) == 1 {
+					if subtle.ConstantTimeCompare( []byte( auth.Value ), []byte( row.V.Cookie ) ) == 1 {
 						authed = true
-						user = User { row.ID, username.Value }
+						user = User { row.V.ID, username.Value }
 					}
 				// } )
-			} else if !errors.Is( err, sql.ErrNoRows ) {
-				log.Fatal( err )
 			}
 		}
 
@@ -866,21 +835,34 @@ func requireAuth( handler func( http.ResponseWriter, *http.Request, []string, Us
 		}
 
 		setAuthCookies( w, user.Username, auth.Value )
-		handler( w, r, route, user )
+		handler( w, r, user )
 	}
 }
 
-func serveString( content string ) func( http.ResponseWriter, *http.Request, []string ) {
-	return func( w http.ResponseWriter, r *http.Request, route []string ) {
+func serveString( content string ) func( http.ResponseWriter, *http.Request ) {
+	return func( w http.ResponseWriter, r *http.Request ) {
 		cacheControlImmutable( w )
 		_ = try1( w.Write( []byte( content ) ) )
 	}
 }
 
+func makeRouteRegex( route string ) *regexp.Regexp {
+	regex := "^" + route + "$"
+	regex = strings.ReplaceAll( regex, "{", "(?P<" ) // convert {} to named captures
+	regex = strings.ReplaceAll( regex, "}", ">[^:/]+)" )
+	return regexp.MustCompile( regex )
+}
+
+type Route struct {
+	Method string
+	Route string
+	Handler func( http.ResponseWriter, *http.Request )
+}
+
 func startHttpServer( addr string, routes []Route ) *http.Server {
 	regexes := make( []*regexp.Regexp, len( routes ) )
 	for i, route := range routes {
-		regexes[ i ] = regexp.MustCompile( "^" + route.Route + "$" )
+		regexes[ i ] = makeRouteRegex( route.Route )
 	}
 
 	mux := http.NewServeMux()
@@ -898,7 +880,10 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 		for i, route := range routes {
 			if matches := regexes[ i ].FindStringSubmatch( r.URL.Path ); len( matches ) > 0 {
 				if r.Method == route.Method {
-					route.Handler( w, r, matches[ 1: ] )
+					for j, name := range regexes[ i ].SubexpNames()[ 1: ] {
+						r.SetPathValue( name, matches[ j + 1 ] )
+					}
+					route.Handler( w, r )
 					return
 				}
 
@@ -971,26 +956,24 @@ func main() {
 		{ "GET",  "/Special:htmx-2\\.0\\.4\\.js", serveString( htmxjs ) },
 		{ "GET",  "/Special:thumbhash-1\\.0\\.0\\.js", serveString( thumbhashjs ) },
 
-		{ "GET",  "/Special:image/([^/]+)", requireAuth( getImage ) },
-		{ "GET",  "/Special:thumbnail/([^/]+)", requireAuth( getThumbnail ) },
-		// { "GET", "^/Special:geocode$", geocode },
+		{ "GET",  "/Special:image/{image}", requireAuth( getImage ) },
+		{ "GET",  "/Special:thumbnail/{image}", requireAuth( getThumbnail ) },
+		// { "GET",  "/Special:geocode", geocode },
 
 		{ "POST", "/Special:share", requireAuth( shareAlbum ) },
 
 		{ "GET",  "/", requireAuth( viewLibrary ) },
-		{ "GET",  "/([^:/]+)", requireAuth( viewAlbum ) },
-		{ "GET",  "/([^:/]+)/([^/]+)", requireAuth( viewAlbum ) },
-		{ "POST", "/([^:/]+)/([^/]+)", requireAuth( uploadPhotos ) },
+		{ "GET",  "/{album}", requireAuth( viewAlbum ) },
 	} )
 
 	guest_http_server := startHttpServer( "0.0.0.0:5679", []Route {
-		// { "GET", "^/Special:image/([^/]+)$", getImage },
-		// { "GET", "^/Special:thumbnail/([^/]+)$", getThumbnail },
-		// { "GET", "^/([^:/]+)$", viewAlbum },
-		// { "GET", "^/([^:/]+)/([^/]+)$", viewAlbum },
+		// { "GET",  "/Special:image/{image}", getImageAsGuest },
+		// { "GET",  "/Special:thumbnail/{image}", getThumbnailAsGuest },
+		// { "GET",  "/{album}/{secret}", viewAlbumAsGuest ) },
+		// { "POST", "/{album}/{secret}", uploadPhotosAsGuest ) },
 	} )
 
-	fmt.Printf( "http://localhost:5678/\n" )
+	fmt.Printf( "http://localhost:5678/ http://localhost:5679\n" )
 
 	done := make( chan os.Signal, 1 )
 	signal.Notify( done, syscall.SIGINT, syscall.SIGTERM )

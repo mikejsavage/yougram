@@ -1,6 +1,8 @@
 package main
 
-templ albumTemplate( album AlbumMetadata, photos []Photo ) {
+import "mikegram/sqlc"
+
+templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {
 	<style>
 	.photos {
 		display: grid;
@@ -117,12 +119,10 @@ templ albumTemplate( album AlbumMetadata, photos []Photo ) {
 			</form>
 		</div>
 
-		if album.GuestWriteable {
-			<button>Upload</button>
-		}
+		<button>Upload</button>
 	</aside>
 
-	if album.GuestWriteable {
+	/*if album.GuestWriteable {
 		<script>
 		function MakeUploadForm() {
 			return {
@@ -178,7 +178,6 @@ templ albumTemplate( album AlbumMetadata, photos []Photo ) {
 		}
 		</script>
 
-		/*
 		<header x-data="MakeUploadForm()">
 			<style>
 			@scope {
@@ -218,8 +217,8 @@ templ albumTemplate( album AlbumMetadata, photos []Photo ) {
 				<div x-show="false"><input type="submit"></div>
 			</form>
 		</header>
-		*/
 	}
+	*/
 
 	<script>
 	function MakeThumbhash( img, thumbhash ) {

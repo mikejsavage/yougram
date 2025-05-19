@@ -49,8 +49,8 @@ CREATE TABLE IF NOT EXISTS albums (
 	key_photo INTEGER REFERENCES photos( id ),
 
 	shared INTEGER NOT NULL CHECK( shared = 0 OR shared = 1 ),
-	readonly_secret TEXT,
-	readwrite_secret TEXT,
+	readonly_secret TEXT NOT NULL,
+	readwrite_secret TEXT NOT NULL,
 
 	autoassign_start_date INTEGER,
 	autoassign_end_date INTEGER,

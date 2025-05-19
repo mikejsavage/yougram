@@ -66,8 +66,8 @@ type CreateAlbumParams struct {
 	Name                string
 	UrlSlug             string
 	Shared              int64
-	ReadonlySecret      sql.NullString
-	ReadwriteSecret     sql.NullString
+	ReadonlySecret      string
+	ReadwriteSecret     string
 	AutoassignStartDate sql.NullInt64
 	AutoassignEndDate   sql.NullInt64
 	AutoassignLatitude  sql.NullFloat64
@@ -247,8 +247,8 @@ type GetAlbumByURLRow struct {
 	Owner           int64
 	Name            string
 	Shared          int64
-	ReadonlySecret  sql.NullString
-	ReadwriteSecret sql.NullString
+	ReadonlySecret  string
+	ReadwriteSecret string
 }
 
 func (q *Queries) GetAlbumByURL(ctx context.Context, urlSlug string) (GetAlbumByURLRow, error) {

@@ -15,8 +15,8 @@ type Album struct {
 	UrlSlug             string
 	KeyPhoto            sql.NullInt64
 	Shared              int64
-	ReadonlySecret      sql.NullString
-	ReadwriteSecret     sql.NullString
+	ReadonlySecret      string
+	ReadwriteSecret     string
 	AutoassignStartDate sql.NullInt64
 	AutoassignEndDate   sql.NullInt64
 	AutoassignLatitude  sql.NullFloat64
