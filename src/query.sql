@@ -14,6 +14,9 @@ UPDATE users SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE use
 -- name: GetUserAuthDetails :one
 SELECT id, password, needs_to_reset_password, cookie FROM users WHERE username = ?;
 
+-- name: GetUsers :many
+SELECT username FROM users;
+
 
 ------------
 -- ASSETS --
@@ -26,6 +29,7 @@ RETURNING id;
 
 -- name: AddAssetToPhoto :exec
 INSERT INTO photo_assets ( photo_id, asset_id ) VALUES ( ?, ? );
+
 
 ------------
 -- PHOTOS --
@@ -50,6 +54,7 @@ WHERE photos.id = ? AND assets.id = IFNULL( photos.primary_asset,
 
 -- name: GetThumbnail :one
 SELECT thumbnail FROM photos WHERE id = ?;
+
 
 ------------
 -- ALBUMS --
@@ -81,7 +86,6 @@ LEFT OUTER JOIN assets ON assets.id = IFNULL( photos.primary_asset, (
 ) )
 WHERE ( albums.shared OR albums.owner = ? )
 ORDER BY albums.name;
-
 
 -- name: GetAlbumByURL :one
 SELECT id, owner, name, shared, readonly_secret, readwrite_secret FROM albums WHERE url_slug = ?;

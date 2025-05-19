@@ -1,8 +1,16 @@
 package main
 
+import "database/sql"
 import "mikegram/sqlc"
 
-templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {
+type AlbumOwnership int
+const (
+	AlbumOwnership_Owned AlbumOwnership = iota
+	AlbumOwnership_SharedWithMe
+	AlbumOwnership_Guest
+)
+
+templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, owner sql.NullString, ownership AlbumOwnership, can_upload bool ) {
 	<style>
 	.photos {
 		display: grid;
@@ -58,12 +66,17 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {
 
 	<aside>
 		<h1>{ album.Name }</h1>
+		if owner.Valid {
+			<span>{ owner.String }'s album</span>
+		}
 		<span>Oct 2023 &ndash; Jan 2025</span>
-		<span>26 photos and 4 videos</span>
+		<span>{ len( photos ) } { sel( len( photos ) == 1, "photo", "photos" ) }</span>
 
-		<span class="spacer"></span>
+		<span style="flex-grow: 1"></span>
 
-		<button>Album settings</button>
+		if ownership == AlbumOwnership_Owned {
+			<button>Album settings</button>
+		}
 
 		<div
 			x-data={ templ.JSONString( map[string]any {
@@ -101,26 +114,40 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {
 			}
 			</style>
 
-			<button @click="show_dialog = !show_dialog" :class="show_dialog ? 'open' : ''">
-				<span :style="{ color: sharing ? 'var(--green)' : 'var(--red)' }">&#9679;</span>
-				Sharing
-			</button>
+			if ownership != AlbumOwnership_Guest {
+				<button @click="show_dialog = !show_dialog" :class="show_dialog ? 'open' : ''">
+					<span :style="{ color: sharing ? 'var(--green)' : 'var(--red)' }">&#9679;</span>
+					Sharing
+				</button>
 
-			<form class="dialog" x-cloak x-show="show_dialog" @click.away="show_dialog = false">
-				<button
-					x-text="sharing ? 'Disable sharing' : 'Enable sharing'"
-					hx-post="/Special:share"
-					hx-disabled-elt="this"
-				/><br>
-				<input type="hidden" name="album_id" value={ album.ID }>
-				<input type="hidden" name="share" :value="sharing ? 0 : 1">
-				Read-only link: { album.ReadonlySecret }<br>
-				Read-write link: { album.ReadwriteSecret }<br>
-			</form>
+				<form class="dialog" x-cloak x-show="show_dialog" @click.away="show_dialog = false">
+					if ownership == AlbumOwnership_Owned {
+						<button
+							x-text="sharing ? 'Disable sharing' : 'Enable sharing'"
+							hx-post="/Special:share"
+							hx-disabled-elt="this"
+						/><br>
+						<input type="hidden" name="album_id" value={ album.ID }>
+						<input type="hidden" name="share" :value="sharing ? 0 : 1">
+					}
+					Read-only link: { album.ReadonlySecret }<br>
+					Read-write link: { album.ReadwriteSecret }<br>
+				</form>
+			}
 		</div>
 
-		<button>Upload</button>
+		if can_upload {
+			<button>Upload</button>
+		}
 	</aside>
+
+	if can_upload && ownership == AlbumOwnership_Guest {
+		<b>
+			This page lets you add and remove photos so don't share it with random, give them
+			<a href="asdf">this read only link</a>
+			instead!!
+		</b>
+	}
 
 	/*if album.GuestWriteable {
 		<script>
@@ -199,8 +226,6 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {
 				}
 			}
 			</style>
-
-			<b>This link lets you add and remove photos, pls don't share it</b>
 
 			<form action="/{{ .AlbumURL }}" method="POST" enctype="multipart/form-data">
 				<label>Add photos <input type="file" name="photos" multiple @change="Changed" x-show="false"></label>
@@ -310,4 +335,16 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {
 			</template>
 		</div>
 	</div>
+}
+
+templ ownedAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {
+	@albumTemplate( album, photos, sql.NullString { }, AlbumOwnership_Owned, true )
+}
+
+templ sharedAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {
+	@albumTemplate( album, photos, sql.NullString { "mum", true }, AlbumOwnership_SharedWithMe, true )
+}
+
+templ guestAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, can_upload bool ) {
+	@albumTemplate( album, photos, sql.NullString { "mum", true }, AlbumOwnership_Guest, can_upload )
 }

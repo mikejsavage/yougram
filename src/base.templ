@@ -47,16 +47,7 @@ templ sidebarAlbum( album sqlc.GetAlbumsForUserRow ) {
 	{ album.Name }
 }
 
-templ sidebarAlbums( user User, current_url string ) {
-	{{ albums, err := queries.GetAlbumsForUser( ctx, user.ID ) }}
-	{{ if err != nil { return err } }}
-
-	for _, album := range albums {
-		@navlinkComplex( current_url, templ.URL( "/" + album.UrlSlug ), sidebarAlbum( album ), true )
-	}
-}
-
-templ baseWithSidebar( user User, checksum string, current_url string, title string, body templ.Component ) {
+templ base( checksum string, title string ) {
 	<!DOCTYPE html>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -124,10 +115,6 @@ templ baseWithSidebar( user User, checksum string, current_url string, title str
 		border-color: transparent;
 	}
 
-	main {
-		margin-left: 15rem;
-	}
-
 	aside {
 		position: sticky;
 		top: 0;
@@ -143,10 +130,6 @@ templ baseWithSidebar( user User, checksum string, current_url string, title str
 	h1 {
 		margin: 0;
 		padding: 0;
-	}
-
-	.spacer {
-		flex-grow: 1;
 	}
 
 	button {
@@ -169,6 +152,16 @@ templ baseWithSidebar( user User, checksum string, current_url string, title str
 		animation spinning 0.15 infinite;
 	}
 	</style>
+}
+
+templ baseWithSidebar( user User, checksum string, current_url string, title string, body templ.Component ) {
+	@base( checksum, title )
+
+	<style>
+	main {
+		margin-left: 15rem;
+	}
+	</style>
 
 	<nav>
 		<b>{ user.Username }gram</b>
@@ -181,9 +174,21 @@ templ baseWithSidebar( user User, checksum string, current_url string, title str
 
 		<hr>
 
-		@sidebarAlbums( user, current_url )
+		{{ albums, err := queries.GetAlbumsForUser( ctx, user.ID ) }}
+		{{ if err != nil { return err } }}
+
+		for _, album := range albums {
+			@navlinkComplex( current_url, templ.URL( "/" + album.UrlSlug ), sidebarAlbum( album ), true )
+		}
 	</nav>
 
+	<main>
+		@body
+	</main>
+}
+
+templ guestBase( checksum string, title string, body templ.Component ) {
+	@base( checksum, title )
 	<main>
 		@body
 	</main>

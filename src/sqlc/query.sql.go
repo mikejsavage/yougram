@@ -463,6 +463,33 @@ func (q *Queries) GetUserAuthDetails(ctx context.Context, username string) (GetU
 	return i, err
 }
 
+const getUsers = `-- name: GetUsers :many
+SELECT username FROM users
+`
+
+func (q *Queries) GetUsers(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var username string
+		if err := rows.Scan(&username); err != nil {
+			return nil, err
+		}
+		items = append(items, username)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const resetPassword = `-- name: ResetPassword :exec
 UPDATE users SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = username
 `

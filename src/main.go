@@ -181,6 +181,26 @@ func initDB() {
 		Cookie: "123",
 	} ) )
 
+	must( queries.CreateUser( ctx, sqlc.CreateUserParams {
+		Username: norm.NFKC.String( "mum" ),
+		Password: norm.NFKC.String( "gg" ),
+		Cookie: "123",
+	} ) )
+
+	must( queries.CreateUser( ctx, sqlc.CreateUserParams {
+		Username: norm.NFKC.String( "dad" ),
+		Password: norm.NFKC.String( "gg" ),
+		Cookie: "123",
+	} ) )
+
+	for i := 0; i < 4; i++ {
+		must( queries.CreateUser( ctx, sqlc.CreateUserParams {
+			Username: norm.NFKC.String( "user" + strconv.Itoa( i ) ),
+			Password: norm.NFKC.String( "gg" ),
+			Cookie: "123",
+		} ) )
+	}
+
 	must( queries.CreateAlbum( ctx, sqlc.CreateAlbumParams {
 		Owner: 1,
 		Name: "France 2024",
@@ -416,11 +436,34 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 		} )
 	}
 
-	album_templ := albumTemplate( album.V, photos )
+	album_templ := ownedAlbumTemplate( album.V, photos )
 	try( baseWithSidebar( user, checksum, r.URL.Path, album.V.Name, album_templ ).Render( r.Context(), w ) )
 }
 
 func viewAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
+	album := queryOptional( queries.GetAlbumByURL( r.Context(), r.PathValue( "album" ) ) )
+
+	if !album.Valid {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+
+	secret := r.PathValue( "secret" )
+	if secret != album.V.ReadonlySecret && secret != album.V.ReadwriteSecret {
+		httpError( w, http.StatusForbidden )
+		return
+	}
+
+	photos := []Photo { }
+	for _, photo := range must1( queries.GetAlbumPhotos( r.Context(), album.V.ID ) ) {
+		photos = append( photos, Photo {
+			ID: photo.ID,
+			Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
+		} )
+	}
+
+	album_templ := guestAlbumTemplate( album.V, photos, secret == album.V.ReadwriteSecret )
+	try( guestBase( checksum, album.V.Name, album_templ ).Render( r.Context(), w ) )
 }
 
 type LatLong struct {
@@ -948,13 +991,13 @@ func main() {
 	defer fs_watcher.Close()
 
 	private_http_server := startHttpServer( "0.0.0.0:5678", []Route {
-		{ "POST", "/Special:authenticate", authenticate },
-		{ "GET",  "/Special:logout", requireAuth( logout ) },
 		{ "GET",  "/Special:checksum", getChecksum },
-
 		{ "GET",  "/Special:alpinejs-3\\.14\\.9\\.js", serveString( alpinejs ) },
 		{ "GET",  "/Special:htmx-2\\.0\\.4\\.js", serveString( htmxjs ) },
 		{ "GET",  "/Special:thumbhash-1\\.0\\.0\\.js", serveString( thumbhashjs ) },
+
+		{ "POST", "/Special:authenticate", authenticate },
+		{ "GET",  "/Special:logout", requireAuth( logout ) },
 
 		{ "GET",  "/Special:image/{image}", requireAuth( getImage ) },
 		{ "GET",  "/Special:thumbnail/{image}", requireAuth( getThumbnail ) },
@@ -967,9 +1010,14 @@ func main() {
 	} )
 
 	guest_http_server := startHttpServer( "0.0.0.0:5679", []Route {
+		{ "GET",  "/Special:checksum", getChecksum },
+		{ "GET",  "/Special:alpinejs-3\\.14\\.9\\.js", serveString( alpinejs ) },
+		{ "GET",  "/Special:htmx-2\\.0\\.4\\.js", serveString( htmxjs ) },
+		{ "GET",  "/Special:thumbhash-1\\.0\\.0\\.js", serveString( thumbhashjs ) },
+
 		// { "GET",  "/Special:image/{image}", getImageAsGuest },
 		// { "GET",  "/Special:thumbnail/{image}", getThumbnailAsGuest },
-		// { "GET",  "/{album}/{secret}", viewAlbumAsGuest ) },
+		{ "GET",  "/{album}/{secret}", viewAlbumAsGuest },
 		// { "POST", "/{album}/{secret}", uploadPhotosAsGuest ) },
 	} )
 

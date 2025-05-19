@@ -69,8 +69,10 @@ templ loginFormTemplate( checksum string ) {
 
 			.users {
 				display: flex;
+				flex-wrap: wrap;
 				gap: 1rem;
 				justify-content: center;
+				max-width: 50vw;
 			}
 
 			.users label {
@@ -126,18 +128,20 @@ templ loginFormTemplate( checksum string ) {
 
 		<h1><span id="subtitle">you</span>gram</h1>
 		<noscript>Sorry but nothing works without Javascript</noscript>
+
 		<div class="users">
-			<label onclick="document.getElementById( 'password' ).focus(); document.getElementById( 'subtitle' ).innerText = 'mike';">
-				<input type="radio" name="username" value="mike">
-				<img src="https://f.mikejsavage.co.uk/DSCF1748.png">
-				mike
-			</label>
-			<label onclick="document.getElementById( 'password' ).focus(); document.getElementById( 'subtitle' ).innerText = 'mum';">
-				<input type="radio" name="username" value="mum">
-				<img src="https://f.mikejsavage.co.uk/DSCF1748.png">
-				mum
-			</label>
+			{{ users, err := queries.GetUsers( ctx ) }}
+			{{ if err != nil { return err } }}
+
+			for _, user := range users {
+				<label onclick="document.getElementById( 'password' ).focus(); document.getElementById( 'subtitle' ).innerText = this.querySelector( 'input' ).value;">
+					<input type="radio" name="username" value={ user }>
+					<img src="https://f.mikejsavage.co.uk/DSCF1748.png">
+					{ user }
+				</label>
+			}
 		</div>
+
 		<input type="password" id="password" name="password" placeholder="Password">
 		<div id="error"></div>
 	</form>
