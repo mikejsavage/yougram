@@ -353,7 +353,7 @@ func baseWithSidebar(user User, checksum string, current_url string, title strin
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = navlink(current_url, "/", "Everything", false).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = navlink(current_url, "/", "Library", false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -2,248 +2,7 @@ package main
 
 import "mikegram/sqlc"
 
-type AlbumOwnership int
-const (
-	AlbumOwnership_Owned AlbumOwnership = iota
-	AlbumOwnership_SharedWithMe
-	AlbumOwnership_Guest
-)
-
-templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwnership, can_upload bool ) {
-	<style>
-	.photos {
-		display: grid;
-		grid-template-columns: repeat( 3, 1fr );
-		gap: 0.5rem;
-		padding: 0.5rem;
-	}
-
-	@media screen and (min-width: 700px) {
-		.photos { grid-template-columns: repeat( 4, 1fr ); }
-	}
-
-	@media screen and (min-width: 1400px) {
-		.photos { grid-template-columns: repeat( 5, 1fr ); }
-	}
-
-	.thumbnail img {
-		aspect-ratio: 1;
-		width: 100%;
-		object-fit: cover;
-		object-position: 50% 50%;
-	}
-
-	.fullscreen {
-		background: rgba( 26, 26, 26, 0.75 );
-		position: fixed;
-		top: 0;
-		left: 0;
-		width: 100vw;
-		height: 100vh;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-	}
-
-	.fullscreen img {
-		width: 100vw;
-		max-height: 100vh;
-		object-fit: contain;
-		padding: 2.5vmax;
-		user-select: none;
-	}
-
-	.stack {
-		display: grid;
-	}
-
-	.stack > * {
-		grid-row: 1;
-		grid-column: 1;
-	}
-	</style>
-
-	<aside>
-		<h1>{ album.Name }</h1>
-		if ownership != AlbumOwnership_Owned {
-			<span>{ album.OwnerUsername }'s album</span>
-		}
-		<span>Oct 2023 &ndash; Jan 2025</span>
-		<span>{ len( photos ) } { sel( len( photos ) == 1, "photo", "photos" ) }</span>
-
-		<span style="flex-grow: 1"></span>
-
-		if ownership == AlbumOwnership_Owned {
-			<button>Album settings</button>
-		}
-
-		<div
-			x-data={ templ.JSONString( map[string]any {
-				"show_dialog": false,
-				"sharing": album.Shared,
-				"readonly_secret": album.ReadonlySecret,
-				"readwrite_secret": album.ReadwriteSecret,
-			} ) }
-
-			@album:start_sharing.window="sharing = true"
-			@album:stop_sharing.window="sharing = false"
-		>
-			<style>
-			@scope {
-				button {
-					white-space: nowrap;
-				}
-
-				button.open {
-					background: white;
-				}
-
-				.dialog {
-					position: absolute;
-					right: 10px;
-					top: 50px;
-					width: 15rem;
-					border-radius: 0.5rem;
-					padding: 0.5rem;
-					background: #fff;
-					border: 1px solid #ccc;
-					box-shadow: 0 0 10px #666;
-					z-index: 1;
-				}
-			}
-			</style>
-
-			if ownership != AlbumOwnership_Guest {
-				<button @click="show_dialog = !show_dialog" :class="show_dialog ? 'open' : ''">
-					<span :style="{ color: sharing ? 'var(--green)' : 'var(--red)' }">&#9679;</span>
-					Sharing
-				</button>
-
-				<form class="dialog" x-cloak x-show="show_dialog" @click.away="show_dialog = false">
-					if ownership == AlbumOwnership_Owned {
-						<button
-							x-text="sharing ? 'Disable sharing' : 'Enable sharing'"
-							hx-post="/Special:share"
-							hx-disabled-elt="this"
-						/><br>
-						<input type="hidden" name="album_id" value={ album.ID }>
-						<input type="hidden" name="share" :value="sharing ? 0 : 1">
-					}
-					Read-only link: { album.ReadonlySecret }<br>
-					Read-write link: { album.ReadwriteSecret }<br>
-				</form>
-			}
-		</div>
-
-		if can_upload {
-			<button>Upload</button>
-		}
-	</aside>
-
-	if can_upload && ownership == AlbumOwnership_Guest {
-		<b>
-			This page lets you add and remove photos so don't share it with randoms, give them
-			<a href={ templ.URL( album.ReadonlySecret ) }>this read only link</a>
-			instead!!
-		</b>
-	}
-
-	/*if album.GuestWriteable {
-		<script>
-		function MakeUploadForm() {
-			return {
-				files: [ ],
-
-				Upload( idx ) {
-					if( idx >= this.files.length ) {
-						return;
-					}
-
-					const xhr = new XMLHttpRequest();
-					xhr.open( "POST", window.location.pathname, true );
-					xhr.upload.onprogress = e => this.files[ idx ].progress = e.loaded / e.total;
-					xhr.onload = () => {
-						this.files[ idx ].progress = 1;
-						this.Upload( idx + 1 );
-					};
-
-					let data = new FormData();
-					data.append( "photos", this.files[ idx ].file );
-
-					xhr.send( data );
-
-					this.files[ idx ].xhr = xhr;
-				},
-
-				async Changed( e ) {
-					let first_new = this.files.length;
-
-					for( const file of e.target.files ) {
-						let promise = new Promise( function( resolve ) {
-							let reader = new FileReader();
-							reader.onload = function( e ) {
-								resolve( e.target.result );
-							};
-							reader.readAsDataURL( file );
-						} );
-
-						this.files.push( {
-							file: file,
-							name: file.name,
-							thumbnail: await promise,
-							progress: 0,
-						} );
-					}
-
-					this.Upload( first_new );
-				},
-
-				Cancel( idx ) {
-				},
-			};
-		}
-		</script>
-
-		<header x-data="MakeUploadForm()">
-			<style>
-			@scope {
-				:scope {
-					background: red;
-					position: sticky;
-					top: 0;
-					padding: 1rem;
-					margin-bottom: 1rem;
-				}
-
-				img {
-					aspect-ratio: 1;
-					width: 2rem;
-					object-fit: cover;
-					object-position: 50% 50%;
-					vertical-align: middle;
-					margin: 0.25rem 0;
-				}
-			}
-			</style>
-
-			<form method="POST" enctype="multipart/form-data">
-				<label>Add photos <input type="file" name="photos" multiple @change="Changed" x-show="false"></label>
-
-				<template x-for="(file, i) in files">
-					<div>
-						<img :src="file.thumbnail">
-						<span x-text="Math.floor( file.progress * 100 )"></span>%
-						<span x-text="file.name"></span>
-						<button @click.prevent="Cancel( i )">Cancel</button>
-					</div>
-				</template>
-
-				<div x-show="false"><input type="submit"></div>
-			</form>
-		</header>
-	}
-	*/
-
+templ photogrid( photos []Photo ) {
 	<script>
 	function MakeThumbhash( img, thumbhash ) {
 		let raw_thumbhash = atob( thumbhash );
@@ -303,13 +62,67 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 	} );
 	</script>
 
-	<div class="photos"
-		x-data="photos"
+	<div x-data="photos"
 		:style="{ height: height }"
 		x-init="UpdateLayout()"
 		@scroll.window="UpdateLayout()"
 		@resize.window="UpdateLayout()"
 	>
+		<style>
+		@scope {
+			.grid {
+				display: grid;
+				grid-template-columns: repeat( 3, 1fr );
+				gap: 0.5rem;
+				padding: 0.5rem;
+			}
+
+			@media screen and (min-width: 700px) {
+				.grid { grid-template-columns: repeat( 4, 1fr ); }
+			}
+
+			@media screen and (min-width: 1400px) {
+				.grid { grid-template-columns: repeat( 5, 1fr ); }
+			}
+
+			.thumbnail img {
+				aspect-ratio: 1;
+				width: 100%;
+				object-fit: cover;
+				object-position: 50% 50%;
+			}
+
+			.fullscreen {
+				background: rgba( 26, 26, 26, 0.75 );
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100vw;
+				height: 100vh;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+			}
+
+			.fullscreen img {
+				width: 100vw;
+				max-height: 100vh;
+				object-fit: contain;
+				padding: 2.5vmax;
+				user-select: none;
+			}
+
+			.stack {
+				display: grid;
+			}
+
+			.stack > * {
+				grid-row: 1;
+				grid-column: 1;
+			}
+		}
+		</style>
+
 		<template x-if="fullscreen != null">
 			<div class="fullscreen"
 				@click="fullscreen = null"
@@ -334,6 +147,273 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 			</template>
 		</div>
 	</div>
+}
+
+type AlbumOwnership int
+const (
+	AlbumOwnership_Owned AlbumOwnership = iota
+	AlbumOwnership_SharedWithMe
+	AlbumOwnership_Guest
+)
+
+templ uploadForm() {
+	<script>
+	function MakeUploadForm() {
+		return {
+			files: [ ],
+
+			Upload( idx ) {
+				if( idx >= this.files.length ) {
+					return;
+				}
+
+				const xhr = new XMLHttpRequest();
+				xhr.open( "POST", window.location.pathname, true );
+				xhr.upload.onprogress = e => this.files[ idx ].progress = e.loaded / e.total;
+				xhr.onload = () => {
+					this.files[ idx ].progress = 1;
+					this.Upload( idx + 1 );
+				};
+
+				let data = new FormData();
+				data.append( "photos", this.files[ idx ].file );
+
+				xhr.send( data );
+
+				this.files[ idx ].xhr = xhr;
+			},
+
+			async Changed( e ) {
+				let first_new = this.files.length;
+
+				for( const file of e.target.files ) {
+					let promise = new Promise( function( resolve ) {
+						let reader = new FileReader();
+						reader.onload = function( e ) {
+							resolve( e.target.result );
+						};
+						reader.readAsDataURL( file );
+					} );
+
+					this.files.push( {
+						file: file,
+						name: file.name,
+						thumbnail: await promise,
+						progress: 0,
+					} );
+				}
+
+				this.Upload( first_new );
+			},
+
+			Cancel( idx ) {
+			},
+		};
+	}
+	</script>
+
+	<form method="POST" enctype="multipart/form-data">
+		<style>
+		@scope {
+			img {
+				aspect-ratio: 1;
+				width: 2rem;
+				object-fit: cover;
+				object-position: 50% 50%;
+				vertical-align: middle;
+				margin: 0.25rem 0;
+			}
+		}
+		</style>
+
+		<label>Add photos <input type="file" name="photos" multiple @change="Changed" x-show="false"></label>
+
+		<template x-for="(file, i) in files">
+			<div>
+				<img :src="file.thumbnail">
+				<span x-text="Math.floor( file.progress * 100 )"></span>%
+				<span x-text="file.name"></span>
+				<button @click.prevent="Cancel( i )">Cancel</button>
+			</div>
+		</template>
+
+		<div x-show="false"><input type="submit"></div>
+	</form>
+}
+
+templ shareButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
+	<div
+		x-data={ templ.JSONString( map[string]any {
+			"show_dialog": false,
+			"sharing": album.Shared,
+			"readonly_secret": album.ReadonlySecret,
+			"readwrite_secret": album.ReadwriteSecret,
+		} ) }
+
+		@album:start_sharing.window="sharing = true"
+		@album:stop_sharing.window="sharing = false"
+	>
+		<style>
+		@scope {
+			button {
+				white-space: nowrap;
+			}
+
+			button.open {
+				background: white;
+			}
+
+			.dialog {
+				position: absolute;
+				right: 10px;
+				top: 50px;
+				width: 15rem;
+				border-radius: 0.5rem;
+				padding: 0.5rem;
+				background: #fff;
+				border: 1px solid #ccc;
+				box-shadow: 0 0 10px #666;
+				z-index: 1;
+			}
+		}
+		</style>
+
+		if ownership != AlbumOwnership_Guest {
+			<button @click="show_dialog = !show_dialog" :class="show_dialog ? 'open' : ''">
+				<span :style="{ color: sharing ? 'var(--green)' : 'var(--red)' }">&#9679;</span>
+				Sharing...
+			</button>
+
+			<form class="dialog" x-cloak x-show="show_dialog" @click.away="show_dialog = false">
+				if ownership == AlbumOwnership_Owned {
+					<button
+						x-text="sharing ? 'Disable sharing' : 'Enable sharing'"
+						hx-post="/Special:share"
+						hx-disabled-elt="this"
+					/><br>
+					<input type="hidden" name="album_id" value={ album.ID }>
+					<input type="hidden" name="share" :value="sharing ? 0 : 1">
+				}
+				Read-only link: { album.ReadonlySecret }<br>
+				Read-write link: { album.ReadwriteSecret }<br>
+			</form>
+		}
+	</div>
+}
+
+templ downloadButton( album sqlc.GetAlbumByURLRow ) {
+	<div x-data="{
+		show_download_dialog: false,
+		include: null,
+		variants: null,
+		format: null,
+	}">
+		<button @click="show_download_dialog = true; include = 'all'; variants = 'key_only'; format = 'prefer_jpg'">Download...</button>
+
+		<form class="modal" x-cloak x-show="show_download_dialog" @click.away="show_download_dialog = false">
+			<h2>Download { album.Name }</h2>
+
+			<div style="display: grid; grid-template-columns: auto auto; column-gap: 1rem">
+				<b>Include</b>
+				<div>
+					<label>
+						<input type="radio" name="include" x-model="include" value="all">
+						All photos
+					</label>
+					<label>
+						<input type="radio" name="include" x-model="include" value="selected">
+						Only selected
+					</label>
+				</div>
+
+				<b>Variants</b>
+				<div>
+					<label>
+						<input type="radio" name="variants" x-model="variants" value="key_only">
+						Key photos only
+					</label>
+					<label>
+						<input type="radio" name="variants" x-model="variants" value="key_and_raw">
+						Key + RAW
+					</label>
+					<label>
+						<input type="radio" name="variants" x-model="variants" value="everything">
+						Everything
+					</label>
+				</div>
+
+				<b x-show="variants != 'everything'">Formats</b>
+				<div x-show="variants != 'everything'">
+					<label>
+						<input type="radio" name="format" x-model="format" value="prefer_jpg">
+						Prefer JPG (normal)
+					</label>
+					<label>
+						<input type="radio" name="format" x-model="format" value="prefer_heic">
+						Prefer HEIC (Apple)
+					</label>
+				</div>
+			</div>
+
+			<button>Go</button>
+		</form>
+	</div>
+}
+
+templ uploadButton() {
+	<button>Upload...</button>
+}
+
+templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwnership, can_upload bool ) {
+	<style>
+	.modal {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translateX( -50% ) translateY( -50% );
+		border-radius: 0.5rem;
+		padding: 1rem;
+		background: #fff;
+		border: 1px solid #ccc;
+		box-shadow: 0 0 10px #666;
+		z-index: 1;
+	}
+
+	.modal h2 {
+		margin: 0;
+	}
+	</style>
+
+	<aside>
+		<h1>{ album.Name }</h1>
+		if ownership != AlbumOwnership_Owned {
+			<span>{ album.OwnerUsername }'s album</span>
+		}
+		<span>Oct 2023 &ndash; Jan 2025</span>
+		<span>{ len( photos ) } { sel( len( photos ) == 1, "photo", "photos" ) }</span>
+
+		<span style="flex-grow: 1"></span>
+
+		if ownership == AlbumOwnership_Owned {
+			<button>Album settings...</button>
+		}
+
+		@shareButton( album, ownership )
+		@downloadButton( album )
+		if can_upload {
+			@uploadButton()
+		}
+	</aside>
+
+	if can_upload && ownership == AlbumOwnership_Guest {
+		<b>
+			This page lets you add and remove photos so don't share it with randoms, give them
+			<a href={ templ.URL( album.ReadonlySecret ) }>this read only link</a>
+			instead!!
+		</b>
+	}
+
+	@photogrid( photos )
 }
 
 templ ownedAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {

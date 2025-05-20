@@ -17,18 +17,30 @@ SELECT id, password, needs_to_reset_password, cookie FROM users WHERE username =
 -- name: GetUsers :many
 SELECT username FROM users;
 
+-- name: AreThereAnyUsers :one
+SELECT IFNULL( ( SELECT 1 FROM users LIMIT 1 ), 0 );
+
 
 ------------
 -- ASSETS --
 ------------
 
--- name: CreateAsset :one
+-- name: CreateAsset :exec
 INSERT OR IGNORE INTO assets ( sha256, created_at, original_filename, type, description, date_taken, latitude, longitude )
-VALUES ( ?, ?, ?, ?, ?, ?, ?, ? )
-RETURNING id;
+VALUES ( ?, ?, ?, ?, ?, ?, ?, ? );
 
 -- name: AddAssetToPhoto :exec
 INSERT INTO photo_assets ( photo_id, asset_id ) VALUES ( ?, ? );
+
+-- name: GetAssetMetadata :one
+SELECT type, original_filename, IFNULL( (
+	SELECT 1 FROM photo_assets
+	INNER JOIN photos ON photos.id = photo_assets.photo_id
+	INNER JOIN album_photos ON album_photos.photo_id = photos.id
+	INNER JOIN albums ON album.id = album_photos.album_id
+	WHERE photo_assets.asset_id = ? AND ( photos.owner = ? OR albums.owner = ? OR albums.shared )
+), 0 ) AS has_permission
+FROM assets WHERE sha256 = ?;
 
 
 ------------
@@ -40,15 +52,18 @@ INSERT INTO photos ( owner, created_at, primary_asset, thumbnail, thumbhash, dat
 VALUES( ?, ?, ?, ?, ?, ?, ?, ? )
 RETURNING id;
 
+-- name: GetUserPhotos :many
+SELECT id, thumbhash FROM photos WHERE owner = ? ORDER BY photos.date_taken DESC;
+
 -- name: GetAssetPhotos :many
 SELECT photos.id FROM photos, photo_assets
 WHERE photo_assets.asset_id = ? AND photos.owner = ? AND photos.id = photo_assets.photo_id;
 
 -- name: GetPhoto :one
 SELECT assets.sha256, assets.type, assets.original_filename FROM photos, assets
-WHERE photos.id = ? AND assets.id = IFNULL( photos.primary_asset,
-	( SELECT id FROM assets
-	INNER JOIN photo_assets ON photo_assets.asset_id = assets.id
+WHERE photos.id = ? AND assets.sha256 = IFNULL( photos.primary_asset,
+	( SELECT sha256 FROM assets
+	INNER JOIN photo_assets ON photo_assets.asset_id = assets.sha256
 	WHERE photo_assets.photo_id = photos.id AND assets.type != "raw"
 	ORDER BY assets.created_at DESC LIMIT 1 ) );
 
@@ -78,9 +93,9 @@ LEFT OUTER JOIN photos ON photos.id = IFNULL( albums.key_photo, (
 	WHERE album_photos.album_id = albums.id
 	ORDER BY photos.date_taken DESC LIMIT 1
 ) )
-LEFT OUTER JOIN assets ON assets.id = IFNULL( photos.primary_asset, (
+LEFT OUTER JOIN assets ON assets.sha256 = IFNULL( photos.primary_asset, (
 	SELECT asset_id FROM photo_assets
-	INNER JOIN assets AS lol ON lol.id = photo_assets.asset_id
+	INNER JOIN assets AS lol ON lol.sha256 = photo_assets.asset_id
 	WHERE photo_assets.photo_id = photos.id AND lol.type != "raw"
 	ORDER BY lol.created_at DESC LIMIT 1
 ) )

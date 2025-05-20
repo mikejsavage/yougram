@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -32,7 +33,6 @@ import (
 	"mikegram/sqlc"
 	"mikegram/stb"
 
-	"github.com/a-h/templ"
 	"golang.org/x/text/unicode/norm"
 	"github.com/adrium/goheif"
 	"github.com/galdor/go-thumbhash"
@@ -313,7 +313,44 @@ func getChecksum( w http.ResponseWriter, r *http.Request ) {
 	io.WriteString( w, checksum )
 }
 
-func getImage( w http.ResponseWriter, r *http.Request, user User ) {
+func getAsset( w http.ResponseWriter, r *http.Request, user User ) {
+	sha256_str := r.PathValue( "asset" )
+	sha256, err := hex.DecodeString( sha256_str )
+	if err != nil || len( sha256 ) != 32 {
+		httpError( w, http.StatusBadRequest )
+		return
+	}
+
+	metadata := queryOptional( queries.GetAssetMetadata( r.Context(), sqlc.GetAssetMetadataParams {
+		AssetID: sha256[:],
+		Owner: sql.NullInt64 { user.ID, true },
+		Owner_2: user.ID,
+		Sha256: sha256[:],
+	} ) )
+
+	if !metadata.Valid {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+
+	if metadata.V.HasPermission == 0 {
+		httpError( w, http.StatusForbidden )
+		return
+	}
+
+	// TODO: serve heif if possible
+	filename := "assets/" + sha256_str + sel( metadata.V.Type == "heif", ".heif.jpg", ".jpg" )
+	f := try1( os.Open( filename ) )
+	defer f.Close()
+
+	cacheControlImmutable( w )
+	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s\"", metadata.V.OriginalFilename ) )
+	w.Header().Set( "Content-Type", "image/jpeg" )
+
+	_ = try1( io.Copy( w, f ) )
+}
+
+func getPhoto( w http.ResponseWriter, r *http.Request, user User ) {
 	image_id, err := strconv.ParseInt( r.PathValue( "image" ), 10, 64 )
 	if err != nil {
 		httpError( w, http.StatusBadRequest )
@@ -395,15 +432,21 @@ func shareAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 }
 
 func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
-	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		_, err := io.WriteString(w, "lolz")
-		return err
-	})
-	try( baseWithSidebar( user, checksum, r.URL.Path, "hi", body ).Render( r.Context(), w ) )
+	photos := []Photo { }
+	for _, photo := range must1( queries.GetUserPhotos( r.Context(), sql.NullInt64 { user.ID, true } ) ) {
+		photos = append( photos, Photo {
+			ID: photo.ID,
+			Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
+		} )
+	}
+
+	body := photogrid( photos )
+	try( baseWithSidebar( user, checksum, r.URL.Path, "Library", body ).Render( r.Context(), w ) )
 }
 
 type Photo struct {
 	ID int64 `json:"id"`
+	Asset string `json:"asset"`
 	Thumbhash string `json:"thumbhash"`
 }
 
@@ -571,7 +614,7 @@ func saveAsset( data []byte, filename string ) error {
 }
 
 type AddedAsset struct {
-	ID int64
+	Sha256 [32]byte
 	Image *image.RGBA
 	Date sql.NullInt64
 	Latitude sql.NullFloat64
@@ -678,7 +721,7 @@ func addAsset( ctx context.Context, data []byte, album_id sql.Null[ int64 ], fil
 	}
 	fmt.Printf( "\tsave assets %dms\n", time.Now().Sub( before ).Milliseconds() )
 
-	asset_id, err := queries.CreateAsset( ctx, sqlc.CreateAssetParams {
+	err = queries.CreateAsset( ctx, sqlc.CreateAssetParams {
 		Sha256: sha256[:],
 		CreatedAt: time.Now().Unix(),
 		OriginalFilename: filename,
@@ -690,7 +733,7 @@ func addAsset( ctx context.Context, data []byte, album_id sql.Null[ int64 ], fil
 
 	fmt.Printf( "\tdone %dms\n", time.Now().Sub( before ).Milliseconds() )
 
-	return AddedAsset { asset_id, reoriented, date, latitude, longitude }, err
+	return AddedAsset { sha256, reoriented, date, latitude, longitude }, err
 }
 
 func addFile( ctx context.Context, path string, album_id sql.Null[ int64 ] ) error {
@@ -703,7 +746,7 @@ func addFile( ctx context.Context, path string, album_id sql.Null[ int64 ] ) err
 	}
 
 	photos, err := queries.GetAssetPhotos( ctx, sqlc.GetAssetPhotosParams {
-		AssetID: asset.ID,
+		AssetID: asset.Sha256[:],
 		Owner: sql.NullInt64 { 1, true }, // TODO
 	} )
 
@@ -721,7 +764,7 @@ func addFile( ctx context.Context, path string, album_id sql.Null[ int64 ] ) err
 		photo_id, err := qtx.CreatePhoto( ctx, sqlc.CreatePhotoParams {
 			Owner: sql.NullInt64 { 1, true }, // TODO
 			CreatedAt: time.Now().Unix(),
-			PrimaryAsset: asset.ID,
+			PrimaryAsset: asset.Sha256[:],
 			Thumbnail: thumbnail,
 			Thumbhash: thumbhash,
 			DateTaken: asset.Date,
@@ -734,7 +777,7 @@ func addFile( ctx context.Context, path string, album_id sql.Null[ int64 ] ) err
 
 		err = qtx.AddAssetToPhoto( ctx, sqlc.AddAssetToPhotoParams {
 			PhotoID: photo_id,
-			AssetID: asset.ID,
+			AssetID: asset.Sha256[:],
 		} )
 		if err != nil {
 			return err
@@ -836,6 +879,28 @@ func authenticate( w http.ResponseWriter, r *http.Request ) {
 func logout( w http.ResponseWriter, r *http.Request, user User ) {
 	setAuthCookies( w, "", "" )
 	http.Redirect( w, r, "/", http.StatusSeeOther )
+}
+
+type ZipFile struct {
+	Asset string
+	Filename string
+}
+
+func downloadZip( filename string, files []ZipFile, w http.ResponseWriter ) {
+	w.Header().Set( "Content-Disposition", fmt.Sprintf( "attachment; filename=\"%s\"", filename ) )
+	w.Header().Set( "Content-Type", "application/zip" )
+
+	zip := zip.NewWriter( w )
+
+	for _, file := range files {
+		a := try1( os.Open( "assets/" + file.Asset ) )
+		defer a.Close()
+
+		z := try1( zip.Create( file.Filename ) )
+		_ = try1( io.Copy( z, a ) )
+	}
+
+	try( zip.Close() )
 }
 
 func requireAuth( handler func( http.ResponseWriter, *http.Request, User ) ) func( http.ResponseWriter, *http.Request ) {
@@ -973,6 +1038,11 @@ func main() {
 
 	initDB()
 
+	if must1( queries.AreThereAnyUsers( context.Background() ) ) == 0 {
+		fmt.Printf( "You need to create a user by running \"%s create-user\" first!", os.Args[ 0 ] )
+		os.Exit( 1 )
+	}
+
 	{
 		minifier = minify.New()
 		minifier.AddFunc( "js", minify_js.Minify )
@@ -991,7 +1061,8 @@ func main() {
 		{ "POST", "/Special:authenticate", authenticate },
 		{ "GET",  "/Special:logout", requireAuth( logout ) },
 
-		{ "GET",  "/Special:image/{image}", requireAuth( getImage ) },
+		{ "GET",  "/Special:asset/{asset}", requireAuth( getAsset ) },
+		{ "GET",  "/Special:photo/{photo}", requireAuth( getPhoto ) },
 		{ "GET",  "/Special:thumbnail/{image}", requireAuth( getThumbnail ) },
 		// { "GET",  "/Special:geocode", geocode },
 

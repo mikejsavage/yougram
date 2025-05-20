@@ -7,8 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS assets (
-	id INTEGER PRIMARY KEY,
-	sha256 BLOB CHECK( length( sha256 ) = 32 ),
+	sha256 BLOB PRIMARY KEY CHECK( length( sha256 ) = 32 ),
 	created_at INTEGER NOT NULL,
 	original_filename TEXT NOT NULL,
 	type TEXT NOT NULL CHECK( type = "jpeg" OR type = "heif" OR type = "raw" ),
@@ -24,7 +23,7 @@ CREATE TABLE IF NOT EXISTS photos (
 	created_at INTEGER NOT NULL,
 	delete_at INTEGER,
 
-	primary_asset INTEGER NOT NULL REFERENCES assets( id ),
+	primary_asset BLOB NOT NULL REFERENCES assets( sha256 ),
 	thumbnail BLOB NOT NULL,
 	thumbhash BLOB NOT NULL,
 
@@ -37,9 +36,18 @@ CREATE TABLE IF NOT EXISTS photos (
 
 CREATE TABLE IF NOT EXISTS photo_assets (
 	photo_id INTEGER NOT NULL REFERENCES photos( id ),
-	asset_id INTEGER NOT NULL REFERENCES assets( id ),
+	asset_id BLOB NOT NULL REFERENCES assets( sha256 ),
 	UNIQUE( photo_id, asset_id )
 ) STRICT;
+
+CREATE VIEW IF NOT EXISTS photo_primary_assets
+AS SELECT photos.id, assets.sha256 FROM photos
+INNER JOIN assets ON assets.id = IFNULL( photos.primary_asset, (
+		SELECT id FROM assets AS lol
+		INNER JOIN photo_assets ON photo_assets.asset_id = lol.id
+		WHERE photo_assets.photo_id = photos.id AND lol.type != "raw"
+		ORDER BY lol.created_at DESC LIMIT 1
+) );
 
 CREATE TABLE IF NOT EXISTS albums (
 	id INTEGER PRIMARY KEY,
@@ -72,3 +80,11 @@ CREATE TABLE IF NOT EXISTS album_photos (
 	UNIQUE( album_id, photo_id )
 ) STRICT;
 
+CREATE VIEW IF NOT EXISTS album_key_photos
+AS SELECT photos.id, assets.sha256 FROM photos
+INNER JOIN assets ON assets.id = IFNULL( photos.primary_asset, (
+		SELECT id FROM assets AS lol
+		INNER JOIN photo_assets ON photo_assets.asset_id = lol.id
+		WHERE photo_assets.photo_id = photos.id AND lol.type != "raw"
+		ORDER BY lol.created_at DESC LIMIT 1
+) );
