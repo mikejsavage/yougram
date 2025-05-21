@@ -3,22 +3,22 @@
 -----------
 
 -- name: CreateUser :exec
-INSERT INTO users ( username, password, needs_to_reset_password, cookie ) VALUES ( ?, ?, 1, ? );
+INSERT INTO user ( username, password, needs_to_reset_password, cookie ) VALUES ( ?, ?, 1, ? );
 
 -- name: ChangePassword :exec
-UPDATE users SET password = ?, cookie = ? WHERE username = username;
+UPDATE user SET password = ?, cookie = ? WHERE username = username;
 
 -- name: ResetPassword :exec
-UPDATE users SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = username;
+UPDATE user SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = username;
 
 -- name: GetUserAuthDetails :one
-SELECT id, password, needs_to_reset_password, cookie FROM users WHERE username = ?;
+SELECT id, password, needs_to_reset_password, cookie FROM user WHERE username = ?;
 
 -- name: GetUsers :many
-SELECT username FROM users;
+SELECT username FROM user;
 
 -- name: AreThereAnyUsers :one
-SELECT IFNULL( ( SELECT 1 FROM users LIMIT 1 ), 0 );
+SELECT IFNULL( ( SELECT 1 FROM user LIMIT 1 ), 0 );
 
 
 ------------
@@ -26,27 +26,27 @@ SELECT IFNULL( ( SELECT 1 FROM users LIMIT 1 ), 0 );
 ------------
 
 -- name: CreateAsset :exec
-INSERT OR IGNORE INTO assets (
+INSERT OR IGNORE INTO asset (
 	sha256, created_at, original_filename, type,
 	thumbnail, thumbhash,
 	description, date_taken, latitude, longitude )
 VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );
 
 -- name: AddAssetToPhoto :exec
-INSERT INTO photo_assets ( photo_id, asset_id ) VALUES ( ?, ? );
+INSERT INTO photo_asset ( photo_id, asset_id ) VALUES ( ?, ? );
 
 -- name: GetAssetMetadata :one
 SELECT type, original_filename, IFNULL( (
-	SELECT 1 FROM photo_assets
-	INNER JOIN photos ON photos.id = photo_assets.photo_id
-	INNER JOIN album_photos ON album_photos.photo_id = photos.id
-	INNER JOIN albums ON albums.id = album_photos.album_id
-	WHERE photo_assets.asset_id = ? AND ( photos.owner = ? OR albums.owner = ? OR albums.shared )
+	SELECT 1 FROM photo_asset
+	INNER JOIN photo ON photo.id = photo_asset.photo_id
+	INNER JOIN album_photo ON album_photo.photo_id = photo.id
+	INNER JOIN album ON album.id = album_photo.album_id
+	WHERE photo_asset.asset_id = ? AND ( photo.owner = ? OR album.owner = ? OR album.shared )
 ), 0 ) AS has_permission
-FROM assets WHERE sha256 = ?;
+FROM asset WHERE sha256 = ?;
 
 -- name: GetAssetThumbnail :one
-SELECT thumbnail, type, original_filename FROM assets WHERE sha256 = ?;
+SELECT thumbnail, type, original_filename FROM asset WHERE sha256 = ?;
 
 
 ------------
@@ -54,27 +54,27 @@ SELECT thumbnail, type, original_filename FROM assets WHERE sha256 = ?;
 ------------
 
 -- name: CreatePhoto :one
-INSERT INTO photos ( owner, created_at, primary_asset, date_taken, latitude, longitude )
+INSERT INTO photo ( owner, created_at, primary_asset, date_taken, latitude, longitude )
 VALUES( ?, ?, ?, ?, ?, ? )
 RETURNING id;
 
 -- name: GetUserPhotos :many
-SELECT photos.id, photo_primary_assets.sha256, photo_primary_assets.thumbhash
-FROM photos
-INNER JOIN photo_primary_assets ON photos.id = photo_primary_assets.photo_id
-WHERE owner = ? ORDER BY photos.date_taken DESC;
+SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.thumbhash
+FROM photo
+INNER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
+WHERE owner = ? ORDER BY photo.date_taken DESC;
 
 -- name: GetAssetPhotos :many
-SELECT photos.id FROM photos, photo_assets
-WHERE photo_assets.asset_id = ? AND photos.owner = ? AND photos.id = photo_assets.photo_id;
+SELECT photo.id FROM photo, photo_asset
+WHERE photo_asset.asset_id = ? AND photo.owner = ? AND photo.id = photo_asset.photo_id;
 
 -- name: GetPhoto :one
-SELECT assets.sha256, assets.type, assets.original_filename FROM photos, assets
-WHERE photos.id = ? AND assets.sha256 = IFNULL( photos.primary_asset,
-	( SELECT sha256 FROM assets
-	INNER JOIN photo_assets ON photo_assets.asset_id = assets.sha256
-	WHERE photo_assets.photo_id = photos.id AND assets.type != "raw"
-	ORDER BY assets.created_at DESC LIMIT 1 ) );
+SELECT asset.sha256, asset.type, asset.original_filename FROM photo, asset
+WHERE photo.id = ? AND asset.sha256 = IFNULL( photo.primary_asset,
+	( SELECT sha256 FROM asset
+	INNER JOIN photo_asset ON photo_asset.asset_id = asset.sha256
+	WHERE photo_asset.photo_id = photo.id AND asset.type != "raw"
+	ORDER BY asset.created_at DESC LIMIT 1 ) );
 
 
 ------------
@@ -82,51 +82,51 @@ WHERE photos.id = ? AND assets.sha256 = IFNULL( photos.primary_asset,
 ------------
 
 -- name: CreateAlbum :exec
-INSERT INTO albums (
+INSERT INTO album (
 	owner, name, url_slug,
 	shared, readonly_secret, readwrite_secret,
 	autoassign_start_date, autoassign_end_date, autoassign_latitude, autoassign_longitude, autoassign_radius
 ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );
 
 -- name: AddPhotoToAlbum :exec
-INSERT OR IGNORE INTO album_photos ( album_id, photo_id ) VALUES ( ?, ? );
+INSERT OR IGNORE INTO album_photo ( album_id, photo_id ) VALUES ( ?, ? );
 
 -- name: GetAlbumsForUser :many
-SELECT albums.name, albums.url_slug, assets.sha256 AS key_photo_sha256 FROM albums
-LEFT OUTER JOIN photos ON photos.id = IFNULL( albums.key_photo, (
-	SELECT photo_id FROM album_photos
-	INNER JOIN photos ON photos.id = album_photos.photo_id
-	WHERE album_photos.album_id = albums.id
-	ORDER BY photos.date_taken DESC LIMIT 1
+SELECT album.name, album.url_slug, asset.sha256 AS key_photo_sha256 FROM album
+LEFT OUTER JOIN photo ON photo.id = IFNULL( album.key_photo, (
+	SELECT photo_id FROM album_photo
+	INNER JOIN photo ON photo.id = album_photo.photo_id
+	WHERE album_photo.album_id = album.id
+	ORDER BY photo.date_taken DESC LIMIT 1
 ) )
-LEFT OUTER JOIN assets ON assets.sha256 = IFNULL( photos.primary_asset, (
-	SELECT asset_id FROM photo_assets
-	INNER JOIN assets AS lol ON lol.sha256 = photo_assets.asset_id
-	WHERE photo_assets.photo_id = photos.id AND lol.type != "raw"
+LEFT OUTER JOIN asset ON asset.sha256 = IFNULL( photo.primary_asset, (
+	SELECT asset_id FROM photo_asset
+	INNER JOIN asset AS lol ON lol.sha256 = photo_asset.asset_id
+	WHERE photo_asset.photo_id = photo.id AND lol.type != "raw"
 	ORDER BY lol.created_at DESC LIMIT 1
 ) )
-WHERE ( albums.shared OR albums.owner = ? )
-ORDER BY albums.name;
+WHERE ( album.shared OR album.owner = ? )
+ORDER BY album.name;
 
 -- name: GetAlbumByURL :one
-SELECT albums.id, owner, users.username AS owner_username, albums.name, shared, readonly_secret, readwrite_secret
-FROM albums
-INNER JOIN users ON albums.owner = users.id
+SELECT album.id, owner, user.username AS owner_username, album.name, shared, readonly_secret, readwrite_secret
+FROM album
+INNER JOIN user ON album.owner = user.id
 WHERE url_slug = ?;
 
 -- name: GetAlbumOwnerByID :one
-SELECT owner, shared FROM albums WHERE id = ?;
+SELECT owner, shared FROM album WHERE id = ?;
 
 -- name: GetAlbumOwner :one
-SELECT owner FROM albums WHERE id = ?;
+SELECT owner FROM album WHERE id = ?;
 
 -- name: GetAlbumPhotos :many
-SELECT photos.id, photo_primary_assets.sha256, photo_primary_assets.thumbhash
-FROM photos
-INNER JOIN album_photos ON album_photos.photo_id = photos.id
-INNER JOIN photo_primary_assets ON photos.id = photo_primary_assets.photo_id
-WHERE album_photos.album_id = ? AND album_photos.photo_id = photos.id
-ORDER BY photos.date_taken ASC;
+SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.thumbhash
+FROM photo
+INNER JOIN album_photo ON album_photo.photo_id = photo.id
+INNER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
+WHERE album_photo.album_id = ? AND album_photo.photo_id = photo.id
+ORDER BY photo.date_taken ASC;
 
 -- name: GetAlbumAutoassignRules :many
 SELECT
@@ -136,7 +136,7 @@ SELECT
 	autoassign_latitude AS latitude,
 	autoassign_longitude AS longitude,
 	autoassign_radius AS radius
-FROM albums WHERE ? BETWEEN autoassign_start_date AND autoassign_end_date;
+FROM album WHERE ? BETWEEN autoassign_start_date AND autoassign_end_date;
 
 -- name: SetAlbumIsShared :exec
-UPDATE albums SET shared = ? WHERE id = ?;
+UPDATE album SET shared = ? WHERE id = ?;

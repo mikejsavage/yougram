@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS user (
 	id INTEGER PRIMARY KEY,
 	username TEXT NOT NULL UNIQUE CHECK( username <> '' ),
 	password TEXT NOT NULL,
@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
 	cookie TEXT NOT NULL CHECK( cookie <> '' )
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS assets (
+CREATE TABLE IF NOT EXISTS asset (
 	sha256 BLOB PRIMARY KEY CHECK( length( sha256 ) = 32 ),
 	created_at INTEGER NOT NULL,
 	original_filename TEXT NOT NULL,
@@ -19,42 +19,42 @@ CREATE TABLE IF NOT EXISTS assets (
 	longitude REAL CHECK( longitude >= -180 AND longitude < 180 )
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS photos (
+CREATE TABLE IF NOT EXISTS photo (
 	id INTEGER PRIMARY KEY,
-	owner INTEGER REFERENCES users( id ),
+	owner INTEGER REFERENCES user( id ),
 	created_at INTEGER NOT NULL,
 	delete_at INTEGER,
 
-	primary_asset BLOB NOT NULL REFERENCES assets( sha256 ),
+	primary_asset BLOB NOT NULL REFERENCES asset( sha256 ),
 
 	date_taken INTEGER,
 	latitude REAL CHECK( latitude >= -90 AND latitude <= 90 ),
 	longitude REAL CHECK( longitude >= -180 AND longitude < 180 ),
 
-	FOREIGN KEY ( id, primary_asset ) REFERENCES photo_assets( photo_id, asset_id ) DEFERRABLE INITIALLY DEFERRED
+	FOREIGN KEY ( id, primary_asset ) REFERENCES photo_asset( photo_id, asset_id ) DEFERRABLE INITIALLY DEFERRED
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS photo_assets (
-	photo_id INTEGER NOT NULL REFERENCES photos( id ),
-	asset_id BLOB NOT NULL REFERENCES assets( sha256 ),
+CREATE TABLE IF NOT EXISTS photo_asset (
+	photo_id INTEGER NOT NULL REFERENCES photo( id ),
+	asset_id BLOB NOT NULL REFERENCES asset( sha256 ),
 	UNIQUE( photo_id, asset_id )
 ) STRICT;
 
-CREATE VIEW IF NOT EXISTS photo_primary_assets
-AS SELECT photos.id AS photo_id, assets.* FROM photos
-INNER JOIN assets ON assets.sha256 = IFNULL( photos.primary_asset, (
-		SELECT id FROM assets AS lol
-		INNER JOIN photo_assets ON photo_assets.asset_id = lol.sha256
-		WHERE photo_assets.photo_id = photos.id AND lol.type != "raw"
+CREATE VIEW IF NOT EXISTS photo_primary_asset
+AS SELECT photo.id AS photo_id, asset.* FROM photo
+INNER JOIN asset ON asset.sha256 = IFNULL( photo.primary_asset, (
+		SELECT id FROM asset AS lol
+		INNER JOIN photo_asset ON photo_asset.asset_id = lol.sha256
+		WHERE photo_asset.photo_id = photo.id AND lol.type != "raw"
 		ORDER BY lol.created_at DESC LIMIT 1
 ) );
 
-CREATE TABLE IF NOT EXISTS albums (
+CREATE TABLE IF NOT EXISTS album (
 	id INTEGER PRIMARY KEY,
-	owner INTEGER NOT NULL REFERENCES users( id ),
+	owner INTEGER NOT NULL REFERENCES user( id ),
 	name TEXT NOT NULL UNIQUE CHECK( name <> '' ),
 	url_slug TEXT NOT NULL UNIQUE CHECK( url_slug <> '' ), -- maybe this can be a user defined function
-	key_photo INTEGER REFERENCES photos( id ),
+	key_photo INTEGER REFERENCES photo( id ),
 
 	shared INTEGER NOT NULL CHECK( shared = 0 OR shared = 1 ),
 	readonly_secret TEXT NOT NULL,
@@ -71,20 +71,20 @@ CREATE TABLE IF NOT EXISTS albums (
 		AND ( autoassign_latitude IS NULL ) = ( autoassign_longitude IS NULL )
 		AND ( autoassign_longitude IS NULL ) = ( autoassign_radius IS NULL )
 	),
-	FOREIGN KEY( id, key_photo ) REFERENCES album_photos( album_id, photo_id )
+	FOREIGN KEY( id, key_photo ) REFERENCES album_photo( album_id, photo_id )
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS album_photos (
-	album_id INTEGER NOT NULL REFERENCES albums( id ),
-	photo_id INTEGER NOT NULL REFERENCES photos( id ),
+CREATE TABLE IF NOT EXISTS album_photo (
+	album_id INTEGER NOT NULL REFERENCES album( id ),
+	photo_id INTEGER NOT NULL REFERENCES photo( id ),
 	UNIQUE( album_id, photo_id )
 ) STRICT;
 
-CREATE VIEW IF NOT EXISTS album_key_photos
-AS SELECT photos.id, assets.sha256 FROM photos
-INNER JOIN assets ON assets.id = IFNULL( photos.primary_asset, (
-		SELECT id FROM assets AS lol
-		INNER JOIN photo_assets ON photo_assets.asset_id = lol.id
-		WHERE photo_assets.photo_id = photos.id AND lol.type != "raw"
+CREATE VIEW IF NOT EXISTS album_key_photo
+AS SELECT photo.id, asset.sha256 FROM photo
+INNER JOIN asset ON asset.id = IFNULL( photo.primary_asset, (
+		SELECT id FROM asset AS lol
+		INNER JOIN photo_asset ON photo_asset.asset_id = lol.id
+		WHERE photo_asset.photo_id = photo.id AND lol.type != "raw"
 		ORDER BY lol.created_at DESC LIMIT 1
 ) );
