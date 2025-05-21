@@ -172,7 +172,7 @@ func shareButton(album sqlc.GetAlbumByURLRow, ownership AlbumOwnership) templ.Co
 			return templ_7745c5c3_Err
 		}
 		if ownership != AlbumOwnership_Guest {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<button @click=\"show_dialog = !show_dialog\" :class=\"show_dialog ? &#39;open&#39; : &#39;&#39;\"><span :style=\"{ color: sharing ? &#39;var(--green)&#39; : &#39;var(--red)&#39; }\">&#9679;</span> Sharing...</button><form class=\"dialog\" x-cloak x-show=\"show_dialog\" @click.away=\"show_dialog = false\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<button @click=\"show_dialog = !show_dialog\" :class=\"show_dialog ? &#39;open&#39; : &#39;&#39;\"><span :style=\"{ color: sharing ? &#39;var(--green)&#39; : &#39;var(--red)&#39; }\">&#9679;</span> Sharing</button><form class=\"dialog\" x-cloak x-show=\"show_dialog\" @click.away=\"show_dialog = false\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -255,7 +255,7 @@ func downloadButton(album sqlc.GetAlbumByURLRow) templ.Component {
 			templ_7745c5c3_Var12 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div x-data=\"{\n\t\tshow_download_dialog: false,\n\t\tinclude: null,\n\t\tvariants: null,\n\t\tformat: null,\n\t}\"><button @click=\"show_download_dialog = true; include = &#39;all&#39;; variants = &#39;key_only&#39;; format = &#39;prefer_jpg&#39;\">Download...</button><form class=\"modal\" x-cloak x-show=\"show_download_dialog\" @click.away=\"show_download_dialog = false\"><h2>Download ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div x-data=\"{\n\t\tshow_download_dialog: false,\n\t\tinclude: null,\n\t\tvariants: null,\n\t\tformat: null,\n\t}\"><button @click=\"show_download_dialog = true; include = &#39;all&#39;; variants = &#39;key_only&#39;; format = &#39;prefer_jpg&#39;\">Download</button><form class=\"modal\" x-cloak x-show=\"show_download_dialog\" @click.away=\"show_download_dialog = false\"><h2>Download ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -297,7 +297,7 @@ func uploadButton() templ.Component {
 			templ_7745c5c3_Var14 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<button>Upload...</button>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<button>Upload</button>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -393,7 +393,7 @@ func albumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 			return templ_7745c5c3_Err
 		}
 		if ownership == AlbumOwnership_Owned {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<button>Album settings...</button>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<button>Album settings</button>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
