@@ -108,8 +108,11 @@ func (q *Queries) CreateAlbum(ctx context.Context, arg CreateAlbumParams) error 
 
 const createAsset = `-- name: CreateAsset :exec
 
-INSERT OR IGNORE INTO assets ( sha256, created_at, original_filename, type, description, date_taken, latitude, longitude )
-VALUES ( ?, ?, ?, ?, ?, ?, ?, ? )
+INSERT OR IGNORE INTO assets (
+	sha256, created_at, original_filename, type,
+	thumbnail, thumbhash,
+	description, date_taken, latitude, longitude )
+VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )
 `
 
 type CreateAssetParams struct {
@@ -117,6 +120,8 @@ type CreateAssetParams struct {
 	CreatedAt        int64
 	OriginalFilename string
 	Type             string
+	Thumbnail        []byte
+	Thumbhash        []byte
 	Description      sql.NullString
 	DateTaken        sql.NullInt64
 	Latitude         sql.NullFloat64
@@ -132,6 +137,8 @@ func (q *Queries) CreateAsset(ctx context.Context, arg CreateAssetParams) error 
 		arg.CreatedAt,
 		arg.OriginalFilename,
 		arg.Type,
+		arg.Thumbnail,
+		arg.Thumbhash,
 		arg.Description,
 		arg.DateTaken,
 		arg.Latitude,
@@ -142,8 +149,8 @@ func (q *Queries) CreateAsset(ctx context.Context, arg CreateAssetParams) error 
 
 const createPhoto = `-- name: CreatePhoto :one
 
-INSERT INTO photos ( owner, created_at, primary_asset, thumbnail, thumbhash, date_taken, latitude, longitude )
-VALUES( ?, ?, ?, ?, ?, ?, ?, ? )
+INSERT INTO photos ( owner, created_at, primary_asset, date_taken, latitude, longitude )
+VALUES( ?, ?, ?, ?, ?, ? )
 RETURNING id
 `
 
@@ -151,8 +158,6 @@ type CreatePhotoParams struct {
 	Owner        sql.NullInt64
 	CreatedAt    int64
 	PrimaryAsset []byte
-	Thumbnail    []byte
-	Thumbhash    []byte
 	DateTaken    sql.NullInt64
 	Latitude     sql.NullFloat64
 	Longitude    sql.NullFloat64
@@ -166,8 +171,6 @@ func (q *Queries) CreatePhoto(ctx context.Context, arg CreatePhotoParams) (int64
 		arg.Owner,
 		arg.CreatedAt,
 		arg.PrimaryAsset,
-		arg.Thumbnail,
-		arg.Thumbhash,
 		arg.DateTaken,
 		arg.Latitude,
 		arg.Longitude,
@@ -306,14 +309,17 @@ func (q *Queries) GetAlbumOwnerByID(ctx context.Context, id int64) (GetAlbumOwne
 }
 
 const getAlbumPhotos = `-- name: GetAlbumPhotos :many
-SELECT photos.id, photos.thumbhash
-FROM photos, album_photos
+SELECT photos.id, photo_primary_assets.sha256, photo_primary_assets.thumbhash
+FROM photos
+INNER JOIN album_photos ON album_photos.photo_id = photos.id
+INNER JOIN photo_primary_assets ON photos.id = photo_primary_assets.photo_id
 WHERE album_photos.album_id = ? AND album_photos.photo_id = photos.id
 ORDER BY photos.date_taken ASC
 `
 
 type GetAlbumPhotosRow struct {
 	ID        int64
+	Sha256    []byte
 	Thumbhash []byte
 }
 
@@ -326,7 +332,7 @@ func (q *Queries) GetAlbumPhotos(ctx context.Context, albumID int64) ([]GetAlbum
 	var items []GetAlbumPhotosRow
 	for rows.Next() {
 		var i GetAlbumPhotosRow
-		if err := rows.Scan(&i.ID, &i.Thumbhash); err != nil {
+		if err := rows.Scan(&i.ID, &i.Sha256, &i.Thumbhash); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -392,7 +398,7 @@ SELECT type, original_filename, IFNULL( (
 	SELECT 1 FROM photo_assets
 	INNER JOIN photos ON photos.id = photo_assets.photo_id
 	INNER JOIN album_photos ON album_photos.photo_id = photos.id
-	INNER JOIN albums ON album.id = album_photos.album_id
+	INNER JOIN albums ON albums.id = album_photos.album_id
 	WHERE photo_assets.asset_id = ? AND ( photos.owner = ? OR albums.owner = ? OR albums.shared )
 ), 0 ) AS has_permission
 FROM assets WHERE sha256 = ?
@@ -456,6 +462,23 @@ func (q *Queries) GetAssetPhotos(ctx context.Context, arg GetAssetPhotosParams) 
 	return items, nil
 }
 
+const getAssetThumbnail = `-- name: GetAssetThumbnail :one
+SELECT thumbnail, type, original_filename FROM assets WHERE sha256 = ?
+`
+
+type GetAssetThumbnailRow struct {
+	Thumbnail        []byte
+	Type             string
+	OriginalFilename string
+}
+
+func (q *Queries) GetAssetThumbnail(ctx context.Context, sha256 []byte) (GetAssetThumbnailRow, error) {
+	row := q.db.QueryRowContext(ctx, getAssetThumbnail, sha256)
+	var i GetAssetThumbnailRow
+	err := row.Scan(&i.Thumbnail, &i.Type, &i.OriginalFilename)
+	return i, err
+}
+
 const getPhoto = `-- name: GetPhoto :one
 SELECT assets.sha256, assets.type, assets.original_filename FROM photos, assets
 WHERE photos.id = ? AND assets.sha256 = IFNULL( photos.primary_asset,
@@ -476,17 +499,6 @@ func (q *Queries) GetPhoto(ctx context.Context, id int64) (GetPhotoRow, error) {
 	var i GetPhotoRow
 	err := row.Scan(&i.Sha256, &i.Type, &i.OriginalFilename)
 	return i, err
-}
-
-const getThumbnail = `-- name: GetThumbnail :one
-SELECT thumbnail FROM photos WHERE id = ?
-`
-
-func (q *Queries) GetThumbnail(ctx context.Context, id int64) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, getThumbnail, id)
-	var thumbnail []byte
-	err := row.Scan(&thumbnail)
-	return thumbnail, err
 }
 
 const getUserAuthDetails = `-- name: GetUserAuthDetails :one
@@ -513,11 +525,15 @@ func (q *Queries) GetUserAuthDetails(ctx context.Context, username string) (GetU
 }
 
 const getUserPhotos = `-- name: GetUserPhotos :many
-SELECT id, thumbhash FROM photos WHERE owner = ? ORDER BY photos.date_taken DESC
+SELECT photos.id, photo_primary_assets.sha256, photo_primary_assets.thumbhash
+FROM photos
+INNER JOIN photo_primary_assets ON photos.id = photo_primary_assets.photo_id
+WHERE owner = ? ORDER BY photos.date_taken DESC
 `
 
 type GetUserPhotosRow struct {
 	ID        int64
+	Sha256    []byte
 	Thumbhash []byte
 }
 
@@ -530,7 +546,7 @@ func (q *Queries) GetUserPhotos(ctx context.Context, owner sql.NullInt64) ([]Get
 	var items []GetUserPhotosRow
 	for rows.Next() {
 		var i GetUserPhotosRow
-		if err := rows.Scan(&i.ID, &i.Thumbhash); err != nil {
+		if err := rows.Scan(&i.ID, &i.Sha256, &i.Thumbhash); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

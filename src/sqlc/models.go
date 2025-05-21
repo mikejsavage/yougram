@@ -39,6 +39,8 @@ type Asset struct {
 	CreatedAt        int64
 	OriginalFilename string
 	Type             string
+	Thumbnail        []byte
+	Thumbhash        []byte
 	Description      sql.NullString
 	DateTaken        sql.NullInt64
 	Latitude         sql.NullFloat64
@@ -51,8 +53,6 @@ type Photo struct {
 	CreatedAt    int64
 	DeleteAt     sql.NullInt64
 	PrimaryAsset []byte
-	Thumbnail    []byte
-	Thumbhash    []byte
 	DateTaken    sql.NullInt64
 	Latitude     sql.NullFloat64
 	Longitude    sql.NullFloat64
@@ -64,8 +64,17 @@ type PhotoAsset struct {
 }
 
 type PhotoPrimaryAsset struct {
-	ID     int64
-	Sha256 []byte
+	PhotoID          int64
+	Sha256           []byte
+	CreatedAt        int64
+	OriginalFilename string
+	Type             string
+	Thumbnail        []byte
+	Thumbhash        []byte
+	Description      sql.NullString
+	DateTaken        sql.NullInt64
+	Latitude         sql.NullFloat64
+	Longitude        sql.NullFloat64
 }
 
 type User struct {

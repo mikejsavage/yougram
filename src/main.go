@@ -313,10 +313,18 @@ func getChecksum( w http.ResponseWriter, r *http.Request ) {
 	io.WriteString( w, checksum )
 }
 
-func getAsset( w http.ResponseWriter, r *http.Request, user User ) {
+func pathValueAsset( r *http.Request ) ( string, []byte, error ) {
 	sha256_str := r.PathValue( "asset" )
 	sha256, err := hex.DecodeString( sha256_str )
 	if err != nil || len( sha256 ) != 32 {
+		return "", sha256, errors.New( "asset not a sha256" )
+	}
+	return sha256_str, sha256, nil
+}
+
+func getAsset( w http.ResponseWriter, r *http.Request, user User ) {
+	sha256_str, sha256, err := pathValueAsset( r )
+	if err != nil {
 		httpError( w, http.StatusBadRequest )
 		return
 	}
@@ -350,49 +358,23 @@ func getAsset( w http.ResponseWriter, r *http.Request, user User ) {
 	_ = try1( io.Copy( w, f ) )
 }
 
-func getPhoto( w http.ResponseWriter, r *http.Request, user User ) {
-	image_id, err := strconv.ParseInt( r.PathValue( "image" ), 10, 64 )
-	if err != nil {
-		httpError( w, http.StatusBadRequest )
-		return
-	}
-
-	photo := queryOptional( queries.GetPhoto( r.Context(), image_id ) )
-	if !photo.Valid {
-		httpError( w, http.StatusNotFound )
-		return
-	}
-
-	// TODO: serve heif if possible
-	filename := "assets/" + hex.EncodeToString( photo.V.Sha256 ) + sel( photo.V.Type == "heif", ".heif.jpg", ".jpg" )
-	f := try1( os.Open( filename ) )
-	defer f.Close()
-
-	cacheControlImmutable( w )
-	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s\"", photo.V.OriginalFilename ) )
-	w.Header().Set( "Content-Type", "image/jpeg" )
-
-	_ = try1( io.Copy( w, f ) )
-}
-
 func getThumbnail( w http.ResponseWriter, r *http.Request, user User ) {
-	image_id, err := strconv.ParseInt( r.PathValue( "image" ), 10, 64 )
+	_, sha256, err := pathValueAsset( r )
 	if err != nil {
 		httpError( w, http.StatusBadRequest )
 		return
 	}
 
-	thumbnail := queryOptional( queries.GetThumbnail( r.Context(), image_id ) )
-	if !thumbnail.Valid {
+	asset := queryOptional( queries.GetAssetThumbnail( r.Context(), sha256 ) )
+	if !asset.Valid {
 		httpError( w, http.StatusNotFound )
 		return
 	}
 
-	// TODO: this is not immutable if we select by ID
 	cacheControlImmutable( w )
-	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"thumb_%s.jpg\"", r.PathValue( "image" ) ) )
+	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s_thumb.jpg\"", asset.V.OriginalFilename ) )
 	w.Header().Set( "Content-Type", "image/jpeg" )
-	_ = try1( w.Write( thumbnail.V ) )
+	_ = try1( w.Write( asset.V.Thumbnail ) )
 }
 
 type User struct {
@@ -467,6 +449,7 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	for _, photo := range must1( queries.GetAlbumPhotos( r.Context(), album.V.ID ) ) {
 		photos = append( photos, Photo {
 			ID: photo.ID,
+			Asset: hex.EncodeToString( photo.Sha256 ),
 			Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
 		} )
 	}
@@ -493,6 +476,7 @@ func viewAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
 	for _, photo := range must1( queries.GetAlbumPhotos( r.Context(), album.V.ID ) ) {
 		photos = append( photos, Photo {
 			ID: photo.ID,
+			Asset: hex.EncodeToString( photo.Sha256 ),
 			Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
 		} )
 	}
@@ -615,7 +599,6 @@ func saveAsset( data []byte, filename string ) error {
 
 type AddedAsset struct {
 	Sha256 [32]byte
-	Image *image.RGBA
 	Date sql.NullInt64
 	Latitude sql.NullFloat64
 	Longitude sql.NullFloat64
@@ -721,11 +704,15 @@ func addAsset( ctx context.Context, data []byte, album_id sql.Null[ int64 ], fil
 	}
 	fmt.Printf( "\tsave assets %dms\n", time.Now().Sub( before ).Milliseconds() )
 
+	thumbnail, thumbhash := generateThumbnail( reoriented )
+
 	err = queries.CreateAsset( ctx, sqlc.CreateAssetParams {
 		Sha256: sha256[:],
 		CreatedAt: time.Now().Unix(),
 		OriginalFilename: filename,
 		Type: sel( is_heif, "heif", "jpeg" ),
+		Thumbnail: thumbnail,
+		Thumbhash: thumbhash,
 		DateTaken: date,
 		Latitude: latitude,
 		Longitude: longitude,
@@ -733,7 +720,7 @@ func addAsset( ctx context.Context, data []byte, album_id sql.Null[ int64 ], fil
 
 	fmt.Printf( "\tdone %dms\n", time.Now().Sub( before ).Milliseconds() )
 
-	return AddedAsset { sha256, reoriented, date, latitude, longitude }, err
+	return AddedAsset { sha256, date, latitude, longitude }, err
 }
 
 func addFile( ctx context.Context, path string, album_id sql.Null[ int64 ] ) error {
@@ -759,14 +746,10 @@ func addFile( ctx context.Context, path string, album_id sql.Null[ int64 ] ) err
 
 		qtx := queries.WithTx( tx )
 
-		thumbnail, thumbhash := generateThumbnail( asset.Image )
-
 		photo_id, err := qtx.CreatePhoto( ctx, sqlc.CreatePhotoParams {
 			Owner: sql.NullInt64 { 1, true }, // TODO
 			CreatedAt: time.Now().Unix(),
 			PrimaryAsset: asset.Sha256[:],
-			Thumbnail: thumbnail,
-			Thumbhash: thumbhash,
 			DateTaken: asset.Date,
 			Latitude: asset.Latitude,
 			Longitude: asset.Longitude,
@@ -1062,8 +1045,7 @@ func main() {
 		{ "GET",  "/Special:logout", requireAuth( logout ) },
 
 		{ "GET",  "/Special:asset/{asset}", requireAuth( getAsset ) },
-		{ "GET",  "/Special:photo/{photo}", requireAuth( getPhoto ) },
-		{ "GET",  "/Special:thumbnail/{image}", requireAuth( getThumbnail ) },
+		{ "GET",  "/Special:thumbnail/{asset}", requireAuth( getThumbnail ) },
 		// { "GET",  "/Special:geocode", geocode },
 
 		{ "POST", "/Special:share", requireAuth( shareAlbum ) },

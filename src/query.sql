@@ -26,8 +26,11 @@ SELECT IFNULL( ( SELECT 1 FROM users LIMIT 1 ), 0 );
 ------------
 
 -- name: CreateAsset :exec
-INSERT OR IGNORE INTO assets ( sha256, created_at, original_filename, type, description, date_taken, latitude, longitude )
-VALUES ( ?, ?, ?, ?, ?, ?, ?, ? );
+INSERT OR IGNORE INTO assets (
+	sha256, created_at, original_filename, type,
+	thumbnail, thumbhash,
+	description, date_taken, latitude, longitude )
+VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );
 
 -- name: AddAssetToPhoto :exec
 INSERT INTO photo_assets ( photo_id, asset_id ) VALUES ( ?, ? );
@@ -37,10 +40,13 @@ SELECT type, original_filename, IFNULL( (
 	SELECT 1 FROM photo_assets
 	INNER JOIN photos ON photos.id = photo_assets.photo_id
 	INNER JOIN album_photos ON album_photos.photo_id = photos.id
-	INNER JOIN albums ON album.id = album_photos.album_id
+	INNER JOIN albums ON albums.id = album_photos.album_id
 	WHERE photo_assets.asset_id = ? AND ( photos.owner = ? OR albums.owner = ? OR albums.shared )
 ), 0 ) AS has_permission
 FROM assets WHERE sha256 = ?;
+
+-- name: GetAssetThumbnail :one
+SELECT thumbnail, type, original_filename FROM assets WHERE sha256 = ?;
 
 
 ------------
@@ -48,12 +54,15 @@ FROM assets WHERE sha256 = ?;
 ------------
 
 -- name: CreatePhoto :one
-INSERT INTO photos ( owner, created_at, primary_asset, thumbnail, thumbhash, date_taken, latitude, longitude )
-VALUES( ?, ?, ?, ?, ?, ?, ?, ? )
+INSERT INTO photos ( owner, created_at, primary_asset, date_taken, latitude, longitude )
+VALUES( ?, ?, ?, ?, ?, ? )
 RETURNING id;
 
 -- name: GetUserPhotos :many
-SELECT id, thumbhash FROM photos WHERE owner = ? ORDER BY photos.date_taken DESC;
+SELECT photos.id, photo_primary_assets.sha256, photo_primary_assets.thumbhash
+FROM photos
+INNER JOIN photo_primary_assets ON photos.id = photo_primary_assets.photo_id
+WHERE owner = ? ORDER BY photos.date_taken DESC;
 
 -- name: GetAssetPhotos :many
 SELECT photos.id FROM photos, photo_assets
@@ -66,9 +75,6 @@ WHERE photos.id = ? AND assets.sha256 = IFNULL( photos.primary_asset,
 	INNER JOIN photo_assets ON photo_assets.asset_id = assets.sha256
 	WHERE photo_assets.photo_id = photos.id AND assets.type != "raw"
 	ORDER BY assets.created_at DESC LIMIT 1 ) );
-
--- name: GetThumbnail :one
-SELECT thumbnail FROM photos WHERE id = ?;
 
 
 ------------
@@ -115,8 +121,10 @@ SELECT owner, shared FROM albums WHERE id = ?;
 SELECT owner FROM albums WHERE id = ?;
 
 -- name: GetAlbumPhotos :many
-SELECT photos.id, photos.thumbhash
-FROM photos, album_photos
+SELECT photos.id, photo_primary_assets.sha256, photo_primary_assets.thumbhash
+FROM photos
+INNER JOIN album_photos ON album_photos.photo_id = photos.id
+INNER JOIN photo_primary_assets ON photos.id = photo_primary_assets.photo_id
 WHERE album_photos.album_id = ? AND album_photos.photo_id = photos.id
 ORDER BY photos.date_taken ASC;
 

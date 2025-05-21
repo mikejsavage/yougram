@@ -8,7 +8,7 @@ package main
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "fmt"
+import "encoding/hex"
 import "strings"
 import "mikegram/sqlc"
 
@@ -236,9 +236,9 @@ func sidebarAlbum(album sqlc.GetAlbumsForUserRow) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var12 string
-		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/Special:thumbnail/%d", album.KeyPhotoSha256))
+		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs("/Special:thumbnail/" + hex.EncodeToString(album.KeyPhotoSha256))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `base.templ`, Line: 46, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `base.templ`, Line: 46, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -303,7 +303,7 @@ func base(checksum string, title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<script src=\"/Special:alpinejs-3.14.9.js\" defer></script><script src=\"/Special:htmx-2.0.4.js\"></script><script src=\"/Special:thumbhash-1.0.0.js\"></script><style>\n\t:root {\n\t\t--red: #ff5733;\n\t\t--green: #40d39c;\n\t}\n\n\t* {\n\t\tbox-sizing: border-box;\n\t}\n\n\tbody {\n\t\tfont-family: sans-serif;\n\t\tline-height: 1.5;\n\t\tmargin: 0;\n\t}\n\n\tbody:has( .fullscreen ) {\n\t\toverflow: hidden;\n\t}\n\n\tnav {\n\t\tdisplay: flex;\n\t\tflex-direction: column;\n\t\tposition: fixed;\n\t\tleft: 0;\n\t\ttop: 0;\n\t\tbottom: 0;\n\t\twidth: 15rem;\n\t\tbackground: #eee;\n\t\tborder-right: 1px solid #ccc;\n\t\tpadding: 0.5rem;\n\t}\n\n\tnav a {\n\t\tcolor: black;\n\t\ttext-decoration: none;\n\t}\n\n\tnav a:hover {\n\t\ttext-decoration: underline;\n\t}\n\n\tnav div {\n\t\twhite-space: nowrap;\n\t\ttext-overflow: ellipsis;\n\t\toverflow: hidden;\n\t}\n\n\tnav .curr {\n\t\tfont-weight: bold;\n\t}\n\n\thr {\n\t\twidth: 50%;\n\t\tborder-color: transparent;\n\t}\n\n\taside {\n\t\tposition: sticky;\n\t\ttop: 0;\n\t\tpadding: 0.5rem;\n\t\tborder-bottom: 1px solid #ccc;\n\n\t\tdisplay: flex;\n\t\tflex-direction: row;\n\t\talign-items: center;\n\t\tgap: 1rem;\n\t}\n\n\th1 {\n\t\tmargin: 0;\n\t\tpadding: 0;\n\t}\n\n\tbutton {\n\t\tpadding: 0.25rem 0.5rem;\n\t}\n\n\t[x-cloak] {\n\t\tdisplay: none !important;\n\t}\n\n\t@keyframes spinning {\n\t\t0%   { left: 0; }\n\t\t25%  { left: 0.1rem; }\n\t\t75%  { left: -0.1rem; }\n\t\t100% { left: 0; }\n\t}\n\n\t.spinning {\n\t\tposition: relative;\n\t\tanimation spinning 0.15 infinite;\n\t}\n\t</style>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<script src=\"/Special:alpinejs-3.14.9.js\" defer></script><script src=\"/Special:htmx-2.0.4.js\"></script><script src=\"/Special:thumbhash-1.0.0.js\"></script><style>\n\t:root {\n\t\t--red: #ff5733;\n\t\t--green: #40d39c;\n\t}\n\n\t* {\n\t\tbox-sizing: border-box;\n\t}\n\n\tbody {\n\t\tfont-family: sans-serif;\n\t\tline-height: 1.5;\n\t\tmargin: 0;\n\t}\n\n\tbody:has( .fullscreen ) {\n\t\toverflow: hidden;\n\t}\n\n\tnav {\n\t\tdisplay: flex;\n\t\tflex-direction: column;\n\t\tposition: fixed;\n\t\tleft: 0;\n\t\ttop: 0;\n\t\tbottom: 0;\n\t\twidth: 15rem;\n\t\tbackground: #eee;\n\t\tborder-right: 1px solid #ccc;\n\t\tpadding: 0.5rem;\n\t}\n\n\tnav a {\n\t\tcolor: black;\n\t\tdisplay: flex;\n\t\tgap: 0.5rem;\n\t\ttext-decoration: none;\n\t}\n\n\tnav a:hover {\n\t\ttext-decoration: underline;\n\t}\n\n\tnav a img {\n\t\taspect-ratio: 1;\n\t\tobject-fit: cover;\n\t\tobject-position: 50% 50%;\n\t}\n\n\tnav a:has( img ) {\n\t\tmargin-block: 0.25rem;\n\t}\n\n\tnav div {\n\t\twhite-space: nowrap;\n\t\ttext-overflow: ellipsis;\n\t\toverflow: hidden;\n\t}\n\n\tnav .curr {\n\t\tfont-weight: bold;\n\t}\n\n\thr {\n\t\twidth: 50%;\n\t\tborder-color: transparent;\n\t}\n\n\taside {\n\t\tposition: sticky;\n\t\ttop: 0;\n\t\tpadding: 0.5rem;\n\t\tborder-bottom: 1px solid #ccc;\n\n\t\tdisplay: flex;\n\t\tflex-direction: row;\n\t\talign-items: center;\n\t\tgap: 1rem;\n\t}\n\n\th1 {\n\t\tmargin: 0;\n\t\tpadding: 0;\n\t}\n\n\tbutton {\n\t\tpadding: 0.25rem 0.5rem;\n\t}\n\n\t[x-cloak] {\n\t\tdisplay: none !important;\n\t}\n\n\t@keyframes spinning {\n\t\t0%   { left: 0; }\n\t\t25%  { left: 0.1rem; }\n\t\t75%  { left: -0.1rem; }\n\t\t100% { left: 0; }\n\t}\n\n\t.spinning {\n\t\tposition: relative;\n\t\tanimation spinning 0.15 infinite;\n\t}\n\t</style>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -343,7 +343,7 @@ func baseWithSidebar(user User, checksum string, current_url string, title strin
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(user.Username)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `base.templ`, Line: 167, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `base.templ`, Line: 179, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {

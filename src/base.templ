@@ -1,6 +1,6 @@
 package main
 
-import "fmt"
+import "encoding/hex"
 import "strings"
 import "mikegram/sqlc"
 
@@ -43,7 +43,7 @@ templ navlink( current_url string, link templ.SafeURL, text string, match_prefix
 }
 
 templ sidebarAlbum( album sqlc.GetAlbumsForUserRow ) {
-	<img src={ fmt.Sprintf( "/Special:thumbnail/%d", album.KeyPhotoSha256 ) } style="height: 1lh" />
+	<img src={ "/Special:thumbnail/" + hex.EncodeToString( album.KeyPhotoSha256 ) } style="height: 1lh" />
 	{ album.Name }
 }
 
@@ -93,11 +93,23 @@ templ base( checksum string, title string ) {
 
 	nav a {
 		color: black;
+		display: flex;
+		gap: 0.5rem;
 		text-decoration: none;
 	}
 
 	nav a:hover {
 		text-decoration: underline;
+	}
+
+	nav a img {
+		aspect-ratio: 1;
+		object-fit: cover;
+		object-position: 50% 50%;
+	}
+
+	nav a:has( img ) {
+		margin-block: 0.25rem;
 	}
 
 	nav div {

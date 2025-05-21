@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS assets (
 	created_at INTEGER NOT NULL,
 	original_filename TEXT NOT NULL,
 	type TEXT NOT NULL CHECK( type = "jpeg" OR type = "heif" OR type = "raw" ),
+	thumbnail BLOB NOT NULL,
+	thumbhash BLOB NOT NULL,
 	description TEXT,
 	date_taken INTEGER,
 	latitude REAL CHECK( latitude >= -90 AND latitude <= 90 ),
@@ -24,8 +26,6 @@ CREATE TABLE IF NOT EXISTS photos (
 	delete_at INTEGER,
 
 	primary_asset BLOB NOT NULL REFERENCES assets( sha256 ),
-	thumbnail BLOB NOT NULL,
-	thumbhash BLOB NOT NULL,
 
 	date_taken INTEGER,
 	latitude REAL CHECK( latitude >= -90 AND latitude <= 90 ),
@@ -41,10 +41,10 @@ CREATE TABLE IF NOT EXISTS photo_assets (
 ) STRICT;
 
 CREATE VIEW IF NOT EXISTS photo_primary_assets
-AS SELECT photos.id, assets.sha256 FROM photos
-INNER JOIN assets ON assets.id = IFNULL( photos.primary_asset, (
+AS SELECT photos.id AS photo_id, assets.* FROM photos
+INNER JOIN assets ON assets.sha256 = IFNULL( photos.primary_asset, (
 		SELECT id FROM assets AS lol
-		INNER JOIN photo_assets ON photo_assets.asset_id = lol.id
+		INNER JOIN photo_assets ON photo_assets.asset_id = lol.sha256
 		WHERE photo_assets.photo_id = photos.id AND lol.type != "raw"
 		ORDER BY lol.created_at DESC LIMIT 1
 ) );

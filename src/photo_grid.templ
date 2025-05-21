@@ -132,17 +132,17 @@ templ photogrid( photos []Photo ) {
 			>
 				<div class="stack">
 					<img x-init="MakeThumbhash( $el, photos[ fullscreen ].thumbhash )">
-					<img :src="'/Special:thumbnail/' + photos[ fullscreen ].id" onload="this.previousElementSibling.remove()" @error="$el.remove()">
-					<img :src="'/Special:image/' + photos[ fullscreen ].id" onload="this.previousElementSibling.remove()" @error="$el.remove()">
+					<img :src="'/Special:thumbnail/' + photos[ fullscreen ].asset" onload="this.previousElementSibling.remove()" @error="$el.remove()">
+					<img :src="'/Special:asset/' + photos[ fullscreen ].asset" onload="this.previousElementSibling.remove()" @error="$el.remove()">
 				</div>
 			</div>
 		</template>
 
 		<div class="grid" :style="{ top: top }">
 			<template x-for="(photo, i) in photos">
-				<a class="thumbnail stack" :href="'/Special:image/' + photo.id" @click.prevent="fullscreen = i">
+				<a class="thumbnail stack" :href="'/Special:asset/' + photo.asset" @click.prevent="fullscreen = i">
 					<img x-init="MakeThumbhash( $el, photo.thumbhash )">
-					<img :src="'/Special:thumbnail/' + photo.id" loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.remove()">
+					<img :src="'/Special:thumbnail/' + photo.asset" loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.remove()">
 				</a>
 			</template>
 		</div>
