@@ -323,10 +323,35 @@ func pathValueAsset( r *http.Request ) ( string, []byte, error ) {
 	return sha256_str, sha256, nil
 }
 
+func serveAsset( w http.ResponseWriter, r *http.Request, sha256 string, asset_type string, original_filename string ) {
+	ext := ".jpg"
+	if asset_type == "heif" {
+		accepts := strings.Split( r.Header.Get( "Accept" ), "," )
+		ext = sel( slices.Contains( accepts, "image/heic" ), ".heic", ".heic.jpg" )
+	}
+
+	filename := "assets/" + sha256 + ext
+	f := try1( os.Open( filename ) )
+	defer f.Close()
+
+	cacheControlImmutable( w )
+	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s%s\"", original_filename, sel( ext == ".heic.jpg", ".jpg", "" ) ) )
+	w.Header().Set( "Content-Type", sel( ext == ".heic", "image/heic", "image/jpeg" ) )
+
+	_ = try1( io.Copy( w, f ) )
+}
+
+func serveThumbnail( w http.ResponseWriter, thumbnail []byte, original_filename string ) {
+	cacheControlImmutable( w )
+	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s_thumb.jpg\"", original_filename ) )
+	w.Header().Set( "Content-Type", "image/jpeg" )
+	_ = try1( w.Write( thumbnail ) )
+}
+
 func getAsset( w http.ResponseWriter, r *http.Request, user User ) {
 	sha256_str, sha256, err := pathValueAsset( r )
 	if err != nil {
-		httpError( w, http.StatusBadRequest )
+		httpError( w, http.StatusNotFound )
 		return
 	}
 
@@ -347,27 +372,13 @@ func getAsset( w http.ResponseWriter, r *http.Request, user User ) {
 		return
 	}
 
-	ext := ".jpg"
-	if metadata.V.Type == "heif" {
-		accepts := strings.Split( r.Header.Get( "Accept" ), "," )
-		ext = sel( slices.Contains( accepts, "image/heic" ), ".heic", ".heic.jpg" )
-	}
-
-	filename := "assets/" + sha256_str + ext
-	f := try1( os.Open( filename ) )
-	defer f.Close()
-
-	cacheControlImmutable( w )
-	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s%s\"", metadata.V.OriginalFilename, sel( ext == ".heic.jpg", ".jpg", "" ) ) )
-	w.Header().Set( "Content-Type", sel( ext == ".heic", "image/heic", "image/jpeg" ) )
-
-	_ = try1( io.Copy( w, f ) )
+	serveAsset( w, r, sha256_str, metadata.V.Type, metadata.V.OriginalFilename )
 }
 
 func getThumbnail( w http.ResponseWriter, r *http.Request, user User ) {
 	_, sha256, err := pathValueAsset( r )
 	if err != nil {
-		httpError( w, http.StatusBadRequest )
+		httpError( w, http.StatusNotFound )
 		return
 	}
 
@@ -377,10 +388,7 @@ func getThumbnail( w http.ResponseWriter, r *http.Request, user User ) {
 		return
 	}
 
-	cacheControlImmutable( w )
-	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s_thumb.jpg\"", asset.V.OriginalFilename ) )
-	w.Header().Set( "Content-Type", "image/jpeg" )
-	_ = try1( w.Write( asset.V.Thumbnail ) )
+	serveThumbnail( w, asset.V.Thumbnail, asset.V.OriginalFilename )
 }
 
 type User struct {
@@ -429,7 +437,7 @@ func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 		} )
 	}
 
-	body := photogrid( photos )
+	body := photogrid( photos, "/Special:asset/", "/Special:thumbnail" )
 	try( baseWithSidebar( user, checksum, r.URL.Path, "Library", body ).Render( r.Context(), w ) )
 }
 
@@ -466,7 +474,55 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 }
 
 func getAssetAsGuest( w http.ResponseWriter, r *http.Request ) {
-	fmt.Printf( "%s\n", r.Header.Get( "Accept" ) )
+	sha256_str, sha256, err := pathValueAsset( r )
+	if err != nil {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+
+	secret := r.PathValue( "secret" )
+	metadata := queryOptional( queries.GetAssetGuestMetadata( r.Context(), sqlc.GetAssetGuestMetadataParams {
+		UrlSlug: r.PathValue( "album" ),
+		ReadonlySecret: secret,
+		ReadwriteSecret: secret,
+		Sha256: sha256[:],
+	} ) )
+	if !metadata.Valid {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+	if metadata.V.HasPermission == 0 {
+		httpError( w, http.StatusForbidden )
+		return
+	}
+
+	serveAsset( w, r, sha256_str, metadata.V.Type, metadata.V.OriginalFilename )
+}
+
+func getThumbnailAsGuest( w http.ResponseWriter, r *http.Request ) {
+	_, sha256, err := pathValueAsset( r )
+	if err != nil {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+
+	secret := r.PathValue( "secret" )
+	asset := queryOptional( queries.GetAssetGuestThumbnail( r.Context(), sqlc.GetAssetGuestThumbnailParams {
+		UrlSlug: r.PathValue( "album" ),
+		ReadonlySecret: secret,
+		ReadwriteSecret: secret,
+		Sha256: sha256[:],
+	} ) )
+	if !asset.Valid {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+	if asset.V.HasPermission == 0 {
+		httpError( w, http.StatusForbidden )
+		return
+	}
+
+	serveThumbnail( w, asset.V.Thumbnail, asset.V.OriginalFilename )
 }
 
 func viewAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
@@ -1072,9 +1128,9 @@ func main() {
 		{ "GET",  "/Special:htmx-2\\.0\\.4\\.js", serveString( htmxjs ) },
 		{ "GET",  "/Special:thumbhash-1\\.0\\.0\\.js", serveString( thumbhashjs ) },
 
-		{ "GET",  "/Special:asset/{asset}", getAssetAsGuest },
-		// { "GET",  "/Special:thumbnail/{image}", getThumbnailAsGuest },
 		{ "GET",  "/{album}/{secret}", viewAlbumAsGuest },
+		{ "GET",  "/{album}/{secret}/asset/{asset}", getAssetAsGuest },
+		{ "GET",  "/{album}/{secret}/thumbnail/{asset}", getThumbnailAsGuest },
 		// { "POST", "/{album}/{secret}", uploadPhotosAsGuest ) },
 	} )
 

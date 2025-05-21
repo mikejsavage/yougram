@@ -1,8 +1,9 @@
 package main
 
+import "fmt"
 import "mikegram/sqlc"
 
-templ photogrid( photos []Photo ) {
+templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url string ) {
 	<script>
 	function MakeThumbhash( img, thumbhash ) {
 		let raw_thumbhash = atob( thumbhash );
@@ -132,8 +133,8 @@ templ photogrid( photos []Photo ) {
 			>
 				<div class="stack">
 					<img x-init="MakeThumbhash( $el, photos[ fullscreen ].thumbhash )">
-					<img :src="'/Special:thumbnail/' + photos[ fullscreen ].asset" onload="this.previousElementSibling.remove()" @error="$el.remove()">
-					<img :src="'/Special:asset/' + photos[ fullscreen ].asset" onload="this.previousElementSibling.remove()" @error="$el.remove()">
+					<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", thumbnail_base_url ) } onload="this.previousElementSibling.remove()" @error="$el.remove()">
+					<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", asset_base_url ) } onload="this.previousElementSibling.remove()" @error="$el.remove()">
 				</div>
 			</div>
 		</template>
@@ -142,7 +143,7 @@ templ photogrid( photos []Photo ) {
 			<template x-for="(photo, i) in photos">
 				<a class="thumbnail stack" :href="'/Special:asset/' + photo.asset" @click.prevent="fullscreen = i">
 					<img x-init="MakeThumbhash( $el, photo.thumbhash )">
-					<img :src="'/Special:thumbnail/' + photo.asset" loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.remove()">
+					<img :src={ fmt.Sprintf( "'%s' + photo.asset", thumbnail_base_url ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.remove()">
 				</a>
 			</template>
 		</div>
@@ -413,7 +414,14 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 		</b>
 	}
 
-	@photogrid( photos )
+	{{ asset_base_url := "/Special:asset/" }}
+	{{ thumbnail_base_url := "/Special:thumbnail/" }}
+	if ownership == AlbumOwnership_Guest {
+		{{ asset_base_url = fmt.Sprintf( "/%s/%s/asset/", album.UrlSlug, sel( can_upload, album.ReadwriteSecret, album.ReadonlySecret ) ) }}
+		{{ thumbnail_base_url = fmt.Sprintf( "/%s/%s/thumbnail/", album.UrlSlug, sel( can_upload, album.ReadwriteSecret, album.ReadonlySecret ) ) }}
+	}
+
+	@photogrid( photos, asset_base_url, thumbnail_base_url )
 }
 
 templ ownedAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {

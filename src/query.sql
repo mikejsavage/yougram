@@ -46,7 +46,27 @@ SELECT type, original_filename, IFNULL( (
 FROM asset WHERE sha256 = ?;
 
 -- name: GetAssetThumbnail :one
-SELECT thumbnail, type, original_filename FROM asset WHERE sha256 = ?;
+SELECT thumbnail, original_filename FROM asset WHERE sha256 = ?;
+
+-- name: GetAssetGuestMetadata :one
+SELECT type, original_filename, IFNULL( (
+	SELECT 1 FROM photo_asset
+	INNER JOIN photo ON photo.id = photo_asset.photo_id
+	INNER JOIN album_photo ON album_photo.photo_id = photo.id
+	INNER JOIN album ON album.id = album_photo.album_id
+	WHERE album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? )
+), 0 ) AS has_permission
+FROM asset WHERE sha256 = ?;
+
+-- name: GetAssetGuestThumbnail :one
+SELECT thumbnail, original_filename, IFNULL( (
+	SELECT 1 FROM photo_asset
+	INNER JOIN photo ON photo.id = photo_asset.photo_id
+	INNER JOIN album_photo ON album_photo.photo_id = photo.id
+	INNER JOIN album ON album.id = album_photo.album_id
+	WHERE album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? )
+), 0 ) AS has_permission
+FROM asset WHERE sha256 = ?;
 
 
 ------------
@@ -109,7 +129,7 @@ WHERE ( album.shared OR album.owner = ? )
 ORDER BY album.name;
 
 -- name: GetAlbumByURL :one
-SELECT album.id, owner, user.username AS owner_username, album.name, shared, readonly_secret, readwrite_secret
+SELECT album.id, owner, url_slug, user.username AS owner_username, album.name, shared, readonly_secret, readwrite_secret
 FROM album
 INNER JOIN user ON album.owner = user.id
 WHERE url_slug = ?;

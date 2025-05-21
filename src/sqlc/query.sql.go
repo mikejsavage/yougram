@@ -250,7 +250,7 @@ func (q *Queries) GetAlbumAutoassignRules(ctx context.Context) ([]GetAlbumAutoas
 }
 
 const getAlbumByURL = `-- name: GetAlbumByURL :one
-SELECT album.id, owner, user.username AS owner_username, album.name, shared, readonly_secret, readwrite_secret
+SELECT album.id, owner, url_slug, user.username AS owner_username, album.name, shared, readonly_secret, readwrite_secret
 FROM album
 INNER JOIN user ON album.owner = user.id
 WHERE url_slug = ?
@@ -259,6 +259,7 @@ WHERE url_slug = ?
 type GetAlbumByURLRow struct {
 	ID              int64
 	Owner           int64
+	UrlSlug         string
 	OwnerUsername   string
 	Name            string
 	Shared          int64
@@ -272,6 +273,7 @@ func (q *Queries) GetAlbumByURL(ctx context.Context, urlSlug string) (GetAlbumBy
 	err := row.Scan(
 		&i.ID,
 		&i.Owner,
+		&i.UrlSlug,
 		&i.OwnerUsername,
 		&i.Name,
 		&i.Shared,
@@ -393,6 +395,78 @@ func (q *Queries) GetAlbumsForUser(ctx context.Context, owner int64) ([]GetAlbum
 	return items, nil
 }
 
+const getAssetGuestMetadata = `-- name: GetAssetGuestMetadata :one
+SELECT type, original_filename, IFNULL( (
+	SELECT 1 FROM photo_asset
+	INNER JOIN photo ON photo.id = photo_asset.photo_id
+	INNER JOIN album_photo ON album_photo.photo_id = photo.id
+	INNER JOIN album ON album.id = album_photo.album_id
+	WHERE album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? )
+), 0 ) AS has_permission
+FROM asset WHERE sha256 = ?
+`
+
+type GetAssetGuestMetadataParams struct {
+	UrlSlug         string
+	ReadonlySecret  string
+	ReadwriteSecret string
+	Sha256          []byte
+}
+
+type GetAssetGuestMetadataRow struct {
+	Type             string
+	OriginalFilename string
+	HasPermission    interface{}
+}
+
+func (q *Queries) GetAssetGuestMetadata(ctx context.Context, arg GetAssetGuestMetadataParams) (GetAssetGuestMetadataRow, error) {
+	row := q.db.QueryRowContext(ctx, getAssetGuestMetadata,
+		arg.UrlSlug,
+		arg.ReadonlySecret,
+		arg.ReadwriteSecret,
+		arg.Sha256,
+	)
+	var i GetAssetGuestMetadataRow
+	err := row.Scan(&i.Type, &i.OriginalFilename, &i.HasPermission)
+	return i, err
+}
+
+const getAssetGuestThumbnail = `-- name: GetAssetGuestThumbnail :one
+SELECT thumbnail, original_filename, IFNULL( (
+	SELECT 1 FROM photo_asset
+	INNER JOIN photo ON photo.id = photo_asset.photo_id
+	INNER JOIN album_photo ON album_photo.photo_id = photo.id
+	INNER JOIN album ON album.id = album_photo.album_id
+	WHERE album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? )
+), 0 ) AS has_permission
+FROM asset WHERE sha256 = ?
+`
+
+type GetAssetGuestThumbnailParams struct {
+	UrlSlug         string
+	ReadonlySecret  string
+	ReadwriteSecret string
+	Sha256          []byte
+}
+
+type GetAssetGuestThumbnailRow struct {
+	Thumbnail        []byte
+	OriginalFilename string
+	HasPermission    interface{}
+}
+
+func (q *Queries) GetAssetGuestThumbnail(ctx context.Context, arg GetAssetGuestThumbnailParams) (GetAssetGuestThumbnailRow, error) {
+	row := q.db.QueryRowContext(ctx, getAssetGuestThumbnail,
+		arg.UrlSlug,
+		arg.ReadonlySecret,
+		arg.ReadwriteSecret,
+		arg.Sha256,
+	)
+	var i GetAssetGuestThumbnailRow
+	err := row.Scan(&i.Thumbnail, &i.OriginalFilename, &i.HasPermission)
+	return i, err
+}
+
 const getAssetMetadata = `-- name: GetAssetMetadata :one
 SELECT type, original_filename, IFNULL( (
 	SELECT 1 FROM photo_asset
@@ -463,19 +537,18 @@ func (q *Queries) GetAssetPhotos(ctx context.Context, arg GetAssetPhotosParams) 
 }
 
 const getAssetThumbnail = `-- name: GetAssetThumbnail :one
-SELECT thumbnail, type, original_filename FROM asset WHERE sha256 = ?
+SELECT thumbnail, original_filename FROM asset WHERE sha256 = ?
 `
 
 type GetAssetThumbnailRow struct {
 	Thumbnail        []byte
-	Type             string
 	OriginalFilename string
 }
 
 func (q *Queries) GetAssetThumbnail(ctx context.Context, sha256 []byte) (GetAssetThumbnailRow, error) {
 	row := q.db.QueryRowContext(ctx, getAssetThumbnail, sha256)
 	var i GetAssetThumbnailRow
-	err := row.Scan(&i.Thumbnail, &i.Type, &i.OriginalFilename)
+	err := row.Scan(&i.Thumbnail, &i.OriginalFilename)
 	return i, err
 }
 
