@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -346,14 +347,19 @@ func getAsset( w http.ResponseWriter, r *http.Request, user User ) {
 		return
 	}
 
-	// TODO: serve heif if possible
-	filename := "assets/" + sha256_str + sel( metadata.V.Type == "heif", ".heif.jpg", ".jpg" )
+	ext := ".jpg"
+	if metadata.V.Type == "heif" {
+		accepts := strings.Split( r.Header.Get( "Accept" ), "," )
+		ext = sel( slices.Contains( accepts, "image/heic" ), ".heic", ".heic.jpg" )
+	}
+
+	filename := "assets/" + sha256_str + ext
 	f := try1( os.Open( filename ) )
 	defer f.Close()
 
 	cacheControlImmutable( w )
-	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s\"", metadata.V.OriginalFilename ) )
-	w.Header().Set( "Content-Type", "image/jpeg" )
+	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s%s\"", metadata.V.OriginalFilename, sel( ext == ".heic.jpg", ".jpg", "" ) ) )
+	w.Header().Set( "Content-Type", sel( ext == ".heic", "image/heic", "image/jpeg" ) )
 
 	_ = try1( io.Copy( w, f ) )
 }
@@ -418,6 +424,7 @@ func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 	for _, photo := range must1( queries.GetUserPhotos( r.Context(), sql.NullInt64 { user.ID, true } ) ) {
 		photos = append( photos, Photo {
 			ID: photo.ID,
+			Asset: hex.EncodeToString( photo.Sha256 ),
 			Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
 		} )
 	}
@@ -456,6 +463,10 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 
 	album_templ := ownedAlbumTemplate( album.V, photos )
 	try( baseWithSidebar( user, checksum, r.URL.Path, album.V.Name, album_templ ).Render( r.Context(), w ) )
+}
+
+func getAssetAsGuest( w http.ResponseWriter, r *http.Request ) {
+	fmt.Printf( "%s\n", r.Header.Get( "Accept" ) )
 }
 
 func viewAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
@@ -697,7 +708,7 @@ func addAsset( ctx context.Context, data []byte, album_id sql.Null[ int64 ], fil
 	if is_heif {
 		jpeg := must1( stb.StbToJpg( reoriented, 95 ) )
 		fmt.Printf( "\theic -> jpeg %dms %d -> %d\n", time.Now().Sub( before ).Milliseconds(), len( data ), len( jpeg ) )
-		err = saveAsset( jpeg, hex_sha256 + ".heif.jpg" )
+		err = saveAsset( jpeg, hex_sha256 + ".heic.jpg" )
 		if err != nil {
 			return AddedAsset { }, err
 		}
@@ -816,6 +827,7 @@ func loginForm( w http.ResponseWriter, r *http.Request ) {
 	try( loginFormTemplate( checksum ).Render( r.Context(), w ) )
 }
 
+// TODO: for some reason these don't work in safari
 func setAuthCookies( w http.ResponseWriter, username string, auth string ) {
 	expiration := -1
 	if auth != "" {
@@ -1060,7 +1072,7 @@ func main() {
 		{ "GET",  "/Special:htmx-2\\.0\\.4\\.js", serveString( htmxjs ) },
 		{ "GET",  "/Special:thumbhash-1\\.0\\.0\\.js", serveString( thumbhashjs ) },
 
-		// { "GET",  "/Special:image/{image}", getImageAsGuest },
+		{ "GET",  "/Special:asset/{asset}", getAssetAsGuest },
 		// { "GET",  "/Special:thumbnail/{image}", getThumbnailAsGuest },
 		{ "GET",  "/{album}/{secret}", viewAlbumAsGuest },
 		// { "POST", "/{album}/{secret}", uploadPhotosAsGuest ) },
