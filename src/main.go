@@ -297,10 +297,6 @@ func exeChecksum() string {
 	return hex.EncodeToString( hasher.Sum( nil ) )
 }
 
-func cors( w http.ResponseWriter ) {
-	w.Header().Set( "Access-Control-Allow-Origin", "*" )
-}
-
 func httpError( w http.ResponseWriter, status int ) {
 	http.Error( w, http.StatusText( status ), status )
 }
