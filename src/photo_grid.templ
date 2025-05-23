@@ -121,6 +121,21 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 				grid-row: 1;
 				grid-column: 1;
 			}
+
+			.settings {
+				color: white;
+				opacity: 0.2;
+				position: fixed;
+				top: 2vh;
+				right: 2vh;
+				transition: opacity 250ms linear;
+				transition-delay: 1s;
+			}
+
+			.settings:hover {
+				opacity: 1;
+				transition: none;
+			}
 		}
 		</style>
 
@@ -136,6 +151,8 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 					<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", thumbnail_base_url ) } onload="this.previousElementSibling.remove()" @error="$el.remove()">
 					<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", asset_base_url ) } onload="this.previousElementSibling.remove()" @error="$el.remove()">
 				</div>
+
+				<div class="settings">[cog]</div>
 			</div>
 		</template>
 
@@ -302,21 +319,32 @@ templ shareButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 	</div>
 }
 
+templ selectButton() {
+	<button style="display: flex; align-items: center; gap: 0.25rem">
+		<input type="checkbox" style="pointer-events: none; margin: 0">
+		Select
+	</button>
+}
+
 templ downloadButton( album sqlc.GetAlbumByURLRow ) {
 	<div x-data="{
 		show_download_dialog: false,
 		include: null,
 		variants: null,
-		format: null,
+		heic_as_jpg: null,
 	}">
 		<button @click="
 			show_download_dialog = true;
 			include = 'all';
 			variants = 'key_only';
-			format = 'prefer_jpg';
+			heic_as_jpg = false;
 		">Download</button>
 
-		<form class="modal" x-cloak x-show="show_download_dialog" @click.away="show_download_dialog = false">
+		<form class="modal"
+			x-cloak x-show="show_download_dialog"
+			@click.away="show_download_dialog = false"
+			@keydown.window.escape="show_download_dialog = false"
+		>
 			<h2>Download { album.Name }</h2>
 
 			<div style="display: grid; grid-template-columns: auto auto; column-gap: 1rem">
@@ -351,15 +379,13 @@ templ downloadButton( album sqlc.GetAlbumByURLRow ) {
 				<b x-show="variants != 'everything'">Formats</b>
 				<div x-show="variants != 'everything'">
 					<label>
-						<input type="radio" name="format" x-model="format" value="prefer_jpg">
-						Prefer JPG (normal)
-					</label>
-					<label>
-						<input type="radio" name="format" x-model="format" value="prefer_heic">
-						Prefer HEIC (Apple)
+						<input type="checkbox" name="heic_as_jpeg" x-model="heic_as_jpg">
+						Download HEIC as JPEG
 					</label>
 				</div>
 			</div>
+
+			<div>Estimated size: 123MB</div>
 
 			<button>Go</button>
 		</form>
@@ -391,6 +417,22 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 	</style>
 
 	<aside>
+		<style>
+		@scope {
+			:scope {
+				position: sticky;
+				top: 0;
+				padding: 0.5rem;
+				border-bottom: 1px solid #ccc;
+
+				display: flex;
+				flex-direction: row;
+				align-items: center;
+				gap: 1rem;
+			}
+		}
+		</style>
+
 		<h1>{ album.Name }</h1>
 		if ownership != AlbumOwnership_Owned {
 			<span>{ album.OwnerUsername }'s album</span>
@@ -405,6 +447,7 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 		}
 
 		@shareButton( album, ownership )
+		@selectButton()
 		@downloadButton( album )
 		if can_upload {
 			@uploadButton()
