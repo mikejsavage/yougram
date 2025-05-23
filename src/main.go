@@ -927,7 +927,7 @@ func authenticate( w http.ResponseWriter, r *http.Request ) {
 	w.Header().Set( "HX-Refresh", "true" )
 }
 
-func logout( w http.ResponseWriter, r *http.Request, user User ) {
+func logout( w http.ResponseWriter, r *http.Request ) {
 	setAuthCookies( w, "", "" )
 	http.Redirect( w, r, "/", http.StatusSeeOther )
 }
@@ -1110,7 +1110,7 @@ func main() {
 		{ "GET",  "/Special:thumbhash-1\\.0\\.0\\.js", serveString( thumbhashjs ) },
 
 		{ "POST", "/Special:authenticate", authenticate },
-		{ "GET",  "/Special:logout", requireAuth( logout ) },
+		{ "GET",  "/Special:logout", logout },
 
 		{ "GET",  "/Special:asset/{asset}", requireAuth( getAsset ) },
 		{ "GET",  "/Special:thumbnail/{asset}", requireAuth( getThumbnail ) },

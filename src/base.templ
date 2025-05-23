@@ -43,7 +43,9 @@ templ navlink( current_url string, link templ.SafeURL, text string, match_prefix
 }
 
 templ sidebarAlbum( album sqlc.GetAlbumsForUserRow ) {
-	<img src={ "/Special:thumbnail/" + hex.EncodeToString( album.KeyPhotoSha256 ) } style="height: 1lh" />
+	if len( album.KeyPhotoSha256 ) > 0 {
+		<img src={ "/Special:thumbnail/" + hex.EncodeToString( album.KeyPhotoSha256 ) } style="height: 1lh" />
+	}
 	{ album.Name }
 }
 
