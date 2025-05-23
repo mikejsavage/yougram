@@ -37,9 +37,9 @@ import (
 	"golang.org/x/text/unicode/norm"
 	"github.com/adrium/goheif"
 	"github.com/galdor/go-thumbhash"
-	"github.com/rwcarlsen/goexif/exif"
-	"github.com/rwcarlsen/goexif/tiff"
-	// "github.com/evanoberholster/imagemeta" TODO
+	"github.com/evanoberholster/imagemeta"
+	"github.com/evanoberholster/imagemeta/exif2"
+	"github.com/evanoberholster/imagemeta/meta"
 	"github.com/tdewolff/minify/v2"
 	"github.com/fsnotify/fsnotify"
 	minify_js "github.com/tdewolff/minify/v2/js"
@@ -217,6 +217,7 @@ func initDB() {
 	} ) )
 
 	must( addFileToAlbum( ctx, "DSCN0025.jpg", 2 ) )
+	must( addFileToAlbum( ctx, "DSCF2994.jpeg", 1 ) )
 	must( addFile( ctx, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } ) )
 	must( addFile( ctx, "IMG_2330.HEIC", sql.Null[ int64 ] { } ) )
 }
@@ -572,43 +573,16 @@ func distance( a LatLong, b LatLong ) float64 {
 	return earth_radius * math.Acos( math.Cos( dlat ) * math.Cos( dlong ) )
 }
 
-type ExifOrientation int
-
-const (
-	ExifOrientation_Identity ExifOrientation = 1
-	ExifOrientation_FlipHorizontal ExifOrientation = 2
-	ExifOrientation_Rotate180 ExifOrientation = 3
-	ExifOrientation_FlipVertical ExifOrientation = 4
-	ExifOrientation_Transpose ExifOrientation = 5
-	ExifOrientation_Rotate270 ExifOrientation = 6
-	ExifOrientation_OppositeTranspose ExifOrientation = 7
-	ExifOrientation_Rotate90 ExifOrientation = 8
-)
-
-func exifOrientation( data *exif.Exif ) ( ExifOrientation, error ) {
-	tag, err := data.Get( exif.Orientation )
-	if err != nil {
-		return ExifOrientation_Identity, err
+func exifOrientation( exif exif2.Exif ) ( meta.Orientation, error ) {
+	if exif.Orientation < meta.OrientationHorizontal || exif.Orientation > meta.OrientationRotate270 {
+		return 0, errors.New( "EXIF orientation out of range" )
 	}
 
-	if tag.Format() != tiff.IntVal || tag.Count != 1 {
-		return ExifOrientation_Identity, errors.New( "EXIF Orientation not an int" )
-	}
-
-	orientation, err := tag.Int( 0 )
-	if err != nil {
-		return ExifOrientation_Identity, err
-	}
-
-	if ExifOrientation( orientation ) < ExifOrientation_Identity || ExifOrientation( orientation ) > ExifOrientation_Rotate90 {
-		return ExifOrientation_Identity, errors.New( "EXIF orientation out of range" )
-	}
-
-	return ExifOrientation( orientation ), nil
+	return exif.Orientation, nil
 }
 
-func reorient( img *image.RGBA, orientation ExifOrientation ) *image.RGBA {
-	if orientation == ExifOrientation_Identity {
+func reorient( img *image.RGBA, orientation meta.Orientation ) *image.RGBA {
+	if orientation == meta.OrientationHorizontal {
 		return img
 	}
 
@@ -618,14 +592,14 @@ func reorient( img *image.RGBA, orientation ExifOrientation ) *image.RGBA {
 		Dy image.Point
 	}
 
-	var walkers = map[ ExifOrientation ] Walker {
-		ExifOrientation_FlipHorizontal:    { image.Point { -1, +1 }, image.Point { -1, +0 }, image.Point { +0, +1 } },
-		ExifOrientation_Rotate180:         { image.Point { -1, -1 }, image.Point { -1, +0 }, image.Point { +0, -1 } },
-		ExifOrientation_FlipVertical:      { image.Point { +1, -1 }, image.Point { +1, +0 }, image.Point { +0, -1 } },
-		ExifOrientation_Transpose:         { image.Point { +1, +1 }, image.Point { +0, +1 }, image.Point { +1, +0 } },
-		ExifOrientation_Rotate270:         { image.Point { -1, +1 }, image.Point { +0, +1 }, image.Point { -1, +0 } },
-		ExifOrientation_OppositeTranspose: { image.Point { -1, -1 }, image.Point { +0, -1 }, image.Point { -1, +0 } },
-		ExifOrientation_Rotate90:          { image.Point { +1, -1 }, image.Point { +0, -1 }, image.Point { +1, +0 } },
+	var walkers = map[ meta.Orientation ] Walker {
+		meta.OrientationMirrorHorizontal:          { image.Point { -1, +1 }, image.Point { -1, +0 }, image.Point { +0, +1 } },
+		meta.OrientationRotate180:                 { image.Point { -1, -1 }, image.Point { -1, +0 }, image.Point { +0, -1 } },
+		meta.OrientationMirrorVertical:            { image.Point { +1, -1 }, image.Point { +1, +0 }, image.Point { +0, -1 } },
+		meta.OrientationMirrorHorizontalRotate270: { image.Point { +1, +1 }, image.Point { +0, +1 }, image.Point { +1, +0 } },
+		meta.OrientationRotate90:                  { image.Point { -1, +1 }, image.Point { +0, +1 }, image.Point { -1, +0 } },
+		meta.OrientationMirrorHorizontalRotate90:  { image.Point { -1, -1 }, image.Point { +0, -1 }, image.Point { -1, +0 } },
+		meta.OrientationRotate270:                 { image.Point { +1, -1 }, image.Point { +0, -1 }, image.Point { +1, +0 } },
 	}
 
 	walker := walkers[ orientation ]
@@ -698,31 +672,21 @@ func addAsset( ctx context.Context, data []byte, album_id sql.Null[ int64 ], fil
 	var date sql.NullInt64
 	var latitude sql.NullFloat64
 	var longitude sql.NullFloat64
-	orientation := ExifOrientation_Identity
+	orientation := meta.OrientationHorizontal
 
-	var exif_src []byte
-	if is_heif {
-		exif_src, _ = goheif.ExtractExif( bytes.NewReader( data ) )
-	} else {
-		exif_src = data
-	}
-
-	exif, err := exif.Decode( bytes.NewReader( exif_src ) )
+	exif, err := imagemeta.Decode( bytes.NewReader( data ) )
 	if err == nil {
-		maybe_orientation, err := exifOrientation( exif )
-		if err == nil {
-			orientation = maybe_orientation
+		if exif.Orientation >= meta.OrientationHorizontal && exif.Orientation <= meta.OrientationMirrorHorizontalRotate90 {
+			orientation = exif.Orientation
 		}
 
-		maybe_date, err := exif.DateTime()
-		if err == nil {
-			date = sql.NullInt64 { maybe_date.Unix(), true }
+		if !exif.CreateDate().IsZero() {
+			date = sql.NullInt64 { exif.CreateDate().Unix(), true }
 		}
 
-		maybe_latitude, maybe_longitude, err := exif.LatLong()
-		if err == nil {
-			latitude = sql.NullFloat64 { maybe_latitude, true }
-			longitude = sql.NullFloat64 { maybe_longitude, true }
+		if exif.GPS.Latitude() != 0 || exif.GPS.Longitude() != 0 || exif.GPS.Altitude() != 0 {
+			latitude = sql.NullFloat64 { exif.GPS.Latitude(), true }
+			longitude = sql.NullFloat64 { exif.GPS.Longitude(), true }
 		}
 	}
 	fmt.Printf( "\torientation %d\n", orientation )
