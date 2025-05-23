@@ -1,3 +1,6 @@
+-----------
+-- USERS --
+-----------
 CREATE TABLE IF NOT EXISTS user (
 	id INTEGER PRIMARY KEY,
 	username TEXT NOT NULL UNIQUE CHECK( username <> '' ),
@@ -6,6 +9,9 @@ CREATE TABLE IF NOT EXISTS user (
 	cookie TEXT NOT NULL CHECK( cookie <> '' )
 ) STRICT;
 
+------------
+-- ASSETS --
+------------
 CREATE TABLE IF NOT EXISTS asset (
 	sha256 BLOB PRIMARY KEY CHECK( length( sha256 ) = 32 ),
 	created_at INTEGER NOT NULL,
@@ -19,6 +25,9 @@ CREATE TABLE IF NOT EXISTS asset (
 	longitude REAL CHECK( longitude >= -180 AND longitude < 180 )
 ) STRICT;
 
+------------
+-- PHOTOS --
+------------
 CREATE TABLE IF NOT EXISTS photo (
 	id INTEGER PRIMARY KEY,
 	owner INTEGER REFERENCES user( id ),
@@ -49,6 +58,9 @@ INNER JOIN asset ON asset.sha256 = IFNULL( photo.primary_asset, (
 		ORDER BY lol.created_at DESC LIMIT 1
 ) );
 
+------------
+-- ALBUMS --
+------------
 CREATE TABLE IF NOT EXISTS album (
 	id INTEGER PRIMARY KEY,
 	owner INTEGER NOT NULL REFERENCES user( id ),
@@ -66,13 +78,18 @@ CREATE TABLE IF NOT EXISTS album (
 	autoassign_longitude REAL CHECK( IFNULL( autoassign_longitude, 0 ) >= -180 AND IFNULL( autoassign_longitude, 0 ) < 180 ),
 	autoassign_radius REAL CHECK( IFNULL( autoassign_radius, 0 ) >= 0 ),
 	CHECK( 1
-		AND ( autoassign_start_date IS NULL ) = ( autoassign_end_date IS NULL )
-		AND ( autoassign_end_date IS NULL ) = ( autoassign_latitude IS NULL )
-		AND ( autoassign_latitude IS NULL ) = ( autoassign_longitude IS NULL )
+		AND ( autoassign_start_date IS NULL ) = ( autoassign_end_date IS NULL ) -- require both or neither dates
+		AND ( ( autoassign_end_date IS NOT NULL ) OR ( autoassign_latitude IS NULL ) ) -- pos implies date
+		AND ( autoassign_latitude IS NULL ) = ( autoassign_longitude IS NULL ) -- require all or no pos fields
 		AND ( autoassign_longitude IS NULL ) = ( autoassign_radius IS NULL )
 	),
 	FOREIGN KEY( id, key_photo ) REFERENCES album_photo( album_id, photo_id )
 ) STRICT;
+
+CREATE TRIGGER IF NOT EXISTS ensure_album_secrets_are_different
+AFTER INSERT ON album FOR EACH ROW
+WHEN NEW.readonly_secret = NEW.readwrite_secret
+BEGIN SELECT RAISE( ABORT, "readonly_secret = readwrite_secret" ); END;
 
 CREATE TABLE IF NOT EXISTS album_photo (
 	album_id INTEGER NOT NULL REFERENCES album( id ),
