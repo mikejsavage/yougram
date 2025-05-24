@@ -396,14 +396,12 @@ type User struct {
 func shareAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	album_id, err := strconv.ParseInt( r.PostFormValue( "album_id" ), 10, 64 )
 	if err != nil {
-		fmt.Printf( "cya1 [%s]\n", r.PostFormValue( "album_id" ) )
 		httpError( w, http.StatusBadRequest )
 		return
 	}
 
 	shared, err := strconv.ParseUint( r.PostFormValue( "share" ), 10, 1 )
 	if err != nil {
-		fmt.Printf( "%v cya2 [%s]\n", err, r.PostFormValue( "share" ) )
 		httpError( w, http.StatusBadRequest )
 		return
 	}
