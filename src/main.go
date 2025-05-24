@@ -621,8 +621,8 @@ func reorient( img *image.RGBA, orientation meta.Orientation ) *image.RGBA {
 func generateThumbnail( image *image.RGBA ) ( []byte, []byte ) {
 	const thumbnail_size = 512.0
 
-	scale := thumbnail_size / float32( min( image.Rect.Dx(), image.Rect.Dy() ) )
-	thumbnail := stb.StbResize( image, int( float32( image.Rect.Dx() ) * scale ), int( float32( image.Rect.Dy() ) * scale ) )
+	scale := math.Min( 1, thumbnail_size / float64( min( image.Rect.Dx(), image.Rect.Dy() ) ) )
+	thumbnail := stb.StbResize( image, int( float64( image.Rect.Dx() ) * scale ), int( float64( image.Rect.Dy() ) * scale ) )
 	thumbnail_jpg := must1( stb.StbToJpg( thumbnail, 75 ) )
 
 	return thumbnail_jpg, thumbhash.EncodeImage( thumbnail )
