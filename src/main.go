@@ -136,7 +136,7 @@ func queryOptional[ T any ]( row T, err error ) sql.Null[ T ] {
 		if errors.Is( err, sql.ErrNoRows ) {
 			return sql.Null[ T ] { }
 		}
-		log.Fatal( err )
+		panic( err )
 	}
 	return just( row )
 }
@@ -458,7 +458,7 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	}
 
 	photos := []Photo { }
-	for _, photo := range must1( queries.GetAlbumPhotos( r.Context(), album.V.ID ) ) {
+	for _, photo := range try1( queries.GetAlbumPhotos( r.Context(), album.V.ID ) ) {
 		photos = append( photos, Photo {
 			ID: photo.ID,
 			Asset: hex.EncodeToString( photo.Sha256 ),
@@ -537,7 +537,7 @@ func viewAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
 	}
 
 	photos := []Photo { }
-	for _, photo := range must1( queries.GetAlbumPhotos( r.Context(), album.V.ID ) ) {
+	for _, photo := range try1( queries.GetAlbumPhotos( r.Context(), album.V.ID ) ) {
 		photos = append( photos, Photo {
 			ID: photo.ID,
 			Asset: hex.EncodeToString( photo.Sha256 ),
