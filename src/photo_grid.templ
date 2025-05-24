@@ -72,18 +72,11 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 		<style>
 		@scope {
 			.grid {
+				position: relative;
 				display: grid;
-				grid-template-columns: repeat( 3, 1fr );
-				gap: 0.5rem;
+				grid-template-columns: repeat( auto-fill, minmax( 6cm, 1fr ) );
+				gap: 0.2rem;
 				padding: 0.5rem;
-			}
-
-			@media screen and (min-width: 700px) {
-				.grid { grid-template-columns: repeat( 4, 1fr ); }
-			}
-
-			@media screen and (min-width: 1400px) {
-				.grid { grid-template-columns: repeat( 5, 1fr ); }
 			}
 
 			.thumbnail img {
@@ -98,6 +91,7 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 				position: fixed;
 				top: 0;
 				left: 0;
+				z-index: 1;
 				width: 100vw;
 				height: 100vh;
 				display: flex;
@@ -157,10 +151,10 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 		</template>
 
 		<div class="grid" :style="{ top: top }">
-			<template x-for="(photo, i) in photos">
-				<a class="thumbnail stack" :href="'/Special:asset/' + photo.asset" @click.prevent="fullscreen = i">
-					<img x-init="MakeThumbhash( $el, photo.thumbhash )">
-					<img :src={ fmt.Sprintf( "'%s' + photo.asset", thumbnail_base_url ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.remove()">
+			<template x-for="i in visible_range[ 1 ] - visible_range[ 0 ]">
+				<a class="thumbnail stack" :href="'/Special:asset/' + photos[ i - 1 ].asset" @click.prevent="fullscreen = i - 1">
+					<img x-init="MakeThumbhash( $el, photos[ i - 1 ].thumbhash )">
+					<img :src={ fmt.Sprintf( "'%s' + photos[ i - 1 ].asset", thumbnail_base_url ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.remove()">
 				</a>
 			</template>
 		</div>
@@ -423,6 +417,7 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 				position: sticky;
 				top: 0;
 				padding: 0.5rem;
+				background: white;
 				border-bottom: 1px solid #ccc;
 
 				display: flex;
