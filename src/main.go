@@ -432,7 +432,7 @@ func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 		} )
 	}
 
-	body := photogrid( photos, "/Special:asset/", "/Special:thumbnail" )
+	body := photogrid( photos, "/Special:asset/", "/Special:thumbnail/" )
 	try( baseWithSidebar( user, checksum, r.URL.Path, "Library", body ).Render( r.Context(), w ) )
 }
 
