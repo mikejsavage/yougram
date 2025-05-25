@@ -22,7 +22,7 @@ body {
 
 .grid {
 	display: grid;
-	grid-template-columns: repeat( 3, 1fr );
+	grid-template-columns: repeat( auto-fill, minmax( 6cm, 1fr ) );
 	gap: 0.5rem;
 	padding: 0.5rem;
 	position: relative;
@@ -40,14 +40,6 @@ body {
 
 .timeline div {
 	position: relative;
-}
-
-@media screen and (min-width: 700px) {
-	.grid { grid-template-columns: repeat( 4, 1fr ); }
-}
-
-@media screen and (min-width: 1400px) {
-	.grid { grid-template-columns: repeat( 5, 1fr ); }
 }
 
 img, div.dummy {

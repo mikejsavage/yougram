@@ -220,6 +220,33 @@ func initDB() {
 	must( addFileToAlbum( ctx, "DSCF2994.jpeg", 1 ) )
 	must( addFile( ctx, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } ) )
 	must( addFile( ctx, "IMG_2330.HEIC", sql.Null[ int64 ] { } ) )
+
+	seagull := must1( hex.DecodeString( "cc85f99cd694c63840ff359e13610390f85c4ea0b315fc2b033e5839e7591949" ) )
+	tx := must1( db.Begin() )
+	defer tx.Rollback()
+
+	qtx := queries.WithTx( tx )
+	for i := 0; i < 7500; i++ {
+		photo_id := must1( qtx.CreatePhoto( ctx, sqlc.CreatePhotoParams {
+			Owner: sql.NullInt64 { 1, true }, // TODO
+			CreatedAt: time.Now().Unix(),
+			PrimaryAsset: seagull,
+			DateTaken: sql.NullInt64 { },
+			Latitude: sql.NullFloat64 { },
+			Longitude: sql.NullFloat64 { },
+		} ) )
+
+		must( qtx.AddAssetToPhoto( ctx, sqlc.AddAssetToPhotoParams {
+			PhotoID: photo_id,
+			AssetID: seagull,
+		} ) )
+
+		must( qtx.AddPhotoToAlbum( ctx, sqlc.AddPhotoToAlbumParams {
+			AlbumID: 1,
+			PhotoID: photo_id,
+		} ) )
+	}
+	must( tx.Commit() )
 }
 
 func initFSWatcher() *fsnotify.Watcher {
@@ -322,7 +349,7 @@ func pathValueAsset( r *http.Request ) ( string, []byte, error ) {
 
 func serveAsset( w http.ResponseWriter, r *http.Request, sha256 string, asset_type string, original_filename string ) {
 	ext := ".jpg"
-	if asset_type == "heif" {
+	if asset_type == "heic" {
 		accepts := strings.Split( r.Header.Get( "Accept" ), "," )
 		ext = sel( slices.Contains( accepts, "image/heic" ), ".heic", ".heic.jpg" )
 	}
@@ -422,6 +449,30 @@ func shareAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	w.Header().Set( "HX-Trigger", sel( shared == 0, "album:stop_sharing", "album:start_sharing" ) )
 }
 
+func downloadAlbum( w http.ResponseWriter, r *http.Request, user User ) {
+	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+		query := r.URL.Query()
+		download_everything := query.Get( "variants" ) == "everything"
+		download_raws := query.Get( "variants" ) != "key_only"
+
+		rows := try1( queries.GetAlbumAssets( r.Context(), sqlc.GetAlbumAssetsParams {
+			ID: album.ID,
+			Column2: !download_everything,
+			Column3: !download_raws,
+		} ) )
+
+		files := make( []ZipFile, len( rows ) )
+		for i, row := range rows {
+			files[ i ] = ZipFile {
+				Sha256: row.Asset,
+				Type: row.Type,
+			}
+		}
+
+		serveZip( album.Name, files, true, w )
+	} )
+}
+
 func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 	photos := []Photo { }
 	for _, photo := range must1( queries.GetUserPhotos( r.Context(), sql.NullInt64 { user.ID, true } ) ) {
@@ -443,29 +494,19 @@ type Photo struct {
 }
 
 func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
-	album := queryOptional( queries.GetAlbumByURL( r.Context(), r.PathValue( "album" ) ) )
+	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+		photos := []Photo { }
+		for _, photo := range try1( queries.GetAlbumPhotos( r.Context(), album.ID ) ) {
+			photos = append( photos, Photo {
+				ID: photo.ID,
+				Asset: hex.EncodeToString( photo.Sha256 ),
+				Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
+			} )
+		}
 
-	if !album.Valid {
-		httpError( w, http.StatusNotFound )
-		return
-	}
-
-	if album.V.Owner != user.ID && album.V.Shared == 0 {
-		httpError( w, http.StatusForbidden )
-		return
-	}
-
-	photos := []Photo { }
-	for _, photo := range try1( queries.GetAlbumPhotos( r.Context(), album.V.ID ) ) {
-		photos = append( photos, Photo {
-			ID: photo.ID,
-			Asset: hex.EncodeToString( photo.Sha256 ),
-			Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
-		} )
-	}
-
-	album_templ := ownedAlbumTemplate( album.V, photos )
-	try( baseWithSidebar( user, checksum, r.URL.Path, album.V.Name, album_templ ).Render( r.Context(), w ) )
+		album_templ := ownedAlbumTemplate( album, photos )
+		try( baseWithSidebar( user, checksum, r.URL.Path, album.Name, album_templ ).Render( r.Context(), w ) )
+	} )
 }
 
 func getAssetAsGuest( w http.ResponseWriter, r *http.Request ) {
@@ -643,14 +684,14 @@ func addAsset( ctx context.Context, data []byte, album_id sql.Null[ int64 ], fil
 	before := time.Now()
 	fmt.Printf( "addAsset( %s )\n", filename )
 
-	is_heif := strings.ToLower( filepath.Ext( filename ) ) == ".heic"
-	ext := sel( is_heif, ".heic", ".jpg" )
+	is_heic := strings.ToLower( filepath.Ext( filename ) ) == ".heic"
+	ext := sel( is_heic, ".heic", ".jpg" )
 
 	var decoded *image.RGBA
 	var err error
-	if is_heif {
+	if is_heic {
 		ycbcr, err := goheif.Decode( bytes.NewReader( data ) )
-		fmt.Printf( "\tdecoded HEIF %dms\n", time.Now().Sub( before ).Milliseconds() )
+		fmt.Printf( "\tdecoded HEIC %dms\n", time.Now().Sub( before ).Milliseconds() )
 		if err != nil {
 			return AddedAsset { }, err
 		}
@@ -719,7 +760,7 @@ func addAsset( ctx context.Context, data []byte, album_id sql.Null[ int64 ], fil
 	if err != nil {
 		return AddedAsset { }, err
 	}
-	if is_heif {
+	if is_heic {
 		jpeg := must1( stb.StbToJpg( reoriented, 95 ) )
 		fmt.Printf( "\theic -> jpeg %dms %d -> %d\n", time.Now().Sub( before ).Milliseconds(), len( data ), len( jpeg ) )
 		err = saveAsset( jpeg, hex_sha256 + ".heic.jpg" )
@@ -735,7 +776,7 @@ func addAsset( ctx context.Context, data []byte, album_id sql.Null[ int64 ], fil
 		Sha256: sha256[:],
 		CreatedAt: time.Now().Unix(),
 		OriginalFilename: filename,
-		Type: sel( is_heif, "heif", "jpeg" ),
+		Type: sel( is_heic, "heic", "jpg" ),
 		Thumbnail: thumbnail,
 		Thumbhash: thumbhash,
 		DateTaken: date,
@@ -811,30 +852,37 @@ func addFileToAlbum( ctx context.Context, path string, album_id int64 ) error {
 	return addFile( ctx, path, sql.Null[ int64 ] { album_id, true } )
 }
 
-func uploadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
+func pathAlbumHandler( w http.ResponseWriter, r *http.Request, user User, handler func( http.ResponseWriter, *http.Request, User, sqlc.GetAlbumByURLRow ) ) {
 	album := queryOptional( queries.GetAlbumByURL( r.Context(), r.PathValue( "album" ) ) )
 	if !album.Valid {
 		httpError( w, http.StatusNotFound )
 		return
 	}
-	if album.V.Owner != user.ID {
+
+	if album.V.Owner != user.ID && album.V.Shared == 0 {
 		httpError( w, http.StatusForbidden )
 		return
 	}
 
-	const megabyte = 1000 * 1000
-	try( r.ParseMultipartForm( 10 * megabyte ) )
+	handler( w, r, user, album.V )
+}
 
-	for _, header := range r.MultipartForm.File[ "photos" ] {
-		f := try1( header.Open() )
-		defer f.Close()
+func uploadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
+	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+		const megabyte = 1000 * 1000
+		try( r.ParseMultipartForm( 10 * megabyte ) )
 
-		contents := try1( io.ReadAll( f ) )
+		for _, header := range r.MultipartForm.File[ "photos" ] {
+			f := try1( header.Open() )
+			defer f.Close()
 
-		fmt.Printf( "%s -> %d %d\n", header.Filename, len( contents ), album.V.ID )
-	}
+			contents := try1( io.ReadAll( f ) )
 
-	http.Redirect( w, r, r.URL.Path, http.StatusSeeOther )
+			fmt.Printf( "%s -> %d %d\n", header.Filename, len( contents ), album )
+		}
+
+		http.Redirect( w, r, r.URL.Path, http.StatusSeeOther )
+	} )
 }
 
 func loginForm( w http.ResponseWriter, r *http.Request ) {
@@ -853,7 +901,7 @@ func setAuthCookies( w http.ResponseWriter, username string, auth string ) {
 		Value: username,
 		Path: "/",
 		MaxAge: expiration,
-		Secure: true,
+		// Secure: true, TODO: look at the Forwarded header? Forwarded: for=192.0.2.60;proto=http;by=203.0.113.43
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 	}
@@ -891,21 +939,30 @@ func logout( w http.ResponseWriter, r *http.Request ) {
 }
 
 type ZipFile struct {
-	Asset string
-	Filename string
+	Sha256 []byte
+	Type string
 }
 
-func downloadZip( filename string, files []ZipFile, w http.ResponseWriter ) {
-	w.Header().Set( "Content-Disposition", fmt.Sprintf( "attachment; filename=\"%s\"", filename ) )
+func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.ResponseWriter ) {
+	// TODO: compute Content-Length
+	w.Header().Set( "Content-Disposition", fmt.Sprintf( "attachment; filename=\"%s.zip\"", filename ) )
 	w.Header().Set( "Content-Type", "application/zip" )
 
 	zip := zip.NewWriter( w )
 
-	for _, file := range files {
-		a := try1( os.Open( "assets/" + file.Asset ) )
+	for _, asset := range assets {
+		disk_extension := asset.Type
+		zip_extension := asset.Type
+		if heic_as_jpeg && asset.Type == "heic" {
+			disk_extension = "heic.jpg"
+			zip_extension = "jpg"
+		}
+
+		filename := hex.EncodeToString( asset.Sha256 )
+		a := try1( os.Open( "assets/" + filename + "." + disk_extension ) )
 		defer a.Close()
 
-		z := try1( zip.Create( file.Filename ) )
+		z := try1( zip.Create( filename + "." + zip_extension ) )
 		_ = try1( io.Copy( z, a ) )
 	}
 
@@ -976,7 +1033,12 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc( "/", func( w http.ResponseWriter, r *http.Request ) {
+		// start := time.Now()
 		defer func() {
+			// dt := time.Now().Sub( start )
+			// if dt.Milliseconds() >= 2 {
+			// 	fmt.Printf( "Request took > 2ms (%f): %s\n", float64( dt.Microseconds() ) / 1000, r.URL.Path )
+			// }
 			if r := recover(); r != nil {
 				log.Print( r )
 				httpError( w, http.StatusInternalServerError )
@@ -1075,6 +1137,9 @@ func main() {
 		// { "GET",  "/Special:geocode", geocode },
 
 		{ "POST", "/Special:share", requireAuth( shareAlbum ) },
+
+		{ "GET",  "/Special:download/{album}", requireAuth( downloadAlbum ) },
+		// { "POST", "/Special:download", requireAuth( downloadPhotos ) },
 
 		{ "GET",  "/", requireAuth( viewLibrary ) },
 		{ "GET",  "/{album}", requireAuth( viewAlbum ) },
