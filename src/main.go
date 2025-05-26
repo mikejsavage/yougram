@@ -54,6 +54,8 @@ var db_schema string
 
 //go:embed vendor_js/alpine-3.14.9.js
 var alpinejs string
+//go:embed vendor_js/fuzzysort-3.1.0.js
+var fuzzysortjs string
 //go:embed vendor_js/htmx-2.0.4.js
 var htmxjs string
 //go:embed vendor_js/thumbhash.js
@@ -1014,6 +1016,7 @@ func serveString( content string ) func( http.ResponseWriter, *http.Request ) {
 
 func makeRouteRegex( route string ) *regexp.Regexp {
 	regex := "^" + route + "$"
+	regex = strings.ReplaceAll( regex, ".", "\\." ) // escape .
 	regex = strings.ReplaceAll( regex, "{", "(?P<" ) // convert {} to named captures
 	regex = strings.ReplaceAll( regex, "}", ">[^:/]+)" )
 	return regexp.MustCompile( regex )
@@ -1125,9 +1128,10 @@ func main() {
 
 	private_http_server := startHttpServer( "0.0.0.0:5678", []Route {
 		{ "GET",  "/Special:checksum", getChecksum },
-		{ "GET",  "/Special:alpinejs-3\\.14\\.9\\.js", serveString( alpinejs ) },
-		{ "GET",  "/Special:htmx-2\\.0\\.4\\.js", serveString( htmxjs ) },
-		{ "GET",  "/Special:thumbhash-1\\.0\\.0\\.js", serveString( thumbhashjs ) },
+		{ "GET",  "/Special:alpinejs-3.14.9.js", serveString( alpinejs ) },
+		{ "GET",  "/Special:fuzzysort-3.1.0.js", serveString( fuzzysortjs ) },
+		{ "GET",  "/Special:htmx-2.0.4.js", serveString( htmxjs ) },
+		{ "GET",  "/Special:thumbhash-1.0.0.js", serveString( thumbhashjs ) },
 
 		{ "POST", "/Special:authenticate", authenticate },
 		{ "GET",  "/Special:logout", logout },

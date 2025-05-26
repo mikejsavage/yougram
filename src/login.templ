@@ -114,6 +114,10 @@ templ loginFormTemplate( checksum string ) {
 				max-width: 20rem;
 			}
 
+			input[type=password]:focus {
+				outline: 2px solid #69b3e7;
+			}
+
 			:scope:not(:has(input:checked)) input[type=password] {
 				visibility: hidden;
 			}
@@ -135,14 +139,14 @@ templ loginFormTemplate( checksum string ) {
 
 			for _, user := range users {
 				<label onclick="document.getElementById( 'password' ).focus(); document.getElementById( 'subtitle' ).innerText = this.querySelector( 'input' ).value;">
-					<input type="radio" name="username" value={ user }>
+					<input type="radio" name="username" value={ user } required>
 					<img src="https://f.mikejsavage.co.uk/DSCF1748.png">
 					{ user }
 				</label>
 			}
 		</div>
 
-		<input type="password" id="password" name="password" placeholder="Password">
+		<input type="password" id="password" name="password" placeholder="Password" required>
 		<div id="error"></div>
 	</form>
 }

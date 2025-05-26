@@ -253,6 +253,56 @@ templ uploadForm() {
 	</form>
 }
 
+templ albumSettings( album sqlc.GetAlbumByURLRow ) {
+	<script>
+	function MakeSlug( str ) {
+		str = str.toLowerCase();
+		str = str.replace( /^\s+|\s+$/g, "" ); // trim
+
+		// remove diacritics
+		const from = "ãàáäâẽèéëêìíïîõòóöôùúüûñç";
+		const to   = "aaaaaeeeeeiiiiooooouuuunc";
+		for( let i = 0; i < from.length; i++ ) {
+			str = str.replace( new RegExp( from.charAt( i ), "g" ), to.charAt( i ) );
+		}
+
+		str = str.replace( /[^\w ]/g, "" ); // strip non-chars/letters
+		str = str.replace(/\s+/g, '-') // replace whitespace with -
+
+		return str;
+	}
+	</script>
+	<div x-data="{
+		show: false,
+		name: '',
+		url: '',
+		auto_slug: true,
+	}">
+		<button @click="show = true; $el.parentElement.querySelector( 'form' ).reset()">Album settings</button>
+
+		<div class="dropdown"
+			x-cloak x-show="show"
+			@click.away="show = false"
+			@keydown.window.escape="show = false"
+		>
+			<form style="display: flex; flex-direction: column; width: 25rem">
+				<h2>Album Settings</h2>
+
+				<b>Name</b>
+				<input type="text" name="name" x-model="name" value={ album.Name }>
+
+				<b>URL</b>
+				<input type="text" name="url" x-model="url" value={ album.UrlSlug } x-effect="if( auto_slug ) { url = MakeSlug( name ); }" :disabled="auto_slug">
+				<label>
+					<input type="checkbox" x-model="auto_slug" checked> Auto
+				</label>
+
+				<button type="submit" style="width: min-content">Save</button>
+			</form>
+		</div>
+	</div>
+}
+
 templ shareButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 	<div
 		x-data={ templ.JSONString( map[string]any {
@@ -265,50 +315,32 @@ templ shareButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 		@album:start_sharing.window="sharing = true"
 		@album:stop_sharing.window="sharing = false"
 	>
-		<style>
-		@scope {
-			button {
-				white-space: nowrap;
-			}
-
-			button.open {
-				background: white;
-			}
-
-			.dialog {
-				position: absolute;
-				right: 10px;
-				top: 50px;
-				width: 15rem;
-				border-radius: 0.5rem;
-				padding: 0.5rem;
-				background: #fff;
-				border: 1px solid #ccc;
-				box-shadow: 0 0 10px #666;
-				z-index: var( --modal-z );
-			}
-		}
-		</style>
+		<button @click="show_dialog = true">
+			<span :style="{ color: sharing ? 'var(--green)' : 'var(--red)' }">&#9679;</span>
+			Share
+		</button>
 
 		if ownership != AlbumOwnership_Guest {
-			<button @click="show_dialog = !show_dialog" :class="show_dialog ? 'open' : ''">
-				<span :style="{ color: sharing ? 'var(--green)' : 'var(--red)' }">&#9679;</span>
-				Share
-			</button>
-
-			<form class="dialog" x-cloak x-show="show_dialog" @click.away="show_dialog = false">
-				if ownership == AlbumOwnership_Owned {
-					<button
-						x-text="sharing ? 'Disable sharing' : 'Enable sharing'"
-						hx-post="/Special:share"
-						hx-disabled-elt="this"
-					/><br>
-					<input type="hidden" name="album_id" value={ album.ID }>
-					<input type="hidden" name="share" :value="sharing ? 0 : 1">
-				}
-				Read-only link: { album.ReadonlySecret }<br>
-				Read-write link: { album.ReadwriteSecret }<br>
-			</form>
+			<div class="dropdown"
+				x-cloak x-show="show_dialog"
+				@click.away="show_dialog = false"
+				@keydown.window.escape="show_dialog = false"
+			>
+				<form style="width: 15rem">
+					<h2>Sharing</h2>
+					if ownership == AlbumOwnership_Owned {
+						<button style="margin-block: 0.5rem"
+							x-text="sharing ? 'Disable sharing' : 'Enable sharing'"
+							hx-post="/Special:share"
+							hx-disabled-elt="this"
+						/><br>
+						<input type="hidden" name="album_id" value={ album.ID }>
+						<input type="hidden" name="share" :value="sharing ? 0 : 1">
+					}
+					Read-only link: { album.ReadonlySecret }<br>
+					Read-write link: { album.ReadwriteSecret }<br>
+				</form>
+			</div>
 		}
 	</div>
 }
@@ -327,60 +359,59 @@ templ downloadButton( album sqlc.GetAlbumByURLRow ) {
 		variants: null,
 		heic_as_jpg: null,
 	}">
-		<button @click="
-			show_download_dialog = true;
-			include = 'all';
-			variants = 'key_only';
-			heic_as_jpg = false;
-		">Download</button>
+		<button @click="show_download_dialog = true; $el.parentElement.querySelector( 'form' ).reset()">
+			Download
+		</button>
 
-		<form class="modal" method="GET" action={ "/Special:download/" + templ.URL( album.UrlSlug ) }
+		<div class="dropdown"
 			x-cloak x-show="show_download_dialog"
 			@click.away="show_download_dialog = false"
 			@keydown.window.escape="show_download_dialog = false"
 		>
-			<h2>Download { album.Name }</h2>
+			<form method="GET" action={ "/Special:download/" + templ.URL( album.UrlSlug ) }>
+				<h2>Download { album.Name }</h2>
 
-			<div style="display: grid; grid-template-columns: auto auto; column-gap: 1rem">
-				// <b>Include</b>
-				// <div>
-				// 	<label>
-				// 		<input type="radio" name="include" x-model="include" value="all">
-				// 		All photos
-				// 	</label>
-				// 	<label>
-				// 		<input type="radio" name="include" x-model="include" value="selected">
-				// 		Only selected
-				// 	</label>
-				// </div>
+				<div style="display: grid; grid-template-columns: auto auto; column-gap: 1rem">
+					// <b>Include</b>
+					// <div>
+					// 	<label>
+					// 		<input type="radio" name="include" x-model="include" value="all">
+					// 		All photos
+					// 	</label>
+					// 	<label>
+					// 		<input type="radio" name="include" x-model="include" value="selected">
+					// 		Only selected
+					// 	</label>
+					// </div>
 
-				<b>Variants</b>
-				<div>
-					<label>
-						<input type="radio" name="variants" x-model="variants" value="key_only">
-						Key photos only
-					</label>
-					<label>
-						<input type="radio" name="variants" x-model="variants" value="key_and_raw">
-						Key + RAW
-					</label>
-					<label>
-						<input type="radio" name="variants" x-model="variants" value="everything">
-						Everything
-					</label>
+					<b>Variants</b>
+					<div style="display: flex; gap: 1rem">
+						<label>
+							<input type="radio" name="variants" x-model="variants" value="key_only" checked>
+							Key photos only
+						</label>
+						<label>
+							<input type="radio" name="variants" x-model="variants" value="key_and_raw">
+							Key + RAW
+						</label>
+						<label>
+							<input type="radio" name="variants" x-model="variants" value="everything">
+							Everything
+						</label>
+					</div>
+
+					<b>Formats</b>
+					<fieldset :disabled="variants == 'everything'">
+						<label>
+							<input type="checkbox" name="heic_as_jpeg" x-model="heic_as_jpg" checked>
+							Download HEIC as JPEG
+						</label>
+					</fieldset>
 				</div>
 
-				<b x-show="variants != 'everything'">Formats</b>
-				<div x-show="variants != 'everything'">
-					<label>
-						<input type="checkbox" name="heic_as_jpeg" x-model="heic_as_jpg">
-						Download HEIC as JPEG
-					</label>
-				</div>
-			</div>
-
-			<button type="submit">Go</button>
-		</form>
+				<button type="submit" style="margin-top: 0.5rem">Download</button>
+			</form>
+		</div>
 	</div>
 }
 
@@ -390,21 +421,21 @@ templ uploadButton() {
 
 templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwnership, can_upload bool ) {
 	<style>
-	.modal {
-		position: fixed;
-		top: 25%;
-		left: 50%;
-		transform: translateX( -50% ) translateY( -50% );
-		border-radius: 0.5rem;
-		padding: 1rem;
-		background: #fff;
-		border: 1px solid #ccc;
-		box-shadow: 0 0 10px #666;
-		z-index: 1;
+	/* see https://www.w3schools.com/Css/css_dropdowns.asp */
+	.dropdown {
+		position: relative;
 	}
 
-	.modal h2 {
-		margin: 0;
+	.dropdown > form {
+		position: absolute;
+		top: 1rem;
+		right: 0;
+		z-index: var( --modal-z );
+		width: max-content;
+		padding: 0.5rem;
+		background: #fff;
+		border: 4px solid #333;
+		box-shadow: 0 0 10px #666;
 	}
 	</style>
 
@@ -440,6 +471,10 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 		<div>
 			<h1>{ album.Name }</h1>
 			<span style="font-size: 80%">
+				if ownership != AlbumOwnership_Owned {
+					<span>{ album.OwnerUsername }'s album</span>
+				}
+
 				<span>Oct 2023 &ndash; Jan 2025</span>
 				<span>{ len( photos ) } { sel( len( photos ) == 1, "photo", "photos" ) }</span>
 			</span>
@@ -449,13 +484,8 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 
 		<div>
 			<span>
-				if ownership != AlbumOwnership_Owned {
-					<span>{ album.OwnerUsername }'s album</span>
-				}
-
-
 				if ownership == AlbumOwnership_Owned {
-					<button>Album settings</button>
+					@albumSettings( album )
 				}
 
 				@shareButton( album, ownership )
@@ -475,6 +505,10 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 			instead!!
 		</b>
 	}
+
+	<noscript>
+		<div style="padding: 0.5rem">Sorry but nothing works without Javascript</div>
+	</noscript>
 
 	{{ asset_base_url := "/Special:asset/" }}
 	{{ thumbnail_base_url := "/Special:thumbnail/" }}

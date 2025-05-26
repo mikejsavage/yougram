@@ -57,11 +57,14 @@ templ base( checksum string, title string ) {
 
 	@autorefresh( checksum )
 	<script src="/Special:alpinejs-3.14.9.js" defer></script>
+	<script src="/Special:fuzzysort-3.1.0.js"></script>
 	<script src="/Special:htmx-2.0.4.js"></script>
 	<script src="/Special:thumbhash-1.0.0.js"></script>
 
 	<style>
 	:root {
+		--sidebar-width: 15rem;
+
 		--red: #ff5733;
 		--green: #40d39c;
 
@@ -84,6 +87,71 @@ templ base( checksum string, title string ) {
 		overflow: hidden;
 	}
 
+	h1, h2  {
+		margin: 0;
+	}
+
+	fieldset {
+		border: 0;
+		margin: 0;
+		padding: 0;
+	}
+
+	fieldset:disabled {
+		color: #aaa;
+	}
+
+	input, input[type=text], input[type=password] {
+		border: 1px solid #767676;
+		border-radius: 3px;
+		font-size: 100%;
+		padding: 0.5rem;
+	}
+
+	input:focus, input[type=text]:focus, input[type=password]:focus {
+		border-color: #333;
+		outline: 1.5px solid #69b3e7;
+	}
+
+	input:disabled, input[type=text]:disabled, input[type=password]:disabled {
+		background: #fafafa;
+	}
+
+	:disabled {
+		color: #545454;
+	}
+
+	input[type=radio], input[type=checkbox] {
+		margin-left: 0;
+	}
+
+	button {
+		background: #efefef;
+		border: 1px solid #767676;
+		border-radius: 3px;
+		font-size: 85%;
+		padding: 0.25rem 0.5rem;
+	}
+
+	button:hover { background: #e5e5e5; }
+	button:active { background: #f5f5f5; }
+
+	[x-cloak] {
+		display: none !important;
+	}
+
+	@keyframes spinning {
+		0%   { left: 0; }
+		25%  { left: 0.1rem; }
+		75%  { left: -0.1rem; }
+		100% { left: 0; }
+	}
+
+	.spinning {
+		position: relative;
+		animation spinning 0.15 infinite;
+	}
+
 	nav {
 		display: flex;
 		flex-direction: column;
@@ -91,7 +159,7 @@ templ base( checksum string, title string ) {
 		left: 0;
 		top: 0;
 		bottom: 0;
-		width: 15rem;
+		width: var( --sidebar-width );
 		background: #eee;
 		border-right: 1px solid #ccc;
 		padding: 0.5rem;
@@ -144,42 +212,11 @@ templ base( checksum string, title string ) {
 		align-items: center;
 		gap: 1rem;
 	}
-
-	h1 {
-		margin: 0;
-		padding: 0;
-	}
-
-	button {
-		padding: 0.25rem 0.5rem;
-	}
-
-	[x-cloak] {
-		display: none !important;
-	}
-
-	@keyframes spinning {
-		0%   { left: 0; }
-		25%  { left: 0.1rem; }
-		75%  { left: -0.1rem; }
-		100% { left: 0; }
-	}
-
-	.spinning {
-		position: relative;
-		animation spinning 0.15 infinite;
-	}
 	</style>
 }
 
 templ baseWithSidebar( user User, checksum string, current_url string, title string, body templ.Component ) {
 	@base( checksum, title )
-
-	<style>
-	main {
-		margin-left: 15rem;
-	}
-	</style>
 
 	<nav>
 		<b>{ user.Username }gram</b>
@@ -198,9 +235,11 @@ templ baseWithSidebar( user User, checksum string, current_url string, title str
 		for _, album := range albums {
 			@navlinkComplex( current_url, templ.URL( "/" + album.UrlSlug ), sidebarAlbum( album ), true )
 		}
+
+		<a href="lol">Create album</a>
 	</nav>
 
-	<main>
+	<main style="margin-left: var( --sidebar-width )">
 		@body
 	</main>
 }
