@@ -343,22 +343,6 @@ func (q *Queries) GetAlbumOwner(ctx context.Context, id int64) (int64, error) {
 	return owner, err
 }
 
-const getAlbumOwnerByID = `-- name: GetAlbumOwnerByID :one
-SELECT owner, shared FROM album WHERE id = ?
-`
-
-type GetAlbumOwnerByIDRow struct {
-	Owner  int64
-	Shared int64
-}
-
-func (q *Queries) GetAlbumOwnerByID(ctx context.Context, id int64) (GetAlbumOwnerByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getAlbumOwnerByID, id)
-	var i GetAlbumOwnerByIDRow
-	err := row.Scan(&i.Owner, &i.Shared)
-	return i, err
-}
-
 const getAlbumPhotos = `-- name: GetAlbumPhotos :many
 SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.thumbhash
 FROM photo
@@ -724,15 +708,37 @@ func (q *Queries) ResetPassword(ctx context.Context, arg ResetPasswordParams) er
 }
 
 const setAlbumIsShared = `-- name: SetAlbumIsShared :exec
-UPDATE album SET shared = ? WHERE id = ?
+UPDATE album SET shared = ? WHERE id = ? AND owner = ?
 `
 
 type SetAlbumIsSharedParams struct {
 	Shared int64
 	ID     int64
+	Owner  int64
 }
 
 func (q *Queries) SetAlbumIsShared(ctx context.Context, arg SetAlbumIsSharedParams) error {
-	_, err := q.db.ExecContext(ctx, setAlbumIsShared, arg.Shared, arg.ID)
+	_, err := q.db.ExecContext(ctx, setAlbumIsShared, arg.Shared, arg.ID, arg.Owner)
+	return err
+}
+
+const setAlbumSettings = `-- name: SetAlbumSettings :exec
+UPDATE album SET name = ?, url_slug = ? WHERE id = ? AND owner = ?
+`
+
+type SetAlbumSettingsParams struct {
+	Name    string
+	UrlSlug string
+	ID      int64
+	Owner   int64
+}
+
+func (q *Queries) SetAlbumSettings(ctx context.Context, arg SetAlbumSettingsParams) error {
+	_, err := q.db.ExecContext(ctx, setAlbumSettings,
+		arg.Name,
+		arg.UrlSlug,
+		arg.ID,
+		arg.Owner,
+	)
 	return err
 }

@@ -65,6 +65,8 @@ var minifier *minify.M
 
 var checksum string
 
+var guest_url string
+
 func sel[ T any ]( p bool, t T, f T ) T {
 	if p {
 		return t
@@ -87,11 +89,6 @@ func must( err error ) {
 func must1[ T1 any ]( v1 T1, err error ) T1 {
 	mustImpl( err )
 	return v1
-}
-
-func must2[ T1 any, T2 any ]( v1 T1, v2 T2, err error ) ( T1, T2 ) {
-	mustImpl( err )
-	return v1, v2
 }
 
 func try( err error ) {
@@ -336,8 +333,13 @@ func cacheControlImmutable( w http.ResponseWriter ) {
 	w.Header().Set( "Cache-Control", "max-age=31536000, immutable" )
 }
 
+type User struct {
+	ID int64
+	Username string
+}
+
 func getChecksum( w http.ResponseWriter, r *http.Request ) {
-	io.WriteString( w, checksum )
+	_ = try1( io.WriteString( w, checksum ) )
 }
 
 func pathValueAsset( r *http.Request ) ( string, []byte, error ) {
@@ -417,9 +419,46 @@ func getThumbnail( w http.ResponseWriter, r *http.Request, user User ) {
 	serveThumbnail( w, asset.V.Thumbnail, asset.V.OriginalFilename )
 }
 
-type User struct {
-	ID int64
-	Username string
+func updateAlbumSettings( w http.ResponseWriter, r *http.Request, user User ) {
+	album_id, err := strconv.ParseInt( r.PostFormValue( "album_id" ), 10, 64 )
+	if err != nil {
+		httpError( w, http.StatusBadRequest )
+		return
+	}
+
+	owner := queryOptional( queries.GetAlbumOwner( r.Context(), album_id ) )
+	if !owner.Valid {
+		http.Error( w, "No such album", http.StatusOK )
+		return
+	}
+	if owner.V != user.ID {
+		http.Error( w, "Not your album", http.StatusOK )
+		return
+	}
+
+	name := r.PostFormValue( "name" )
+	url := r.PostFormValue( "url" )
+	if name == "" {
+		io.WriteString( w, "Name can't be blank" )
+		return
+	}
+	if url == "" {
+		io.WriteString( w, "URL can't be blank" )
+		return
+	}
+
+	err = queries.SetAlbumSettings( r.Context(), sqlc.SetAlbumSettingsParams {
+		Name: r.PostFormValue( "name" ),
+		UrlSlug: r.PostFormValue( "url" ),
+		ID: album_id,
+		Owner: user.ID,
+	} )
+	if err != nil {
+		io.WriteString( w, err.Error() )
+		return
+	}
+
+	w.Header().Set( "HX-Redirect", "/" + r.PostFormValue( "url" ) )
 }
 
 func shareAlbum( w http.ResponseWriter, r *http.Request, user User ) {
@@ -435,10 +474,12 @@ func shareAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 		return
 	}
 
-	album, err := queries.GetAlbumOwnerByID( r.Context(), album_id )
-	if err != nil {
+	owner := queryOptional( queries.GetAlbumOwner( r.Context(), album_id ) )
+	if !owner.Valid {
+		httpError( w, http.StatusNotFound )
+		return
 	}
-	if album.Owner != user.ID {
+	if owner.V != user.ID {
 		httpError( w, http.StatusForbidden )
 		return
 	}
@@ -446,6 +487,7 @@ func shareAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	try( queries.SetAlbumIsShared( r.Context(), sqlc.SetAlbumIsSharedParams {
 		Shared: int64( shared ),
 		ID: album_id,
+		Owner: user.ID,
 	} ) )
 
 	w.Header().Set( "HX-Trigger", sel( shared == 0, "album:stop_sharing", "album:start_sharing" ) )
@@ -475,6 +517,12 @@ func downloadAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	} )
 }
 
+type Photo struct {
+	ID int64 `json:"id"`
+	Asset string `json:"asset"`
+	Thumbhash string `json:"thumbhash"`
+}
+
 func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 	photos := []Photo { }
 	for _, photo := range must1( queries.GetUserPhotos( r.Context(), sql.NullInt64 { user.ID, true } ) ) {
@@ -487,12 +535,6 @@ func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 
 	body := photogrid( photos, "/Special:asset/", "/Special:thumbnail/" )
 	try( baseWithSidebar( user, checksum, r.URL.Path, "Library", body ).Render( r.Context(), w ) )
-}
-
-type Photo struct {
-	ID int64 `json:"id"`
-	Asset string `json:"asset"`
-	Thumbhash string `json:"thumbhash"`
 }
 
 func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
@@ -1140,6 +1182,7 @@ func main() {
 		{ "GET",  "/Special:thumbnail/{asset}", requireAuth( getThumbnail ) },
 		// { "GET",  "/Special:geocode", geocode },
 
+		{ "POST", "/Special:albumSettings", requireAuth( updateAlbumSettings ) },
 		{ "POST", "/Special:share", requireAuth( shareAlbum ) },
 
 		{ "GET",  "/Special:download/{album}", requireAuth( downloadAlbum ) },
@@ -1161,7 +1204,8 @@ func main() {
 		// { "POST", "/{album}/{secret}", uploadPhotosAsGuest ) },
 	} )
 
-	fmt.Printf( "http://localhost:5678/ http://localhost:5679\n" )
+	guest_url = "http://localhost:5679"
+	fmt.Printf( "http://localhost:5678/ %s\n", guest_url )
 
 	done := make( chan os.Signal, 1 )
 	signal.Notify( done, syscall.SIGINT, syscall.SIGTERM )

@@ -285,19 +285,33 @@ templ albumSettings( album sqlc.GetAlbumByURLRow ) {
 			@click.away="show = false"
 			@keydown.window.escape="show = false"
 		>
-			<form style="display: flex; flex-direction: column; width: 25rem">
+			<form
+				style="display: flex; flex-direction: column; width: 25rem"
+				hx-post="/Special:albumSettings"
+				hx-target="find .error"
+				hx-swap="textContent"
+				hx-disabled-elt="find button"
+				hx-on::before-request="htmx.find('#error').innerText = ''"
+			>
 				<h2>Album Settings</h2>
 
-				<b>Name</b>
-				<input type="text" name="name" x-model="name" value={ album.Name }>
+				<input type="hidden" name="album_id" value={ album.ID }>
 
-				<b>URL</b>
-				<input type="text" name="url" x-model="url" value={ album.UrlSlug } x-effect="if( auto_slug ) { url = MakeSlug( name ); }" :disabled="auto_slug">
-				<label>
-					<input type="checkbox" x-model="auto_slug" checked> Auto
-				</label>
+				<b>Name</b>
+				<input type="text" name="name" x-model="name" value={ album.Name } autocomplete="off">
+
+				<div>
+					<b>URL</b>
+					<label>
+						<input type="checkbox" x-model="auto_slug" checked> Auto
+					</label>
+				</div>
+
+				<input type="text" name="url" x-model="url" value={ album.UrlSlug } autocomplete="off" x-effect="if( auto_slug ) { url = MakeSlug( name ); }" :readonly="auto_slug">
 
 				<button type="submit" style="width: min-content">Save</button>
+
+				<div class="error"></div>
 			</form>
 		</div>
 	</div>
@@ -337,8 +351,8 @@ templ shareButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 						<input type="hidden" name="album_id" value={ album.ID }>
 						<input type="hidden" name="share" :value="sharing ? 0 : 1">
 					}
-					Read-only link: { album.ReadonlySecret }<br>
-					Read-write link: { album.ReadwriteSecret }<br>
+					<a href={ templ.URL( guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret ) }>Read-only guest link</a><br>
+					<a href={ templ.URL( guest_url + "/" + album.UrlSlug + "/" + album.ReadwriteSecret ) }>Read-write guest link</a>
 				</form>
 			</div>
 		}
@@ -501,7 +515,7 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 	if can_upload && ownership == AlbumOwnership_Guest {
 		<b>
 			This page lets you add and remove photos so don't share it with randoms, give them
-			<a href={ templ.URL( album.ReadonlySecret ) }>this read only link</a>
+			<a href={ templ.URL( guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret ) }>this read only link</a>
 			instead!!
 		</b>
 	}

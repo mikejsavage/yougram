@@ -67,6 +67,7 @@ templ base( checksum string, title string ) {
 
 		--red: #ff5733;
 		--green: #40d39c;
+		--blue: #69b3e7;
 
 		--sticky-z: 1;
 		--fullscreen-z: 2;
@@ -110,14 +111,14 @@ templ base( checksum string, title string ) {
 
 	input:focus, input[type=text]:focus, input[type=password]:focus {
 		border-color: #333;
-		outline: 1.5px solid #69b3e7;
+		outline: 1.5px solid var( --blue );
 	}
 
-	input:disabled, input[type=text]:disabled, input[type=password]:disabled {
+	input:is(:disabled, :read-only), input[type=text]:is(:disabled, :read-only), input[type=password]:is(:disabled, :read-only) {
 		background: #fafafa;
 	}
 
-	:disabled {
+	:is(:disabled, :read-only) {
 		color: #545454;
 	}
 
@@ -136,10 +137,6 @@ templ base( checksum string, title string ) {
 	button:hover { background: #e5e5e5; }
 	button:active { background: #f5f5f5; }
 
-	[x-cloak] {
-		display: none !important;
-	}
-
 	@keyframes spinning {
 		0%   { left: 0; }
 		25%  { left: 0.1rem; }
@@ -147,9 +144,18 @@ templ base( checksum string, title string ) {
 		100% { left: 0; }
 	}
 
-	.spinning {
+	button:disabled {
 		position: relative;
 		animation spinning 0.15 infinite;
+	}
+
+	.error {
+		color: var( --red );
+		font-weight: bold;
+	}
+
+	[x-cloak] {
+		display: none !important;
 	}
 
 	nav {

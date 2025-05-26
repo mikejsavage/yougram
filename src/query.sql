@@ -145,9 +145,6 @@ FROM album
 INNER JOIN user ON album.owner = user.id
 WHERE url_slug = ?;
 
--- name: GetAlbumOwnerByID :one
-SELECT owner, shared FROM album WHERE id = ?;
-
 -- name: GetAlbumOwner :one
 SELECT owner FROM album WHERE id = ?;
 
@@ -169,5 +166,8 @@ SELECT
 	autoassign_radius AS radius
 FROM album WHERE ? BETWEEN autoassign_start_date AND autoassign_end_date;
 
+-- name: SetAlbumSettings :exec
+UPDATE album SET name = ?, url_slug = ? WHERE id = ? AND owner = ?;
+
 -- name: SetAlbumIsShared :exec
-UPDATE album SET shared = ? WHERE id = ?;
+UPDATE album SET shared = ? WHERE id = ? AND owner = ?;
