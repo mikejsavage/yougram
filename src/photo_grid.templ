@@ -152,9 +152,9 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 
 		<div class="grid" :style="{ top: top }">
 			<template x-for="i in visible_range[ 1 ] - visible_range[ 0 ]">
-				<a class="thumbnail stack" :href="'/Special:asset/' + photos[ i - 1 ].asset" @click.prevent="fullscreen = i - 1">
-					<img x-init="MakeThumbhash( $el, photos[ i - 1 ].thumbhash )">
-					<img :src={ fmt.Sprintf( "'%s' + photos[ i - 1 ].asset", thumbnail_base_url ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.remove()">
+				<a class="thumbnail stack" :href="'/Special:asset/' + photos[ visible_range[ 0 ] + i - 1 ].asset" @click.prevent="fullscreen = visible_range[ 0 ] + i - 1">
+					<img x-init="MakeThumbhash( $el, photos[ visible_range[ 0 ] + i - 1 ].thumbhash )">
+					<img :src={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", thumbnail_base_url ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.remove()">
 				</a>
 			</template>
 		</div>

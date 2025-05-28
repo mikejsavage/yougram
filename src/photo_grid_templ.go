@@ -70,14 +70,14 @@ func photogrid(photos []Photo, asset_base_url string, thumbnail_base_url string)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" onload=\"this.previousElementSibling.remove()\" @error=\"$el.remove()\"></div><div class=\"settings\">[cog] [bin]</div></div></template><div class=\"grid\" :style=\"{ top: top }\"><template x-for=\"i in visible_range[ 1 ] - visible_range[ 0 ]\"><a class=\"thumbnail stack\" :href=\"&#39;/Special:asset/&#39; + photos[ i - 1 ].asset\" @click.prevent=\"fullscreen = i - 1\"><img x-init=\"MakeThumbhash( $el, photos[ i - 1 ].thumbhash )\"> <img :src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" onload=\"this.previousElementSibling.remove()\" @error=\"$el.remove()\"></div><div class=\"settings\">[cog] [bin]</div></div></template><div class=\"grid\" :style=\"{ top: top }\"><template x-for=\"i in visible_range[ 1 ] - visible_range[ 0 ]\"><a class=\"thumbnail stack\" :href=\"&#39;/Special:asset/&#39; + photos[ visible_range[ 0 ] + i - 1 ].asset\" @click.prevent=\"fullscreen = visible_range[ 0 ] + i - 1\"><img x-init=\"MakeThumbhash( $el, photos[ visible_range[ 0 ] + i - 1 ].thumbhash )\"> <img :src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("'%s' + photos[ i - 1 ].asset", thumbnail_base_url))
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", thumbnail_base_url))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 157, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 157, Col: 103}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
