@@ -99,7 +99,7 @@ const (
 	AlbumOwnership_Guest
 )
 
-func uploadForm() templ.Component {
+func albumSettings(album sqlc.GetAlbumByURLRow) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -120,75 +120,46 @@ func uploadForm() templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<script>\n\tfunction MakeUploadForm() {\n\t\treturn {\n\t\t\tfiles: [ ],\n\n\t\t\tUpload( idx ) {\n\t\t\t\tif( idx >= this.files.length ) {\n\t\t\t\t\treturn;\n\t\t\t\t}\n\n\t\t\t\tconst xhr = new XMLHttpRequest();\n\t\t\t\txhr.open( \"POST\", window.location.pathname, true );\n\t\t\t\txhr.upload.onprogress = e => this.files[ idx ].progress = e.loaded / e.total;\n\t\t\t\txhr.onload = () => {\n\t\t\t\t\tthis.files[ idx ].progress = 1;\n\t\t\t\t\tthis.Upload( idx + 1 );\n\t\t\t\t};\n\n\t\t\t\tlet data = new FormData();\n\t\t\t\tdata.append( \"photos\", this.files[ idx ].file );\n\n\t\t\t\txhr.send( data );\n\n\t\t\t\tthis.files[ idx ].xhr = xhr;\n\t\t\t},\n\n\t\t\tasync Changed( e ) {\n\t\t\t\tlet first_new = this.files.length;\n\n\t\t\t\tfor( const file of e.target.files ) {\n\t\t\t\t\tlet promise = new Promise( function( resolve ) {\n\t\t\t\t\t\tlet reader = new FileReader();\n\t\t\t\t\t\treader.onload = function( e ) {\n\t\t\t\t\t\t\tresolve( e.target.result );\n\t\t\t\t\t\t};\n\t\t\t\t\t\treader.readAsDataURL( file );\n\t\t\t\t\t} );\n\n\t\t\t\t\tthis.files.push( {\n\t\t\t\t\t\tfile: file,\n\t\t\t\t\t\tname: file.name,\n\t\t\t\t\t\tthumbnail: await promise,\n\t\t\t\t\t\tprogress: 0,\n\t\t\t\t\t} );\n\t\t\t\t}\n\n\t\t\t\tthis.Upload( first_new );\n\t\t\t},\n\n\t\t\tCancel( idx ) {\n\t\t\t},\n\t\t};\n\t}\n\t</script><form method=\"POST\" enctype=\"multipart/form-data\"><style>\n\t\t@scope {\n\t\t\timg {\n\t\t\t\taspect-ratio: 1;\n\t\t\t\twidth: 2rem;\n\t\t\t\tobject-fit: cover;\n\t\t\t\tobject-position: 50% 50%;\n\t\t\t\tvertical-align: middle;\n\t\t\t\tmargin: 0.25rem 0;\n\t\t\t}\n\t\t}\n\t\t</style><label>Add photos <input type=\"file\" name=\"photos\" multiple @change=\"Changed\" x-show=\"false\"></label><template x-for=\"(file, i) in files\"><div><img :src=\"file.thumbnail\"> <span x-text=\"Math.floor( file.progress * 100 )\"></span>% <span x-text=\"file.name\"></span> <button @click.prevent=\"Cancel( i )\">Cancel</button></div></template><div x-show=\"false\"><input type=\"submit\"></div></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<script>\n\tfunction MakeSlug( str ) {\n\t\tstr = str.toLowerCase();\n\t\tstr = str.replace( /^\\s+|\\s+$/g, \"\" ); // trim\n\n\t\t// remove diacritics\n\t\tconst from = \"ãàáäâẽèéëêìíïîõòóöôùúüûñç\";\n\t\tconst to   = \"aaaaaeeeeeiiiiooooouuuunc\";\n\t\tfor( let i = 0; i < from.length; i++ ) {\n\t\t\tstr = str.replace( new RegExp( from.charAt( i ), \"g\" ), to.charAt( i ) );\n\t\t}\n\n\t\tstr = str.replace( /[^\\w ]/g, \"\" ); // strip non-chars/letters\n\t\tstr = str.replace(/\\s+/g, '-') // replace whitespace with -\n\n\t\treturn str;\n\t}\n\t</script><div x-data=\"{\n\t\tshow: false,\n\t\tname: &#39;&#39;,\n\t\turl: &#39;&#39;,\n\t\tauto_slug: true,\n\t}\"><button @click=\"show = true; $el.parentElement.querySelector( &#39;form&#39; ).reset()\">Album settings</button><div class=\"dropdown\" x-cloak x-show=\"show\" @click.away=\"show = false\" @keydown.window.escape=\"show = false\"><form style=\"display: flex; flex-direction: column; width: 25rem\" hx-post=\"/Special:albumSettings\" hx-target=\"find .error\" hx-swap=\"textContent\" hx-disabled-elt=\"find button\" hx-on::before-request=\"htmx.find(&#39;#error&#39;).innerText = &#39;&#39;\"><h2>Album Settings</h2><input type=\"hidden\" name=\"album_id\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		return nil
-	})
-}
-
-func albumSettings(album sqlc.GetAlbumByURLRow) templ.Component {
-	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
-			return templ_7745c5c3_CtxErr
+		var templ_7745c5c3_Var7 string
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(album.ID)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 213, Col: 57}
 		}
-		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-		if !templ_7745c5c3_IsBuffer {
-			defer func() {
-				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err == nil {
-					templ_7745c5c3_Err = templ_7745c5c3_BufErr
-				}
-			}()
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
 		}
-		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var7 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var7 == nil {
-			templ_7745c5c3_Var7 = templ.NopComponent
-		}
-		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<script>\n\tfunction MakeSlug( str ) {\n\t\tstr = str.toLowerCase();\n\t\tstr = str.replace( /^\\s+|\\s+$/g, \"\" ); // trim\n\n\t\t// remove diacritics\n\t\tconst from = \"ãàáäâẽèéëêìíïîõòóöôùúüûñç\";\n\t\tconst to   = \"aaaaaeeeeeiiiiooooouuuunc\";\n\t\tfor( let i = 0; i < from.length; i++ ) {\n\t\t\tstr = str.replace( new RegExp( from.charAt( i ), \"g\" ), to.charAt( i ) );\n\t\t}\n\n\t\tstr = str.replace( /[^\\w ]/g, \"\" ); // strip non-chars/letters\n\t\tstr = str.replace(/\\s+/g, '-') // replace whitespace with -\n\n\t\treturn str;\n\t}\n\t</script><div x-data=\"{\n\t\tshow: false,\n\t\tname: &#39;&#39;,\n\t\turl: &#39;&#39;,\n\t\tauto_slug: true,\n\t}\"><button @click=\"show = true; $el.parentElement.querySelector( &#39;form&#39; ).reset()\">Album settings</button><div class=\"dropdown\" x-cloak x-show=\"show\" @click.away=\"show = false\" @keydown.window.escape=\"show = false\"><form style=\"display: flex; flex-direction: column; width: 25rem\" hx-post=\"/Special:albumSettings\" hx-target=\"find .error\" hx-swap=\"textContent\" hx-disabled-elt=\"find button\" hx-on::before-request=\"htmx.find(&#39;#error&#39;).innerText = &#39;&#39;\"><h2>Album Settings</h2><input type=\"hidden\" name=\"album_id\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"> <b>Name</b> <input type=\"text\" name=\"name\" x-model=\"name\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(album.ID)
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 298, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 216, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\"> <b>Name</b> <input type=\"text\" name=\"name\" x-model=\"name\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" autocomplete=\"off\"><div><b>URL</b> <label><input type=\"checkbox\" x-model=\"auto_slug\" checked> Auto</label></div><input type=\"text\" name=\"url\" x-model=\"url\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 string
-		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(album.UrlSlug)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 301, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 225, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" autocomplete=\"off\"><div><b>URL</b> <label><input type=\"checkbox\" x-model=\"auto_slug\" checked> Auto</label></div><input type=\"text\" name=\"url\" x-model=\"url\" value=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(album.UrlSlug)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 310, Col: 69}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" autocomplete=\"off\" x-effect=\"if( auto_slug ) { url = MakeSlug( name ); }\" :readonly=\"auto_slug\"> <button type=\"submit\" style=\"width: min-content\">Save</button><div class=\"error\"></div></form></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" autocomplete=\"off\" x-effect=\"if( auto_slug ) { url = MakeSlug( name ); }\" :readonly=\"auto_slug\"> <button type=\"submit\" style=\"width: min-content\">Save</button><div class=\"error\"></div></form></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -212,71 +183,71 @@ func shareButton(album sqlc.GetAlbumByURLRow, ownership AlbumOwnership) templ.Co
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var11 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var11 == nil {
-			templ_7745c5c3_Var11 = templ.NopComponent
+		templ_7745c5c3_Var10 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var10 == nil {
+			templ_7745c5c3_Var10 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div x-data=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div x-data=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var12 string
-		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(map[string]any{
+		var templ_7745c5c3_Var11 string
+		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(map[string]any{
 			"show_dialog":      false,
 			"sharing":          album.Shared,
 			"readonly_secret":  album.ReadonlySecret,
 			"readwrite_secret": album.ReadwriteSecret,
 		}))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 327, Col: 5}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 242, Col: 5}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" @album:start_sharing.window=\"sharing = true\" @album:stop_sharing.window=\"sharing = false\"><button @click=\"show_dialog = true\"><span :style=\"{ color: sharing ? &#39;var(--green)&#39; : &#39;var(--red)&#39; }\">&#9679;</span> Share</button><div class=\"dropdown\" x-cloak x-show=\"show_dialog\" @click.away=\"show_dialog = false\" @keydown.window.escape=\"show_dialog = false\"><form style=\"width: 15rem\"><h2>Sharing</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\" @album:start_sharing.window=\"sharing = true\" @album:stop_sharing.window=\"sharing = false\"><button @click=\"show_dialog = true\"><span :style=\"{ color: sharing ? &#39;var(--green)&#39; : &#39;var(--red)&#39; }\">&#9679;</span> Share</button><div class=\"dropdown\" x-cloak x-show=\"show_dialog\" @click.away=\"show_dialog = false\" @keydown.window.escape=\"show_dialog = false\"><form style=\"width: 15rem\"><h2>Sharing</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if ownership == AlbumOwnership_Owned {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<button style=\"margin-block: 0.5rem\" x-text=\"sharing ? &#39;Disable sharing&#39; : &#39;Enable sharing&#39;\" hx-post=\"/Special:share\" hx-disabled-elt=\"this\"></button><br><input type=\"hidden\" name=\"album_id\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<button style=\"margin-block: 0.5rem\" x-text=\"sharing ? &#39;Disable sharing&#39; : &#39;Enable sharing&#39;\" hx-post=\"/Special:share\" hx-disabled-elt=\"this\"></button><br><input type=\"hidden\" name=\"album_id\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(album.ID)
+			var templ_7745c5c3_Var12 string
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(album.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 350, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 265, Col: 58}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\"> <input type=\"hidden\" name=\"share\" :value=\"sharing ? 0 : 1\"> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\"> <input type=\"hidden\" name=\"share\" :value=\"sharing ? 0 : 1\"> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var14 templ.SafeURL = templ.URL(guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret)
+		var templ_7745c5c3_Var13 templ.SafeURL = templ.URL(guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var13)))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\">Read-only guest link</a><br><a href=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var14 templ.SafeURL = templ.URL(guest_url + "/" + album.UrlSlug + "/" + album.ReadwriteSecret)
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var14)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\">Read-only guest link</a><br><a href=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var15 templ.SafeURL = templ.URL(guest_url + "/" + album.UrlSlug + "/" + album.ReadwriteSecret)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var15)))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\">Read-write guest link</a></form></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\">Read-write guest link</a></form></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -300,12 +271,12 @@ func selectButton() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var16 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var16 == nil {
-			templ_7745c5c3_Var16 = templ.NopComponent
+		templ_7745c5c3_Var15 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var15 == nil {
+			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<button style=\"display: flex; align-items: center; gap: 0.25rem\"><input type=\"checkbox\" style=\"pointer-events: none; margin: 0\"> Select</button>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<button style=\"display: flex; align-items: center; gap: 0.25rem\"><input type=\"checkbox\" style=\"pointer-events: none; margin: 0\"> Select</button>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -329,34 +300,34 @@ func downloadButton(album sqlc.GetAlbumByURLRow) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var17 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var17 == nil {
-			templ_7745c5c3_Var17 = templ.NopComponent
+		templ_7745c5c3_Var16 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var16 == nil {
+			templ_7745c5c3_Var16 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div x-data=\"{\n\t\tshow_download_dialog: false,\n\t\tinclude: null,\n\t\tvariants: null,\n\t\theic_as_jpg: null,\n\t}\"><button @click=\"show_download_dialog = true; $el.parentElement.querySelector( &#39;form&#39; ).reset()\">Download</button><div class=\"dropdown\" x-cloak x-show=\"show_download_dialog\" @click.away=\"show_download_dialog = false\" @keydown.window.escape=\"show_download_dialog = false\"><form method=\"GET\" action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div x-data=\"{\n\t\tshow_download_dialog: false,\n\t\tinclude: null,\n\t\tvariants: null,\n\t\theic_as_jpg: null,\n\t}\"><button @click=\"show_download_dialog = true; $el.parentElement.querySelector( &#39;form&#39; ).reset()\">Download</button><div class=\"dropdown\" x-cloak x-show=\"show_download_dialog\" @click.away=\"show_download_dialog = false\" @keydown.window.escape=\"show_download_dialog = false\"><form method=\"GET\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var18 templ.SafeURL = "/Special:download/" + templ.URL(album.UrlSlug)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var18)))
+		var templ_7745c5c3_Var17 templ.SafeURL = "/Special:download/" + templ.URL(album.UrlSlug)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var17)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\"><h2>Download ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"><h2>Download ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var19 string
-		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
+		var templ_7745c5c3_Var18 string
+		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 384, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 299, Col: 29}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</h2><div style=\"display: grid; grid-template-columns: auto auto; column-gap: 1rem\"><b>Variants</b><div style=\"display: flex; gap: 1rem\"><label><input type=\"radio\" name=\"variants\" x-model=\"variants\" value=\"key_only\" checked> Key photos only</label> <label><input type=\"radio\" name=\"variants\" x-model=\"variants\" value=\"key_and_raw\"> Key + RAW</label> <label><input type=\"radio\" name=\"variants\" x-model=\"variants\" value=\"everything\"> Everything</label></div><b>Formats</b><fieldset :disabled=\"variants == &#39;everything&#39;\"><label><input type=\"checkbox\" name=\"heic_as_jpeg\" x-model=\"heic_as_jpg\" checked> Download HEIC as JPEG</label></fieldset></div><button type=\"submit\" style=\"margin-top: 0.5rem\">Download</button></form></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</h2><div style=\"display: grid; grid-template-columns: auto auto; column-gap: 1rem\"><b>Variants</b><div style=\"display: flex; gap: 1rem\"><label><input type=\"radio\" name=\"variants\" x-model=\"variants\" value=\"key_only\" checked> Key photos only</label> <label><input type=\"radio\" name=\"variants\" x-model=\"variants\" value=\"key_and_raw\"> Key + RAW</label> <label><input type=\"radio\" name=\"variants\" x-model=\"variants\" value=\"everything\"> Everything</label></div><b>Formats</b><fieldset :disabled=\"variants == &#39;everything&#39;\"><label><input type=\"checkbox\" name=\"heic_as_jpeg\" x-model=\"heic_as_jpg\" checked> Download HEIC as JPEG</label></fieldset></div><button type=\"submit\" style=\"margin-top: 0.5rem\">Download</button></form></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -380,12 +351,12 @@ func uploadButton() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var20 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var20 == nil {
-			templ_7745c5c3_Var20 = templ.NopComponent
+		templ_7745c5c3_Var19 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var19 == nil {
+			templ_7745c5c3_Var19 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<button>Upload</button>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<script>\n\tfunction MakeUploadForm() {\n\t\treturn {\n\t\t\tfiles: [ ],\n\n\t\t\tUpload( idx ) {\n\t\t\t\tif( idx >= this.files.length ) {\n\t\t\t\t\treturn;\n\t\t\t\t}\n\n\t\t\t\tconst xhr = new XMLHttpRequest();\n\t\t\t\txhr.open( \"POST\", window.location.pathname, true );\n\t\t\t\txhr.upload.onprogress = e => this.files[ idx ].progress = e.loaded / e.total;\n\t\t\t\txhr.onload = () => {\n\t\t\t\t\tthis.files[ idx ].progress = 1;\n\t\t\t\t\tthis.Upload( idx + 1 );\n\t\t\t\t};\n\n\t\t\t\tlet data = new FormData();\n\t\t\t\tdata.append( \"assets\", this.files[ idx ].file );\n\n\t\t\t\txhr.send( data );\n\n\t\t\t\tthis.files[ idx ].xhr = xhr;\n\t\t\t},\n\n\t\t\tasync Changed( e ) {\n\t\t\t\tlet first_new = this.files.length;\n\t\t\t\tthis.totoa\n\n\t\t\t\tfor( const file of e.target.files ) {\n\t\t\t\t\tlet promise = new Promise( function( resolve ) {\n\t\t\t\t\t\tlet reader = new FileReader();\n\t\t\t\t\t\treader.onload = function( e ) {\n\t\t\t\t\t\t\tresolve( e.target.result );\n\t\t\t\t\t\t};\n\t\t\t\t\t\treader.readAsDataURL( file );\n\t\t\t\t\t} );\n\n\t\t\t\t\tthis.files.push( {\n\t\t\t\t\t\tfile: file,\n\t\t\t\t\t\tname: file.name,\n\t\t\t\t\t\tthumbnail: await promise,\n\t\t\t\t\t\tprogress: 0,\n\t\t\t\t\t} );\n\t\t\t\t}\n\n\t\t\t\tthis.Upload( first_new );\n\t\t\t},\n\n\t\t\tCancel( idx ) {\n\t\t\t},\n\t\t};\n\t}\n\t</script><div x-data=\"MakeUploadForm()\"><style>\n\t\t@scope {\n\t\t\timg {\n\t\t\t\taspect-ratio: 1;\n\t\t\t\twidth: 2rem;\n\t\t\t\tobject-fit: cover;\n\t\t\t\tobject-position: 50% 50%;\n\t\t\t\tvertical-align: middle;\n\t\t\t\tmargin: 0.25rem 0;\n\t\t\t}\n\t\t}\n\t\t</style><button type=\"button\"><label>Upload <input type=\"file\" name=\"photos\" multiple @change=\"Changed\" style=\"display: none\"></label></button><div class=\"dropdown\" x-cloak x-show=\"files.length &gt; 0\"><div style=\"max-height: 50vh; overflow-y: scroll\"><template x-for=\"(file, i) in files\"><div><img :src=\"file.thumbnail\"> <span x-text=\"Math.floor( file.progress * 100 )\"></span>% <span x-text=\"file.name\"></span></div></template></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -409,74 +380,74 @@ func albumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var21 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var21 == nil {
-			templ_7745c5c3_Var21 = templ.NopComponent
+		templ_7745c5c3_Var20 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var20 == nil {
+			templ_7745c5c3_Var20 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<style>\n\t/* see https://www.w3schools.com/Css/css_dropdowns.asp */\n\t.dropdown {\n\t\tposition: relative;\n\t}\n\n\t.dropdown > form {\n\t\tposition: absolute;\n\t\ttop: 1rem;\n\t\tright: 0;\n\t\tz-index: var( --modal-z );\n\t\twidth: max-content;\n\t\tpadding: 0.5rem;\n\t\tbackground: #fff;\n\t\tborder: 4px solid #333;\n\t\tbox-shadow: 0 0 10px #666;\n\t}\n\t</style><aside><style>\n\t\t@scope {\n\t\t\t:scope {\n\t\t\t\tposition: sticky;\n\t\t\t\ttop: 0;\n\t\t\t\tz-index: var( --sticky-z );\n\t\t\t\tpadding: 0.5rem;\n\t\t\t\tbackground: white;\n\t\t\t\tborder-bottom: 1px solid #ccc;\n\t\t\t\tdisplay: flex;\n\t\t\t\tflex-direction: row;\n\t\t\t\tgap: 0;\n\t\t\t}\n\n\t\t\t:scope > div {\n\t\t\t\tdisplay: flex;\n\t\t\t\tflex-direction: column;\n\t\t\t}\n\n\t\t\t:scope > div > span {\n\t\t\t\tdisplay: flex;\n\t\t\t\tflex-direction: row;\n\t\t\t\talign-items: center;\n\t\t\t\tgap: 1rem;\n\t\t\t}\n\t\t}\n\t\t</style><div><h1>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<style>\n\t/* see https://www.w3schools.com/Css/css_dropdowns.asp */\n\t.dropdown {\n\t\tposition: relative;\n\t}\n\n\t.dropdown > * {\n\t\tposition: absolute;\n\t\ttop: 1rem;\n\t\tright: 0;\n\t\tz-index: var( --modal-z );\n\t\twidth: max-content;\n\t\tpadding: 0.5rem;\n\t\tbackground: #fff;\n\t\tborder: 4px solid #333;\n\t\tbox-shadow: 0 0 10px #666;\n\t}\n\t</style><aside><style>\n\t\t@scope {\n\t\t\t:scope {\n\t\t\t\tposition: sticky;\n\t\t\t\ttop: 0;\n\t\t\t\tz-index: var( --sticky-z );\n\t\t\t\tpadding: 0.5rem;\n\t\t\t\tbackground: white;\n\t\t\t\tborder-bottom: 1px solid #ccc;\n\t\t\t\tdisplay: flex;\n\t\t\t\tflex-direction: row;\n\t\t\t\tgap: 0;\n\t\t\t}\n\n\t\t\t:scope > div {\n\t\t\t\tdisplay: flex;\n\t\t\t\tflex-direction: column;\n\t\t\t}\n\n\t\t\t:scope > div > span {\n\t\t\t\tdisplay: flex;\n\t\t\t\tflex-direction: row;\n\t\t\t\talign-items: center;\n\t\t\t\tgap: 1rem;\n\t\t\t}\n\t\t}\n\t\t</style><div><h1>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var22 string
-		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
+		var templ_7745c5c3_Var21 string
+		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 484, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 488, Col: 19}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</h1><span style=\"font-size: 80%\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</h1><span style=\"font-size: 80%\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if ownership != AlbumOwnership_Owned {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var23 string
-			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(album.OwnerUsername)
+			var templ_7745c5c3_Var22 string
+			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(album.OwnerUsername)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 487, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 491, Col: 32}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "'s album</span> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "'s album</span> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<span>Oct 2023 &ndash; Jan 2025</span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<span>Oct 2023 &ndash; Jan 2025</span> <span>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var23 string
+		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(len(photos))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 495, Col: 25}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, " ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var24 string
-		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(len(photos))
+		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(sel(len(photos) == 1, "photo", "photos"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 491, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 495, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, " ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var25 string
-		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(sel(len(photos) == 1, "photo", "photos"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 491, Col: 74}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</span></span></div><span style=\"flex-grow: 1\"></span><div><span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</span></span></div><span style=\"flex-grow: 1\"></span><div><span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -506,26 +477,26 @@ func albumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</span></div></aside>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</span></div></aside>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if can_upload && ownership == AlbumOwnership_Guest {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<b>This page lets you add and remove photos so don't share it with randoms, give them <a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<b>This page lets you add and remove photos so don't share it with randoms, give them <a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var26 templ.SafeURL = templ.URL(guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret)
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var26)))
+			var templ_7745c5c3_Var25 templ.SafeURL = templ.URL(guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var25)))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\">this read only link</a> instead!!</b>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\">this read only link</a> instead!!</b>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<noscript><div style=\"padding: 0.5rem\">Sorry but nothing works without Javascript</div></noscript>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<noscript><div style=\"padding: 0.5rem\">Sorry but nothing works without Javascript</div></noscript>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -559,9 +530,9 @@ func ownedAlbumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo) templ.Compo
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var27 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var27 == nil {
-			templ_7745c5c3_Var27 = templ.NopComponent
+		templ_7745c5c3_Var26 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var26 == nil {
+			templ_7745c5c3_Var26 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		templ_7745c5c3_Err = albumTemplate(album, photos, AlbumOwnership_Owned, true).Render(ctx, templ_7745c5c3_Buffer)
@@ -588,9 +559,9 @@ func sharedAlbumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo) templ.Comp
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var28 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var28 == nil {
-			templ_7745c5c3_Var28 = templ.NopComponent
+		templ_7745c5c3_Var27 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var27 == nil {
+			templ_7745c5c3_Var27 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		templ_7745c5c3_Err = albumTemplate(album, photos, AlbumOwnership_SharedWithMe, true).Render(ctx, templ_7745c5c3_Buffer)
@@ -617,9 +588,9 @@ func guestAlbumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, can_upload 
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var29 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var29 == nil {
-			templ_7745c5c3_Var29 = templ.NopComponent
+		templ_7745c5c3_Var28 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var28 == nil {
+			templ_7745c5c3_Var28 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		templ_7745c5c3_Err = albumTemplate(album, photos, AlbumOwnership_Guest, can_upload).Render(ctx, templ_7745c5c3_Buffer)

@@ -38,7 +38,6 @@ import (
 	"github.com/adrium/goheif"
 	"github.com/galdor/go-thumbhash"
 	"github.com/evanoberholster/imagemeta"
-	"github.com/evanoberholster/imagemeta/exif2"
 	"github.com/evanoberholster/imagemeta/meta"
 	"github.com/tdewolff/minify/v2"
 	"github.com/fsnotify/fsnotify"
@@ -569,6 +568,14 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 }
 
 func uploadToLibrary( w http.ResponseWriter, r *http.Request, user User ) {
+	const megabyte = 1000 * 1000
+	try( r.ParseMultipartForm( 10 * megabyte ) )
+
+	if len( r.MultipartForm.File[ "assets" ] ) == 0 {
+		httpError( w, http.StatusBadRequest )
+		return
+	}
+
 	assets := make( []AddedAsset, len( r.MultipartForm.File[ "assets" ] ) )
 
 	for i, header := range r.MultipartForm.File[ "assets" ] {
@@ -621,6 +628,14 @@ func uploadToLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 
 func uploadToAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+		const megabyte = 1000 * 1000
+		try( r.ParseMultipartForm( 10 * megabyte ) )
+
+		if len( r.MultipartForm.File[ "assets" ] ) == 0 {
+			httpError( w, http.StatusBadRequest )
+			return
+		}
+
 		assets := make( []AddedAsset, len( r.MultipartForm.File[ "assets" ] ) )
 
 		for i, header := range r.MultipartForm.File[ "assets" ] {
@@ -679,6 +694,14 @@ func uploadToAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 
 func uploadToPhoto( w http.ResponseWriter, r *http.Request, user User ) {
 	pathPhotoHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, photo_id int64 ) {
+		const megabyte = 1000 * 1000
+		try( r.ParseMultipartForm( 10 * megabyte ) )
+
+		if len( r.MultipartForm.File[ "assets" ] ) == 0 {
+			httpError( w, http.StatusBadRequest )
+			return
+		}
+
 		assets := make( []AddedAsset, len( r.MultipartForm.File[ "assets" ] ) )
 
 		for i, header := range r.MultipartForm.File[ "assets" ] {
@@ -805,14 +828,6 @@ func distance( a LatLong, b LatLong ) float64 {
 	return earth_radius * math.Acos( math.Cos( dlat ) * math.Cos( dlong ) )
 }
 
-func exifOrientation( exif exif2.Exif ) ( meta.Orientation, error ) {
-	if exif.Orientation < meta.OrientationHorizontal || exif.Orientation > meta.OrientationRotate270 {
-		return 0, errors.New( "EXIF orientation out of range" )
-	}
-
-	return exif.Orientation, nil
-}
-
 func reorient( img *image.RGBA, orientation meta.Orientation ) *image.RGBA {
 	if orientation == meta.OrientationHorizontal {
 		return img
@@ -874,6 +889,8 @@ type AddedAsset struct {
 }
 
 func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset, error ) {
+	fmt.Printf( "addAsset( %s )\n", filename )
+
 	sha256 := sha256.Sum256( data )
 
 	var date sql.NullInt64
@@ -883,7 +900,7 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 
 	exif, err := imagemeta.Decode( bytes.NewReader( data ) )
 	if err == nil {
-		if exif.Orientation >= meta.OrientationHorizontal && exif.Orientation <= meta.OrientationMirrorHorizontalRotate90 {
+		if exif.Orientation >= meta.OrientationHorizontal && exif.Orientation <= meta.OrientationRotate270 {
 			orientation = exif.Orientation
 		}
 
