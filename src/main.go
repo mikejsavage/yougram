@@ -43,7 +43,7 @@ import (
 	"github.com/tdewolff/minify/v2"
 	"github.com/fsnotify/fsnotify"
 	minify_js "github.com/tdewolff/minify/v2/js"
-	_ "modernc.org/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var db *sql.DB
@@ -91,9 +91,27 @@ func must1[ T1 any ]( v1 T1, err error ) T1 {
 	return v1
 }
 
+
+type WrappedError struct {
+	Err error
+	Function string
+	Filename string
+	Line int
+}
+
+func ( w WrappedError ) Error() string {
+	return fmt.Sprintf( "%s(%s:%d): %v", w.Function, w.Filename, w.Line, w.Err )
+}
+
+func wrapError( err error ) WrappedError {
+	pc, filename, line, _ := runtime.Caller( 2 )
+	f := runtime.FuncForPC( pc )
+	return WrappedError { err, f.Name(), filename, line }
+}
+
 func try( err error ) {
 	if err != nil {
-		panic( err )
+		panic( wrapError( err ) )
 	}
 }
 
@@ -175,19 +193,19 @@ func initDB() {
 
 	exec( ctx, db_schema )
 
-	must( queries.CreateUser( ctx, sqlc.CreateUserParams {
+	mike := must1( queries.CreateUser( ctx, sqlc.CreateUserParams {
 		Username: norm.NFKC.String( "mike" ),
 		Password: norm.NFKC.String( "gg" ),
 		Cookie: "123",
 	} ) )
 
-	must( queries.CreateUser( ctx, sqlc.CreateUserParams {
+	_ = must1( queries.CreateUser( ctx, sqlc.CreateUserParams {
 		Username: norm.NFKC.String( "mum" ),
 		Password: norm.NFKC.String( "gg" ),
 		Cookie: "123",
 	} ) )
 
-	must( queries.CreateUser( ctx, sqlc.CreateUserParams {
+	_ = must1( queries.CreateUser( ctx, sqlc.CreateUserParams {
 		Username: norm.NFKC.String( "dad" ),
 		Password: norm.NFKC.String( "gg" ),
 		Cookie: "123",
@@ -215,10 +233,10 @@ func initDB() {
 		AutoassignRadius: sql.NullFloat64 { 50, true },
 	} ) )
 
-	must( addFileToAlbum( ctx, "DSCN0025.jpg", 2 ) )
-	must( addFileToAlbum( ctx, "DSCF2994.jpeg", 1 ) )
-	must( addFile( ctx, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } ) )
-	must( addFile( ctx, "IMG_2330.HEIC", sql.Null[ int64 ] { } ) )
+	must( addFileToAlbum( ctx, mike, "DSCN0025.jpg", 2 ) )
+	must( addFileToAlbum( ctx, mike, "DSCF2994.jpeg", 1 ) )
+	must( addFile( ctx, mike, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } ) )
+	must( addFile( ctx, mike, "IMG_2330.HEIC", sql.Null[ int64 ] { } ) )
 
 	seagull := must1( hex.DecodeString( "cc85f99cd694c63840ff359e13610390f85c4ea0b315fc2b033e5839e7591949" ) )
 	tx := must1( db.Begin() )
@@ -230,9 +248,6 @@ func initDB() {
 			Owner: sql.NullInt64 { 1, true }, // TODO
 			CreatedAt: time.Now().Unix(),
 			PrimaryAsset: seagull,
-			DateTaken: sql.NullInt64 { },
-			Latitude: sql.NullFloat64 { },
-			Longitude: sql.NullFloat64 { },
 		} ) )
 
 		must( qtx.AddAssetToPhoto( ctx, sqlc.AddAssetToPhotoParams {
@@ -553,6 +568,140 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	} )
 }
 
+func uploadToLibrary( w http.ResponseWriter, r *http.Request, user User ) {
+	assets := make( []AddedAsset, len( r.MultipartForm.File[ "assets" ] ) )
+
+	for i, header := range r.MultipartForm.File[ "assets" ] {
+		f := try1( header.Open() )
+		defer f.Close()
+		assets[ i ] = try1( addAsset( r.Context(), try1( io.ReadAll( f ) ), header.Filename ) )
+	}
+
+	var photo_id sql.Null[ int64 ]
+	for _, asset := range assets {
+		photos := try1( queries.GetAssetPhotos( r.Context(), sqlc.GetAssetPhotosParams {
+			AssetID: asset.Sha256[:],
+			Owner: sql.NullInt64 { user.ID, true },
+		} ) )
+
+		if len( photos ) == 0 {
+			continue
+		}
+
+		if len( photos ) == 1 && !photo_id.Valid {
+			photo_id = just( photos[ 0 ] )
+			continue
+		}
+
+		httpError( w, http.StatusConflict )
+		return
+	}
+
+	tx := try1( db.Begin() )
+	defer tx.Rollback()
+	qtx := queries.WithTx( tx )
+
+	if !photo_id.Valid {
+		photo_id = just( try1( qtx.CreatePhoto( r.Context(), sqlc.CreatePhotoParams {
+			Owner: sql.NullInt64 { user.ID, true },
+			CreatedAt: time.Now().Unix(),
+			PrimaryAsset: assets[ 0 ].Sha256[:],
+		} ) ) )
+	}
+
+	for _, asset := range assets {
+		try( qtx.AddAssetToPhoto( r.Context(), sqlc.AddAssetToPhotoParams {
+			AssetID: asset.Sha256[:],
+			PhotoID: photo_id.V,
+		} ) )
+	}
+
+	tx.Commit()
+}
+
+func uploadToAlbum( w http.ResponseWriter, r *http.Request, user User ) {
+	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+		assets := make( []AddedAsset, len( r.MultipartForm.File[ "assets" ] ) )
+
+		for i, header := range r.MultipartForm.File[ "assets" ] {
+			f := try1( header.Open() )
+			defer f.Close()
+			assets[ i ] = try1( addAsset( r.Context(), try1( io.ReadAll( f ) ), header.Filename ) )
+		}
+
+		var photo_id sql.Null[ int64 ]
+		for _, asset := range assets {
+			photos := try1( queries.GetAssetPhotos( r.Context(), sqlc.GetAssetPhotosParams {
+				AssetID: asset.Sha256[:],
+				Owner: sql.NullInt64 { user.ID, true },
+			} ) )
+
+			if len( photos ) == 0 {
+				continue
+			}
+
+			if len( photos ) == 1 && !photo_id.Valid {
+				photo_id = just( photos[ 0 ] )
+				continue
+			}
+
+			httpError( w, http.StatusConflict )
+			return
+		}
+
+		tx := try1( db.Begin() )
+		defer tx.Rollback()
+		qtx := queries.WithTx( tx )
+
+		if !photo_id.Valid {
+			photo_id = just( try1( qtx.CreatePhoto( r.Context(), sqlc.CreatePhotoParams {
+				Owner: sql.NullInt64 { user.ID, true },
+				CreatedAt: time.Now().Unix(),
+				PrimaryAsset: assets[ 0 ].Sha256[:],
+			} ) ) )
+		}
+
+		for _, asset := range assets {
+			try( qtx.AddAssetToPhoto( r.Context(), sqlc.AddAssetToPhotoParams {
+				AssetID: asset.Sha256[:],
+				PhotoID: photo_id.V,
+			} ) )
+		}
+
+		try( qtx.AddPhotoToAlbum( r.Context(), sqlc.AddPhotoToAlbumParams {
+			PhotoID: photo_id.V,
+			AlbumID: album.ID,
+		} ) )
+
+		tx.Commit()
+	} )
+}
+
+func uploadToPhoto( w http.ResponseWriter, r *http.Request, user User ) {
+	pathPhotoHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, photo_id int64 ) {
+		assets := make( []AddedAsset, len( r.MultipartForm.File[ "assets" ] ) )
+
+		for i, header := range r.MultipartForm.File[ "assets" ] {
+			f := try1( header.Open() )
+			defer f.Close()
+			assets[ i ] = try1( addAsset( r.Context(), try1( io.ReadAll( f ) ), header.Filename ) )
+		}
+
+		tx := try1( db.Begin() )
+		defer tx.Rollback()
+		qtx := queries.WithTx( tx )
+
+		for _, asset := range assets {
+			try( qtx.AddAssetToPhoto( r.Context(), sqlc.AddAssetToPhotoParams {
+				AssetID: asset.Sha256[:],
+				PhotoID: photo_id,
+			} ) )
+		}
+
+		tx.Commit()
+	} )
+}
+
 func getAssetAsGuest( w http.ResponseWriter, r *http.Request ) {
 	sha256_str, sha256, err := pathValueAsset( r )
 	if err != nil {
@@ -724,32 +873,7 @@ type AddedAsset struct {
 	Longitude sql.NullFloat64
 }
 
-func addAsset( ctx context.Context, data []byte, album_id sql.Null[ int64 ], filename string ) ( AddedAsset, error ) {
-	before := time.Now()
-	fmt.Printf( "addAsset( %s )\n", filename )
-
-	is_heic := strings.ToLower( filepath.Ext( filename ) ) == ".heic"
-	ext := sel( is_heic, ".heic", ".jpg" )
-
-	var decoded *image.RGBA
-	var err error
-	if is_heic {
-		ycbcr, err := goheif.Decode( bytes.NewReader( data ) )
-		fmt.Printf( "\tdecoded HEIC %dms\n", time.Now().Sub( before ).Milliseconds() )
-		if err != nil {
-			return AddedAsset { }, err
-		}
-
-		decoded = image.NewRGBA( ycbcr.Bounds() )
-		draw.Draw( decoded, decoded.Bounds(), ycbcr, ycbcr.Bounds().Min, draw.Src )
-		fmt.Printf( "\tyCbCr -> RGBA %dms\n", time.Now().Sub( before ).Milliseconds() )
-	} else {
-		decoded, err = stb.StbLoad( data )
-		if err != nil {
-			return AddedAsset { }, err
-		}
-	}
-
+func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset, error ) {
 	sha256 := sha256.Sum256( data )
 
 	var date sql.NullInt64
@@ -772,6 +896,35 @@ func addAsset( ctx context.Context, data []byte, album_id sql.Null[ int64 ], fil
 			longitude = sql.NullFloat64 { exif.GPS.Longitude(), true }
 		}
 	}
+
+	if try1( queries.AssetExists( ctx, sha256[:] ) ) == 1 {
+		// TODO: get metadata from the db maybe
+		return AddedAsset { sha256, date, latitude, longitude }, nil
+	}
+
+	before := time.Now()
+
+	is_heic := strings.ToLower( filepath.Ext( filename ) ) == ".heic"
+	ext := sel( is_heic, ".heic", ".jpg" )
+
+	var decoded *image.RGBA
+	if is_heic {
+		ycbcr, err := goheif.Decode( bytes.NewReader( data ) )
+		fmt.Printf( "\tdecoded HEIC %dms\n", time.Now().Sub( before ).Milliseconds() )
+		if err != nil {
+			return AddedAsset { }, err
+		}
+
+		decoded = image.NewRGBA( ycbcr.Bounds() )
+		draw.Draw( decoded, decoded.Bounds(), ycbcr, ycbcr.Bounds().Min, draw.Src )
+		fmt.Printf( "\tyCbCr -> RGBA %dms\n", time.Now().Sub( before ).Milliseconds() )
+	} else {
+		decoded, err = stb.StbLoad( data )
+		if err != nil {
+			return AddedAsset { }, err
+		}
+	}
+
 	fmt.Printf( "\torientation %d\n", orientation )
 
 	// if !album_id.Valid && date.Valid && latitude.Valid {
@@ -833,18 +986,18 @@ func addAsset( ctx context.Context, data []byte, album_id sql.Null[ int64 ], fil
 	return AddedAsset { sha256, date, latitude, longitude }, err
 }
 
-func addFile( ctx context.Context, path string, album_id sql.Null[ int64 ] ) error {
+func addFile( ctx context.Context, user int64, path string, album_id sql.Null[ int64 ] ) error {
 	f := must1( os.Open( path ) )
 	defer f.Close()
 	img := must1( io.ReadAll( f ) )
-	asset, err := addAsset( ctx, img, album_id, path )
+	asset, err := addAsset( ctx, img, path )
 	if err != nil {
 		return err
 	}
 
 	photos, err := queries.GetAssetPhotos( ctx, sqlc.GetAssetPhotosParams {
 		AssetID: asset.Sha256[:],
-		Owner: sql.NullInt64 { 1, true }, // TODO
+		Owner: sql.NullInt64 { user, true },
 	} )
 
 	if len( photos ) == 0 {
@@ -857,12 +1010,9 @@ func addFile( ctx context.Context, path string, album_id sql.Null[ int64 ] ) err
 		qtx := queries.WithTx( tx )
 
 		photo_id, err := qtx.CreatePhoto( ctx, sqlc.CreatePhotoParams {
-			Owner: sql.NullInt64 { 1, true }, // TODO
+			Owner: sql.NullInt64 { user, true },
 			CreatedAt: time.Now().Unix(),
 			PrimaryAsset: asset.Sha256[:],
-			DateTaken: asset.Date,
-			Latitude: asset.Latitude,
-			Longitude: asset.Longitude,
 		} )
 		if err != nil {
 			return err
@@ -892,8 +1042,8 @@ func addFile( ctx context.Context, path string, album_id sql.Null[ int64 ] ) err
 	return nil
 }
 
-func addFileToAlbum( ctx context.Context, path string, album_id int64 ) error {
-	return addFile( ctx, path, sql.Null[ int64 ] { album_id, true } )
+func addFileToAlbum( ctx context.Context, user int64, path string, album_id int64 ) error {
+	return addFile( ctx, user, path, sql.Null[ int64 ] { album_id, true } )
 }
 
 func pathAlbumHandler( w http.ResponseWriter, r *http.Request, user User, handler func( http.ResponseWriter, *http.Request, User, sqlc.GetAlbumByURLRow ) ) {
@@ -911,22 +1061,24 @@ func pathAlbumHandler( w http.ResponseWriter, r *http.Request, user User, handle
 	handler( w, r, user, album.V )
 }
 
-func uploadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
-	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
-		const megabyte = 1000 * 1000
-		try( r.ParseMultipartForm( 10 * megabyte ) )
+func pathPhotoHandler( w http.ResponseWriter, r *http.Request, user User, handler func( http.ResponseWriter, *http.Request, User, int64 ) ) {
+	photo_id, err := strconv.ParseInt( r.PostFormValue( "photo" ), 10, 64 )
+	if err != nil {
+		httpError( w, http.StatusBadRequest )
+		return
+	}
 
-		for _, header := range r.MultipartForm.File[ "photos" ] {
-			f := try1( header.Open() )
-			defer f.Close()
+	owner := queryOptional( queries.GetPhotoOwner( r.Context(), photo_id ) )
+	if !owner.Valid {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+	if !owner.V.Valid || owner.V.Int64 != user.ID {
+		httpError( w, http.StatusForbidden )
+		return
+	}
 
-			contents := try1( io.ReadAll( f ) )
-
-			fmt.Printf( "%s -> %d %d\n", header.Filename, len( contents ), album )
-		}
-
-		http.Redirect( w, r, r.URL.Path, http.StatusSeeOther )
-	} )
+	handler( w, r, user, photo_id )
 }
 
 func loginForm( w http.ResponseWriter, r *http.Request ) {
@@ -1129,6 +1281,10 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 	return http_server
 }
 
+func showHelpAndQuit() {
+	os.Exit( 1 )
+}
+
 func main() {
 	runtime.GOMAXPROCS( 2 )
 
@@ -1139,15 +1295,18 @@ func main() {
 		log.Fatalf( "Can't make assets dir: %v", err )
 	}
 
-	{
-		path := "file::memory:?cache=shared"
-		if len( os.Args ) == 2 {
-			path = os.Args[ 1 ]
-		} else {
-			fmt.Println( "Using in memory database. Nothing will be saved when you quit the server!" )
+	db_path := "file::memory:"
+	if len( os.Args ) == 1 {
+		if IsReleaseBuild {
+			showHelpAndQuit()
 		}
-		db = must1( sql.Open( "sqlite", path ) )
+
+		fmt.Println( "Using in memory database. Nothing will be saved when you quit the server!" )
+	} else {
+		db_path = os.Args[ 1 ]
 	}
+
+	db = must1( sql.Open( "sqlite3", db_path + "?cache=shared" ) )
 	defer db.Close()
 
 	queries = sqlc.New( db )
@@ -1190,13 +1349,18 @@ func main() {
 
 		{ "GET",  "/", requireAuth( viewLibrary ) },
 		{ "GET",  "/{album}", requireAuth( viewAlbum ) },
+
+		{ "POST", "/", requireAuth( uploadToLibrary ) },
+		{ "POST", "/{album}", requireAuth( uploadToAlbum ) },
+		{ "POST", "/Special:uploadToPhoto", requireAuth( uploadToPhoto ) },
 	} )
 
 	guest_http_server := startHttpServer( "0.0.0.0:5679", []Route {
 		{ "GET",  "/Special:checksum", getChecksum },
-		{ "GET",  "/Special:alpinejs-3\\.14\\.9\\.js", serveString( alpinejs ) },
-		{ "GET",  "/Special:htmx-2\\.0\\.4\\.js", serveString( htmxjs ) },
-		{ "GET",  "/Special:thumbhash-1\\.0\\.0\\.js", serveString( thumbhashjs ) },
+		{ "GET",  "/Special:alpinejs-3.14.9.js", serveString( alpinejs ) },
+		{ "GET",  "/Special:fuzzysort-3.1.0.js", serveString( fuzzysortjs ) },
+		{ "GET",  "/Special:htmx-2.0.4.js", serveString( htmxjs ) },
+		{ "GET",  "/Special:thumbhash-1.0.0.js", serveString( thumbhashjs ) },
 
 		{ "GET",  "/{album}/{secret}", viewAlbumAsGuest },
 		{ "GET",  "/{album}/{secret}/asset/{asset}", getAssetAsGuest },

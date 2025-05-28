@@ -92,6 +92,9 @@ templ base( checksum string, title string ) {
 		margin: 0;
 	}
 
+	a { color: var( --blue ); }
+	a:visited { color: var( --blue ); }
+
 	fieldset {
 		border: 0;
 		margin: 0;
@@ -116,9 +119,6 @@ templ base( checksum string, title string ) {
 
 	input:is(:disabled, :read-only), input[type=text]:is(:disabled, :read-only), input[type=password]:is(:disabled, :read-only) {
 		background: #fafafa;
-	}
-
-	:is(:disabled, :read-only) {
 		color: #545454;
 	}
 
@@ -158,55 +158,6 @@ templ base( checksum string, title string ) {
 		display: none !important;
 	}
 
-	nav {
-		display: flex;
-		flex-direction: column;
-		position: fixed;
-		left: 0;
-		top: 0;
-		bottom: 0;
-		width: var( --sidebar-width );
-		background: #eee;
-		border-right: 1px solid #ccc;
-		padding: 0.5rem;
-	}
-
-	nav a {
-		color: black;
-		display: flex;
-		gap: 0.5rem;
-		text-decoration: none;
-	}
-
-	nav a:hover {
-		text-decoration: underline;
-	}
-
-	nav a img {
-		aspect-ratio: 1;
-		object-fit: cover;
-		object-position: 50% 50%;
-	}
-
-	nav a:has( img ) {
-		margin-block: 0.25rem;
-	}
-
-	nav div {
-		white-space: nowrap;
-		text-overflow: ellipsis;
-		overflow: hidden;
-	}
-
-	nav .curr {
-		font-weight: bold;
-	}
-
-	hr {
-		width: 50%;
-		border-color: transparent;
-	}
-
 	aside {
 		position: sticky;
 		top: 0;
@@ -225,6 +176,63 @@ templ baseWithSidebar( user User, checksum string, current_url string, title str
 	@base( checksum, title )
 
 	<nav>
+		<style>
+		@scope {
+			:scope {
+				display: flex;
+				flex-direction: column;
+				position: fixed;
+				left: 0;
+				top: 0;
+				bottom: 0;
+				width: var( --sidebar-width );
+				background: #eee;
+				border-right: 1px solid #ccc;
+				padding: 0.5rem;
+			}
+
+			a {
+				color: black;
+				display: flex;
+				gap: 0.5rem;
+				text-decoration: none;
+			}
+
+			a:hover {
+				text-decoration: underline;
+			}
+
+			a:visited {
+				color: black;
+			}
+
+			a img {
+				aspect-ratio: 1;
+				object-fit: cover;
+				object-position: 50% 50%;
+			}
+
+			a:has( img ) {
+				margin-block: 0.25rem;
+			}
+
+			div {
+				white-space: nowrap;
+				text-overflow: ellipsis;
+				overflow: hidden;
+			}
+
+			.curr {
+				font-weight: bold;
+			}
+
+			hr {
+				width: 50%;
+				border-color: transparent;
+			}
+		}
+		</style>
+
 		<b>{ user.Username }gram</b>
 		<a href="/Special:logout">Log out</a>
 

@@ -24,7 +24,7 @@ type Album struct {
 	AutoassignRadius    sql.NullFloat64
 }
 
-type AlbumKeyPhoto struct {
+type AlbumKeyAsset struct {
 	ID     int64
 	Sha256 []byte
 }
@@ -53,9 +53,6 @@ type Photo struct {
 	CreatedAt    int64
 	DeleteAt     sql.NullInt64
 	PrimaryAsset []byte
-	DateTaken    sql.NullInt64
-	Latitude     sql.NullFloat64
-	Longitude    sql.NullFloat64
 }
 
 type PhotoAsset struct {

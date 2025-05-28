@@ -39,14 +39,29 @@ func (q *Queries) AddPhotoToAlbum(ctx context.Context, arg AddPhotoToAlbumParams
 }
 
 const areThereAnyUsers = `-- name: AreThereAnyUsers :one
-SELECT IFNULL( ( SELECT 1 FROM user LIMIT 1 ), 0 )
+SELECT EXISTS( SELECT 1 FROM user LIMIT 1 )
 `
 
-func (q *Queries) AreThereAnyUsers(ctx context.Context) (interface{}, error) {
+func (q *Queries) AreThereAnyUsers(ctx context.Context) (int64, error) {
 	row := q.db.QueryRowContext(ctx, areThereAnyUsers)
-	var ifnull interface{}
-	err := row.Scan(&ifnull)
-	return ifnull, err
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const assetExists = `-- name: AssetExists :one
+
+SELECT EXISTS( SELECT 1 FROM asset WHERE sha256 = ? )
+`
+
+// ----------
+// ASSETS --
+// ----------
+func (q *Queries) AssetExists(ctx context.Context, sha256 []byte) (int64, error) {
+	row := q.db.QueryRowContext(ctx, assetExists, sha256)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const changePassword = `-- name: ChangePassword :exec
@@ -107,7 +122,6 @@ func (q *Queries) CreateAlbum(ctx context.Context, arg CreateAlbumParams) error 
 }
 
 const createAsset = `-- name: CreateAsset :exec
-
 INSERT OR IGNORE INTO asset (
 	sha256, created_at, original_filename, type,
 	thumbnail, thumbhash,
@@ -128,9 +142,6 @@ type CreateAssetParams struct {
 	Longitude        sql.NullFloat64
 }
 
-// ----------
-// ASSETS --
-// ----------
 func (q *Queries) CreateAsset(ctx context.Context, arg CreateAssetParams) error {
 	_, err := q.db.ExecContext(ctx, createAsset,
 		arg.Sha256,
@@ -152,8 +163,8 @@ const createPhoto = `-- name: CreatePhoto :one
 
 
 
-INSERT INTO photo ( owner, created_at, primary_asset, date_taken, latitude, longitude )
-VALUES( ?, ?, ?, ?, ?, ? )
+INSERT INTO photo ( owner, created_at, primary_asset )
+VALUES( ?, ?, ? )
 RETURNING id
 `
 
@@ -161,9 +172,6 @@ type CreatePhotoParams struct {
 	Owner        sql.NullInt64
 	CreatedAt    int64
 	PrimaryAsset []byte
-	DateTaken    sql.NullInt64
-	Latitude     sql.NullFloat64
-	Longitude    sql.NullFloat64
 }
 
 // primary assets + raws
@@ -171,22 +179,16 @@ type CreatePhotoParams struct {
 // PHOTOS --
 // ----------
 func (q *Queries) CreatePhoto(ctx context.Context, arg CreatePhotoParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, createPhoto,
-		arg.Owner,
-		arg.CreatedAt,
-		arg.PrimaryAsset,
-		arg.DateTaken,
-		arg.Latitude,
-		arg.Longitude,
-	)
+	row := q.db.QueryRowContext(ctx, createPhoto, arg.Owner, arg.CreatedAt, arg.PrimaryAsset)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
 }
 
-const createUser = `-- name: CreateUser :exec
+const createUser = `-- name: CreateUser :one
 
 INSERT INTO user ( username, password, needs_to_reset_password, cookie ) VALUES ( ?, ?, 1, ? )
+RETURNING id
 `
 
 type CreateUserParams struct {
@@ -198,9 +200,11 @@ type CreateUserParams struct {
 // ---------
 // USERS --
 // ---------
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.ExecContext(ctx, createUser, arg.Username, arg.Password, arg.Cookie)
-	return err
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, createUser, arg.Username, arg.Password, arg.Cookie)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getAlbumAssets = `-- name: GetAlbumAssets :many
@@ -349,7 +353,7 @@ FROM photo
 INNER JOIN album_photo ON album_photo.photo_id = photo.id
 INNER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
 WHERE album_photo.album_id = ? AND album_photo.photo_id = photo.id
-ORDER BY photo.date_taken ASC
+ORDER BY photo_primary_asset.date_taken ASC
 `
 
 type GetAlbumPhotosRow struct {
@@ -382,19 +386,8 @@ func (q *Queries) GetAlbumPhotos(ctx context.Context, albumID int64) ([]GetAlbum
 }
 
 const getAlbumsForUser = `-- name: GetAlbumsForUser :many
-SELECT album.name, album.url_slug, asset.sha256 AS key_photo_sha256 FROM album
-LEFT OUTER JOIN photo ON photo.id = IFNULL( album.key_photo, (
-	SELECT photo_id FROM album_photo
-	INNER JOIN photo ON photo.id = album_photo.photo_id
-	WHERE album_photo.album_id = album.id
-	ORDER BY photo.date_taken DESC LIMIT 1
-) )
-LEFT OUTER JOIN asset ON asset.sha256 = IFNULL( photo.primary_asset, (
-	SELECT asset_id FROM photo_asset
-	INNER JOIN asset AS lol ON lol.sha256 = photo_asset.asset_id
-	WHERE photo_asset.photo_id = photo.id AND lol.type != "raw"
-	ORDER BY lol.created_at DESC LIMIT 1
-) )
+SELECT album.name, album.url_slug, album_key_asset.sha256 AS key_photo_sha256 FROM album
+LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
 WHERE ( album.shared OR album.owner = ? )
 ORDER BY album.name
 `
@@ -429,13 +422,13 @@ func (q *Queries) GetAlbumsForUser(ctx context.Context, owner int64) ([]GetAlbum
 }
 
 const getAssetGuestMetadata = `-- name: GetAssetGuestMetadata :one
-SELECT type, original_filename, IFNULL( (
+SELECT type, original_filename, EXISTS(
 	SELECT 1 FROM photo_asset
 	INNER JOIN photo ON photo.id = photo_asset.photo_id
 	INNER JOIN album_photo ON album_photo.photo_id = photo.id
 	INNER JOIN album ON album.id = album_photo.album_id
 	WHERE album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? )
-), 0 ) AS has_permission
+) AS has_permission
 FROM asset WHERE sha256 = ?
 `
 
@@ -449,7 +442,7 @@ type GetAssetGuestMetadataParams struct {
 type GetAssetGuestMetadataRow struct {
 	Type             string
 	OriginalFilename string
-	HasPermission    interface{}
+	HasPermission    int64
 }
 
 func (q *Queries) GetAssetGuestMetadata(ctx context.Context, arg GetAssetGuestMetadataParams) (GetAssetGuestMetadataRow, error) {
@@ -465,13 +458,13 @@ func (q *Queries) GetAssetGuestMetadata(ctx context.Context, arg GetAssetGuestMe
 }
 
 const getAssetGuestThumbnail = `-- name: GetAssetGuestThumbnail :one
-SELECT thumbnail, original_filename, IFNULL( (
+SELECT thumbnail, original_filename, EXISTS(
 	SELECT 1 FROM photo_asset
 	INNER JOIN photo ON photo.id = photo_asset.photo_id
 	INNER JOIN album_photo ON album_photo.photo_id = photo.id
 	INNER JOIN album ON album.id = album_photo.album_id
 	WHERE album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? )
-), 0 ) AS has_permission
+) AS has_permission
 FROM asset WHERE sha256 = ?
 `
 
@@ -485,7 +478,7 @@ type GetAssetGuestThumbnailParams struct {
 type GetAssetGuestThumbnailRow struct {
 	Thumbnail        []byte
 	OriginalFilename string
-	HasPermission    interface{}
+	HasPermission    int64
 }
 
 func (q *Queries) GetAssetGuestThumbnail(ctx context.Context, arg GetAssetGuestThumbnailParams) (GetAssetGuestThumbnailRow, error) {
@@ -501,13 +494,13 @@ func (q *Queries) GetAssetGuestThumbnail(ctx context.Context, arg GetAssetGuestT
 }
 
 const getAssetMetadata = `-- name: GetAssetMetadata :one
-SELECT type, original_filename, IFNULL( (
+SELECT type, original_filename, EXISTS(
 	SELECT 1 FROM photo_asset
 	INNER JOIN photo ON photo.id = photo_asset.photo_id
 	INNER JOIN album_photo ON album_photo.photo_id = photo.id
 	INNER JOIN album ON album.id = album_photo.album_id
 	WHERE photo_asset.asset_id = ? AND ( photo.owner = ? OR album.owner = ? OR album.shared )
-), 0 ) AS has_permission
+) AS has_permission
 FROM asset WHERE sha256 = ?
 `
 
@@ -521,7 +514,7 @@ type GetAssetMetadataParams struct {
 type GetAssetMetadataRow struct {
 	Type             string
 	OriginalFilename string
-	HasPermission    interface{}
+	HasPermission    int64
 }
 
 func (q *Queries) GetAssetMetadata(ctx context.Context, arg GetAssetMetadataParams) (GetAssetMetadataRow, error) {
@@ -607,6 +600,17 @@ func (q *Queries) GetPhoto(ctx context.Context, id int64) (GetPhotoRow, error) {
 	return i, err
 }
 
+const getPhotoOwner = `-- name: GetPhotoOwner :one
+SELECT owner FROM photo WHERE id = ?
+`
+
+func (q *Queries) GetPhotoOwner(ctx context.Context, id int64) (sql.NullInt64, error) {
+	row := q.db.QueryRowContext(ctx, getPhotoOwner, id)
+	var owner sql.NullInt64
+	err := row.Scan(&owner)
+	return owner, err
+}
+
 const getUserAuthDetails = `-- name: GetUserAuthDetails :one
 SELECT id, password, needs_to_reset_password, cookie FROM user WHERE username = ?
 `
@@ -634,7 +638,7 @@ const getUserPhotos = `-- name: GetUserPhotos :many
 SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.thumbhash
 FROM photo
 INNER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
-WHERE owner = ? ORDER BY photo.date_taken DESC
+WHERE owner = ? ORDER BY photo_primary_asset.date_taken DESC
 `
 
 type GetUserPhotosRow struct {

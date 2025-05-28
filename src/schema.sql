@@ -36,10 +36,6 @@ CREATE TABLE IF NOT EXISTS photo (
 
 	primary_asset BLOB NOT NULL REFERENCES asset( sha256 ),
 
-	date_taken INTEGER,
-	latitude REAL CHECK( latitude >= -90 AND latitude <= 90 ),
-	longitude REAL CHECK( longitude >= -180 AND longitude < 180 ),
-
 	FOREIGN KEY ( id, primary_asset ) REFERENCES photo_asset( photo_id, asset_id ) DEFERRABLE INITIALLY DEFERRED
 ) STRICT;
 
@@ -66,7 +62,7 @@ CREATE TABLE IF NOT EXISTS album (
 	owner INTEGER NOT NULL REFERENCES user( id ),
 	name TEXT NOT NULL UNIQUE CHECK( name <> '' ),
 	url_slug TEXT NOT NULL UNIQUE CHECK( url_slug <> '' ), -- maybe this can be a user defined function
-	key_photo INTEGER REFERENCES photo( id ),
+	key_photo INTEGER REFERENCES photo( id ) ON DELETE SET NULL,
 
 	shared INTEGER NOT NULL CHECK( shared = 0 OR shared = 1 ),
 	readonly_secret TEXT NOT NULL,
@@ -97,11 +93,11 @@ CREATE TABLE IF NOT EXISTS album_photo (
 	UNIQUE( album_id, photo_id )
 ) STRICT;
 
-CREATE VIEW IF NOT EXISTS album_key_photo
-AS SELECT photo.id, asset.sha256 FROM photo
-INNER JOIN asset ON asset.id = IFNULL( photo.primary_asset, (
-		SELECT id FROM asset AS lol
-		INNER JOIN photo_asset ON photo_asset.asset_id = lol.id
-		WHERE photo_asset.photo_id = photo.id AND lol.type != "raw"
-		ORDER BY lol.created_at DESC LIMIT 1
+CREATE VIEW IF NOT EXISTS album_key_asset
+AS SELECT album.id, photo_primary_asset.sha256 FROM album
+LEFT OUTER JOIN photo_primary_asset ON photo_primary_asset.photo_id = IFNULL( album.key_photo, (
+	SELECT lol.photo_id FROM album_photo
+	INNER JOIN photo_primary_asset AS lol ON album_photo.photo_id = lol.photo_id
+	WHERE album_photo.album_id = album.id
+	ORDER BY lol.date_taken DESC LIMIT 1
 ) );
