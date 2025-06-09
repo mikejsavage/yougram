@@ -65,16 +65,17 @@ func (q *Queries) AssetExists(ctx context.Context, sha256 []byte) (int64, error)
 }
 
 const changePassword = `-- name: ChangePassword :exec
-UPDATE user SET password = ?, cookie = ? WHERE username = username
+UPDATE user SET password = ?, cookie = ? WHERE username = ?
 `
 
 type ChangePasswordParams struct {
 	Password string
-	Cookie   string
+	Cookie   []byte
+	Username string
 }
 
 func (q *Queries) ChangePassword(ctx context.Context, arg ChangePasswordParams) error {
-	_, err := q.db.ExecContext(ctx, changePassword, arg.Password, arg.Cookie)
+	_, err := q.db.ExecContext(ctx, changePassword, arg.Password, arg.Cookie, arg.Username)
 	return err
 }
 
@@ -194,7 +195,7 @@ RETURNING id
 type CreateUserParams struct {
 	Username string
 	Password string
-	Cookie   string
+	Cookie   []byte
 }
 
 // ---------
@@ -619,7 +620,7 @@ type GetUserAuthDetailsRow struct {
 	ID                   int64
 	Password             string
 	NeedsToResetPassword int64
-	Cookie               string
+	Cookie               []byte
 }
 
 func (q *Queries) GetUserAuthDetails(ctx context.Context, username string) (GetUserAuthDetailsRow, error) {
@@ -698,16 +699,17 @@ func (q *Queries) GetUsers(ctx context.Context) ([]string, error) {
 }
 
 const resetPassword = `-- name: ResetPassword :exec
-UPDATE user SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = username
+UPDATE user SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = ?
 `
 
 type ResetPasswordParams struct {
 	Password string
-	Cookie   string
+	Cookie   []byte
+	Username string
 }
 
 func (q *Queries) ResetPassword(ctx context.Context, arg ResetPasswordParams) error {
-	_, err := q.db.ExecContext(ctx, resetPassword, arg.Password, arg.Cookie)
+	_, err := q.db.ExecContext(ctx, resetPassword, arg.Password, arg.Cookie, arg.Username)
 	return err
 }
 

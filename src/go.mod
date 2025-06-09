@@ -14,6 +14,7 @@ require (
 	github.com/galdor/go-thumbhash v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/tdewolff/minify/v2 v2.20.37
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/text v0.25.0
 )
 

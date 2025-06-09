@@ -7,10 +7,10 @@ INSERT INTO user ( username, password, needs_to_reset_password, cookie ) VALUES 
 RETURNING id;
 
 -- name: ChangePassword :exec
-UPDATE user SET password = ?, cookie = ? WHERE username = username;
+UPDATE user SET password = ?, cookie = ? WHERE username = ?;
 
 -- name: ResetPassword :exec
-UPDATE user SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = username;
+UPDATE user SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = ?;
 
 -- name: GetUserAuthDetails :one
 SELECT id, password, needs_to_reset_password, cookie FROM user WHERE username = ?;

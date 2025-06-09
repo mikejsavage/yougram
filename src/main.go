@@ -4,8 +4,8 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"golang.org/x/crypto/chacha20poly1305"
 	"crypto/sha256"
-	"crypto/subtle"
 	"database/sql"
 	_ "embed"
 	"encoding/base64"
@@ -192,22 +192,23 @@ func initDB() {
 
 	exec( ctx, db_schema )
 
+	var secret [16]byte
 	mike := must1( queries.CreateUser( ctx, sqlc.CreateUserParams {
 		Username: norm.NFKC.String( "mike" ),
-		Password: norm.NFKC.String( "gg" ),
-		Cookie: "123",
+		Password: hashPassword( "gg" ),
+		Cookie: secret[:],
 	} ) )
 
 	_ = must1( queries.CreateUser( ctx, sqlc.CreateUserParams {
 		Username: norm.NFKC.String( "mum" ),
-		Password: norm.NFKC.String( "gg" ),
-		Cookie: "123",
+		Password: hashPassword( "gg" ),
+		Cookie: secret[:],
 	} ) )
 
 	_ = must1( queries.CreateUser( ctx, sqlc.CreateUserParams {
 		Username: norm.NFKC.String( "dad" ),
-		Password: norm.NFKC.String( "gg" ),
-		Cookie: "123",
+		Password: hashPassword( "gg" ),
+		Cookie: secret[:],
 	} ) )
 
 	must( queries.CreateAlbum( ctx, sqlc.CreateAlbumParams {
@@ -1102,55 +1103,6 @@ func loginForm( w http.ResponseWriter, r *http.Request ) {
 	try( loginFormTemplate( checksum ).Render( r.Context(), w ) )
 }
 
-// TODO: for some reason these don't work in safari
-func setAuthCookies( w http.ResponseWriter, username string, auth string ) {
-	expiration := -1
-	if auth != "" {
-		expiration = int( ( 365 * 24 * time.Hour ).Seconds() )
-	}
-
-	cookie := http.Cookie {
-		Name: "username",
-		Value: username,
-		Path: "/",
-		MaxAge: expiration,
-		// Secure: true, TODO: look at the Forwarded header? Forwarded: for=192.0.2.60;proto=http;by=203.0.113.43
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-	}
-
-	http.SetCookie( w, &cookie )
-
-	cookie.Name = "auth"
-	cookie.Value = auth
-
-	http.SetCookie( w, &cookie )
-}
-
-func authenticate( w http.ResponseWriter, r *http.Request ) {
-	form_username := norm.NFKC.String( r.PostFormValue( "username" ) )
-	form_password := norm.NFKC.String( r.PostFormValue( "password" ) )
-
-	user := queryOptional( queries.GetUserAuthDetails( r.Context(), form_username ) )
-	if !user.Valid {
-		http.Error( w, "Incorrect username", http.StatusOK )
-		return
-	}
-
-	if form_password != user.V.Password {
-		http.Error( w, "Incorrect password", http.StatusOK )
-		return
-	}
-
-	setAuthCookies( w, form_username, user.V.Cookie )
-	w.Header().Set( "HX-Refresh", "true" )
-}
-
-func logout( w http.ResponseWriter, r *http.Request ) {
-	setAuthCookies( w, "", "" )
-	http.Redirect( w, r, "/", http.StatusSeeOther )
-}
-
 type ZipFile struct {
 	Sha256 []byte
 	Type string
@@ -1180,42 +1132,6 @@ func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.Resp
 	}
 
 	try( zip.Close() )
-}
-
-func requireAuth( handler func( http.ResponseWriter, *http.Request, User ) ) func( http.ResponseWriter, *http.Request ) {
-	return func( w http.ResponseWriter, r *http.Request ) {
-		authed := false
-
-		username, err_username := r.Cookie( "username" )
-		auth, err_auth := r.Cookie( "auth" )
-
-		var user User
-
-		if err_username == nil && err_auth == nil {
-			row := queryOptional( queries.GetUserAuthDetails( r.Context(), username.Value ) )
-			if row.Valid {
-				// subtle.WithDataIndependentTiming( func() { // needs very very new go
-					if subtle.ConstantTimeCompare( []byte( auth.Value ), []byte( row.V.Cookie ) ) == 1 {
-						authed = true
-						user = User { row.V.ID, username.Value }
-					}
-				// } )
-			}
-		}
-
-		if !authed {
-			if r.Method == "GET" {
-				w.WriteHeader( http.StatusUnauthorized )
-				loginForm( w, r )
-			} else {
-				httpError( w, http.StatusForbidden )
-			}
-			return
-		}
-
-		setAuthCookies( w, user.Username, auth.Value )
-		handler( w, r, user )
-	}
 }
 
 func serveString( content string ) func( http.ResponseWriter, *http.Request ) {
@@ -1304,6 +1220,9 @@ func showHelpAndQuit() {
 
 func main() {
 	runtime.GOMAXPROCS( 2 )
+
+	key := make( []byte, 32 ) // TODO
+	cookie_aead = try1( chacha20poly1305.NewX( key ) )
 
 	checksum = exeChecksum()
 
