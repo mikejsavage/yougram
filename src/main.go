@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"hash/fnv"
 	"image"
@@ -157,7 +158,7 @@ func queryOptional[ T any ]( row T, err error ) sql.Null[ T ] {
 	return just( row )
 }
 
-func initDB() {
+func initDB( memory_db bool ) {
 	ctx := context.Background()
 
 	const application_id = -133015034
@@ -191,6 +192,10 @@ func initDB() {
 	exec( ctx, "PRAGMA foreign_key_check" )
 
 	exec( ctx, db_schema )
+
+	if !memory_db {
+		return
+	}
 
 	var secret [16]byte
 	mike := must1( queries.CreateUser( ctx, sqlc.CreateUserParams {
@@ -1215,31 +1220,46 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 }
 
 func showHelpAndQuit() {
+	fmt.Printf(
+`Usage: %s <command>
+    serve --private <addr:port> --guest <addr:port> --guest-url <https://guestgram.blah.com>
+    create-user [username]
+        Create a user with the given username and a random password.
+    reset-password [username]
+        Reset the given user's password to a random password.
+    disable-user [username]
+        Disable the given user account.
+    enable-user [username]
+        Re-enables a disabled account.
+`, os.Args[ 0 ] )
 	os.Exit( 1 )
 }
 
 func main() {
 	runtime.GOMAXPROCS( 2 )
 
+	checksum = exeChecksum()
+
 	key := make( []byte, 32 ) // TODO
 	cookie_aead = try1( chacha20poly1305.NewX( key ) )
-
-	checksum = exeChecksum()
 
 	err := os.Mkdir( "assets", 0755 )
 	if err != nil && !errors.Is( err, os.ErrExist ) {
 		log.Fatalf( "Can't make assets dir: %v", err )
 	}
 
-	db_path := "file::memory:"
+	db_path := "db.sq3"
+	private_listen_addr := "0.0.0.0:5678"
+	guest_listen_addr := "0.0.0.0:5679"
+	guest_url = "http://localhost:5679"
+
 	if len( os.Args ) == 1 {
 		if IsReleaseBuild {
 			showHelpAndQuit()
 		}
 
+		db_path = "file::memory:"
 		fmt.Println( "Using in memory database. Nothing will be saved when you quit the server!" )
-	} else {
-		db_path = os.Args[ 1 ]
 	}
 
 	db = must1( sql.Open( "sqlite3", db_path + "?cache=shared" ) )
@@ -1247,10 +1267,68 @@ func main() {
 
 	queries = sqlc.New( db )
 
-	initDB()
+	initDB( len( os.Args ) == 1 )
+
+	if len( os.Args ) > 1 {
+		switch os.Args[ 1 ] {
+		case "serve":
+			db_path = "db.sq3"
+
+			flags := flag.NewFlagSet( "serve", flag.ExitOnError )
+			private_addr_flag := flags.String( "private-listen-addr", "", "The listen address for yougram's private interface. This should probably be behind a VPN." )
+			guest_addr_flag := flags.String( "guest-listen-addr", "", "The listen address for yougram's guest interface. This is intended to be publically accessible, an easy way to do that is Cloudflare Tunnel or Tailscale Funnel." )
+			guest_url_flag := flags.String( "guest-url", guest_url, "The public URL for the guest interface, so links from the private interface work." )
+
+			must( flags.Parse( os.Args[ 2: ] ) )
+
+			if *private_addr_flag == "" || *guest_addr_flag == "" || *guest_url_flag == "" {
+				fmt.Println( "You need to provide all of these arguments:" )
+				flags.PrintDefaults()
+				os.Exit( 1 )
+			}
+
+			private_listen_addr = *private_addr_flag
+			guest_listen_addr = *guest_addr_flag
+			guest_url = *guest_url_flag
+
+		case "create-user":
+			if len( os.Args ) != 3 {
+				showHelpAndQuit()
+			}
+			password := secureRandomString( 4 )
+			_ = must1( queries.CreateUser( context.Background(), sqlc.CreateUserParams {
+				Username: norm.NFKC.String( os.Args[ 2 ] ),
+				Password: hashPassword( password ),
+				Cookie: secureRandomBytes( 16 ),
+			} ) )
+			fmt.Printf( "Created user %s, their password is %s\n", os.Args[ 2 ], password )
+			os.Exit( 0 )
+
+		case "reset-password":
+			if len( os.Args ) != 2 {
+				showHelpAndQuit()
+			}
+			password := secureRandomString( 4 )
+			must( queries.ResetPassword( context.Background(), sqlc.ResetPasswordParams {
+				Username: norm.NFKC.String( os.Args[ 2 ] ),
+				Password: hashPassword( password ),
+				Cookie: secureRandomBytes( 16 ),
+			} ) )
+			fmt.Printf( "Reset %s's password to %s\n", os.Args[ 2 ], password )
+			os.Exit( 0 )
+
+		case "disable-user":
+			os.Exit( 0 )
+
+		case "enable-user":
+			os.Exit( 0 )
+
+		default: showHelpAndQuit()
+		}
+	}
 
 	if must1( queries.AreThereAnyUsers( context.Background() ) ) == 0 {
-		fmt.Printf( "You need to create a user by running \"%s create-user\" first!", os.Args[ 0 ] )
+		fmt.Printf( "You need to create a user by running \"%s create-user\" first!\n", os.Args[ 0 ] )
 		os.Exit( 1 )
 	}
 
@@ -1263,7 +1341,7 @@ func main() {
 	fs_watcher := initFSWatcher()
 	defer fs_watcher.Close()
 
-	private_http_server := startHttpServer( "0.0.0.0:5678", []Route {
+	private_http_server := startHttpServer( private_listen_addr, []Route {
 		{ "GET",  "/Special:checksum", getChecksum },
 		{ "GET",  "/Special:alpinejs-3.14.9.js", serveString( alpinejs ) },
 		{ "GET",  "/Special:fuzzysort-3.1.0.js", serveString( fuzzysortjs ) },
@@ -1291,7 +1369,7 @@ func main() {
 		{ "POST", "/Special:uploadToPhoto", requireAuth( uploadToPhoto ) },
 	} )
 
-	guest_http_server := startHttpServer( "0.0.0.0:5679", []Route {
+	guest_http_server := startHttpServer( guest_listen_addr, []Route {
 		{ "GET",  "/Special:checksum", getChecksum },
 		{ "GET",  "/Special:alpinejs-3.14.9.js", serveString( alpinejs ) },
 		{ "GET",  "/Special:fuzzysort-3.1.0.js", serveString( fuzzysortjs ) },
@@ -1303,9 +1381,6 @@ func main() {
 		{ "GET",  "/{album}/{secret}/thumbnail/{asset}", getThumbnailAsGuest },
 		// { "POST", "/{album}/{secret}", uploadPhotosAsGuest ) },
 	} )
-
-	guest_url = "http://localhost:5679"
-	fmt.Printf( "http://localhost:5678/ %s\n", guest_url )
 
 	done := make( chan os.Signal, 1 )
 	signal.Notify( done, syscall.SIGINT, syscall.SIGTERM )

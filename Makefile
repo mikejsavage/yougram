@@ -9,6 +9,11 @@ all:
 	templ generate -path src
 	go build -C src -o ../mikegram $(GOFLAGS)
 
+release:
+	sqlc generate
+	templ generate -path src
+	go build -C src -o ../mikegram $(GOFLAGS) -tags release
+
 mikegram: src/* src/stb/* src/sqlc/*
 	templ generate -path src
 	go build -C src -o ../mikegram $(GOFLAGS)

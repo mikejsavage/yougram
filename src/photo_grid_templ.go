@@ -392,7 +392,7 @@ func albumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 488, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 487, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -410,7 +410,7 @@ func albumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(album.OwnerUsername)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 491, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 490, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
@@ -428,7 +428,7 @@ func albumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(len(photos))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 495, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 494, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -441,7 +441,7 @@ func albumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(sel(len(photos) == 1, "photo", "photos"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 495, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 494, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {

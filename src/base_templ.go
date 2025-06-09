@@ -351,7 +351,7 @@ func baseWithSidebar(user User, checksum string, current_url string, title strin
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "gram</b> <a href=\"/Special:logout\">Log out</a><hr>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "gram</b> <span>Account settings</span> <a href=\"/Special:logout\">Log out</a><hr>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
