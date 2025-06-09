@@ -385,8 +385,12 @@ func serveAsset( w http.ResponseWriter, r *http.Request, sha256 string, asset_ty
 	cacheControlImmutable( w )
 	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s%s\"", original_filename, sel( ext == ".heic.jpg", ".jpg", "" ) ) )
 	w.Header().Set( "Content-Type", sel( ext == ".heic", "image/heic", "image/jpeg" ) )
+	w.Header().Set( "ETag", "\"" + sha256 + "\"" )
 
-	_ = try1( io.Copy( w, f ) )
+	http.ServeContent( w, r,
+		"", // filename, only used to set mime type
+		time.Time { }, // modtime, assets are immutable
+		f )
 }
 
 func serveThumbnail( w http.ResponseWriter, thumbnail []byte, original_filename string ) {
@@ -1114,7 +1118,7 @@ type ZipFile struct {
 }
 
 func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.ResponseWriter ) {
-	// TODO: compute Content-Length
+	// TODO: compute Content-Length, non-trivial but it is possible
 	w.Header().Set( "Content-Disposition", fmt.Sprintf( "attachment; filename=\"%s.zip\"", filename ) )
 	w.Header().Set( "Content-Type", "application/zip" )
 
