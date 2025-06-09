@@ -157,12 +157,12 @@ func requireAuth( handler func( http.ResponseWriter, *http.Request, User ) ) fun
 			username, secret = decodeAuthCookie( cookie.Value )
 			row := queryOptional( queries.GetUserAuthDetails( r.Context(), username ) )
 			if row.Valid {
-				// subtle.WithDataIndependentTiming( func() { // needs very very new go
+				subtle.WithDataIndependentTiming( func() {
 					if subtle.ConstantTimeCompare( secret, row.V.Cookie ) == 1 {
 						authed = true
 						user = User { row.V.ID, username }
 					}
-				// } )
+				} )
 			}
 		}
 
