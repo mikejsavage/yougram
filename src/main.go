@@ -40,9 +40,7 @@ import (
 	"github.com/galdor/go-thumbhash"
 	"github.com/evanoberholster/imagemeta"
 	"github.com/evanoberholster/imagemeta/meta"
-	"github.com/tdewolff/minify/v2"
 	"github.com/fsnotify/fsnotify"
-	minify_js "github.com/tdewolff/minify/v2/js"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -60,8 +58,6 @@ var fuzzysortjs string
 var htmxjs string
 //go:embed vendor_js/thumbhash.js
 var thumbhashjs string
-
-var minifier *minify.M
 
 var checksum string
 
@@ -90,7 +86,6 @@ func must1[ T1 any ]( v1 T1, err error ) T1 {
 	mustImpl( err )
 	return v1
 }
-
 
 type WrappedError struct {
 	Err error
@@ -1334,12 +1329,6 @@ func main() {
 	if must1( queries.AreThereAnyUsers( context.Background() ) ) == 0 {
 		fmt.Printf( "You need to create a user by running \"%s create-user\" first!\n", os.Args[ 0 ] )
 		os.Exit( 1 )
-	}
-
-	{
-		minifier = minify.New()
-		minifier.AddFunc( "js", minify_js.Minify )
-		thumbhashjs = must1( minifier.String( "js", strings.ReplaceAll( thumbhashjs, "export function", "function" ) ) )
 	}
 
 	fs_watcher := initFSWatcher()
