@@ -24,7 +24,7 @@ func secureRandomBytes( n int ) []byte {
 	return bytes[ :n ]
 }
 
-func secureRandomString( n int ) string {
+func secureRandomHexString( n int ) string {
 	return hex.EncodeToString( secureRandomBytes( n ) )
 }
 

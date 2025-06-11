@@ -153,6 +153,22 @@ func queryOptional[ T any ]( row T, err error ) sql.Null[ T ] {
 	return just( row )
 }
 
+func initCookieEncryptionKey() []byte {
+	filename := "cookie_encryption_key.bin"
+	key, err := os.ReadFile( filename )
+	if err == nil && len( key ) == chacha20poly1305.KeySize {
+		return key
+	}
+
+	if !errors.Is( err, os.ErrNotExist ) {
+		must( err )
+	}
+
+	key = secureRandomBytes( chacha20poly1305.KeySize )
+	must( os.WriteFile( filename, key, 0644 ) )
+	return key
+}
+
 func initDB( memory_db bool ) {
 	ctx := context.Background()
 
@@ -1239,8 +1255,8 @@ func main() {
 
 	checksum = exeChecksum()
 
-	key := make( []byte, 32 ) // TODO
-	cookie_aead = try1( chacha20poly1305.NewX( key ) )
+	cookie_encryption_key := initCookieEncryptionKey()
+	cookie_aead = try1( chacha20poly1305.NewX( cookie_encryption_key ) )
 
 	err := os.Mkdir( "assets", 0755 )
 	if err != nil && !errors.Is( err, os.ErrExist ) {
@@ -1294,7 +1310,7 @@ func main() {
 			if len( os.Args ) != 3 {
 				showHelpAndQuit()
 			}
-			password := secureRandomString( 4 )
+			password := secureRandomHexString( 4 )
 			_ = must1( queries.CreateUser( context.Background(), sqlc.CreateUserParams {
 				Username: norm.NFKC.String( os.Args[ 2 ] ),
 				Password: hashPassword( password ),
@@ -1307,7 +1323,7 @@ func main() {
 			if len( os.Args ) != 2 {
 				showHelpAndQuit()
 			}
-			password := secureRandomString( 4 )
+			password := secureRandomHexString( 4 )
 			must( queries.ResetPassword( context.Background(), sqlc.ResetPasswordParams {
 				Username: norm.NFKC.String( os.Args[ 2 ] ),
 				Password: hashPassword( password ),
