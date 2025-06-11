@@ -52,6 +52,8 @@ var db_schema string
 
 //go:embed vendor_js/alpine-3.14.9.js
 var alpinejs string
+//go:embed vendor_js/alpinejs-dialog-2.1.1.js
+var alpinejs_dialog string
 //go:embed vendor_js/fuzzysort-3.1.0.js
 var fuzzysortjs string
 //go:embed vendor_js/htmx-2.0.4.js
@@ -261,7 +263,7 @@ func initDB( memory_db bool ) {
 	qtx := queries.WithTx( tx )
 	for i := 0; i < 7500; i++ {
 		photo_id := must1( qtx.CreatePhoto( ctx, sqlc.CreatePhotoParams {
-			Owner: sql.NullInt64 { 1, true }, // TODO
+			Owner: sql.NullInt64 { mike, true },
 			CreatedAt: time.Now().Unix(),
 			PrimaryAsset: seagull,
 		} ) )
@@ -454,6 +456,21 @@ func getThumbnail( w http.ResponseWriter, r *http.Request, user User ) {
 	serveThumbnail( w, asset.V.Thumbnail, asset.V.OriginalFilename )
 }
 
+func createAlbum( w http.ResponseWriter, r *http.Request, user User ) {
+	name := r.PostFormValue( "name" )
+	url := r.PostFormValue( "url" )
+	shared := r.PostFormValue( "shared" ) == "1"
+
+	queries.CreateAlbum( r.Context(), sqlc.CreateAlbumParams {
+		Owner: user.ID,
+		Name: name,
+		UrlSlug: url,
+		Shared: int64( sel( shared, 1, 0 ) ),
+		ReadonlySecret: secureRandomBase64String( 6 ),
+		ReadwriteSecret: secureRandomBase64String( 6 ),
+	} )
+}
+
 func updateAlbumSettings( w http.ResponseWriter, r *http.Request, user User ) {
 	album_id, err := strconv.ParseInt( r.PostFormValue( "album_id" ), 10, 64 )
 	if err != nil {
@@ -569,7 +586,7 @@ func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 	}
 
 	body := photogrid( photos, "/Special:asset/", "/Special:thumbnail/" )
-	try( baseWithSidebar( user, checksum, r.URL.Path, "Library", body ).Render( r.Context(), w ) )
+	try( baseWithSidebar( user, r.URL.Path, "Library", body ).Render( r.Context(), w ) )
 }
 
 func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
@@ -584,7 +601,7 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 		}
 
 		album_templ := ownedAlbumTemplate( album, photos )
-		try( baseWithSidebar( user, checksum, r.URL.Path, album.Name, album_templ ).Render( r.Context(), w ) )
+		try( baseWithSidebar( user, r.URL.Path, album.Name, album_templ ).Render( r.Context(), w ) )
 	} )
 }
 
@@ -822,7 +839,7 @@ func viewAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
 	}
 
 	album_templ := guestAlbumTemplate( album.V, photos, secret == album.V.ReadwriteSecret )
-	try( guestBase( checksum, album.V.Name, album_templ ).Render( r.Context(), w ) )
+	try( guestBase( album.V.Name, album_templ ).Render( r.Context(), w ) )
 }
 
 type LatLong struct {
@@ -1120,7 +1137,7 @@ func pathPhotoHandler( w http.ResponseWriter, r *http.Request, user User, handle
 }
 
 func loginForm( w http.ResponseWriter, r *http.Request ) {
-	try( loginFormTemplate( checksum ).Render( r.Context(), w ) )
+	try( loginFormTemplate().Render( r.Context(), w ) )
 }
 
 type ZipFile struct {
@@ -1353,6 +1370,7 @@ func main() {
 	private_http_server := startHttpServer( private_listen_addr, []Route {
 		{ "GET",  "/Special:checksum", getChecksum },
 		{ "GET",  "/Special:alpinejs-3.14.9.js", serveString( alpinejs ) },
+		{ "GET",  "/Special:alpinejs-dialog-2.1.1.js", serveString( alpinejs_dialog ) },
 		{ "GET",  "/Special:fuzzysort-3.1.0.js", serveString( fuzzysortjs ) },
 		{ "GET",  "/Special:htmx-2.0.4.js", serveString( htmxjs ) },
 		{ "GET",  "/Special:thumbhash-1.0.0.js", serveString( thumbhashjs ) },
@@ -1364,8 +1382,9 @@ func main() {
 		{ "GET",  "/Special:thumbnail/{asset}", requireAuth( getThumbnail ) },
 		// { "GET",  "/Special:geocode", geocode },
 
+		{ "PUT", "/Special:createAlbum", requireAuth( createAlbum ) },
 		{ "POST", "/Special:albumSettings", requireAuth( updateAlbumSettings ) },
-		{ "POST", "/Special:share", requireAuth( shareAlbum ) },
+		{ "POST", "/Special:shareAlbum", requireAuth( shareAlbum ) },
 
 		{ "GET",  "/Special:download/{album}", requireAuth( downloadAlbum ) },
 		// { "POST", "/Special:download", requireAuth( downloadPhotos ) },

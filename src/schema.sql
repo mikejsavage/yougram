@@ -33,9 +33,7 @@ CREATE TABLE IF NOT EXISTS photo (
 	owner INTEGER REFERENCES user( id ),
 	created_at INTEGER NOT NULL,
 	delete_at INTEGER,
-
 	primary_asset BLOB NOT NULL REFERENCES asset( sha256 ),
-
 	FOREIGN KEY ( id, primary_asset ) REFERENCES photo_asset( photo_id, asset_id ) DEFERRABLE INITIALLY DEFERRED
 ) STRICT;
 

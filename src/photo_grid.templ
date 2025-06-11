@@ -169,24 +169,6 @@ const (
 )
 
 templ albumSettings( album sqlc.GetAlbumByURLRow ) {
-	<script>
-	function MakeSlug( str ) {
-		str = str.toLowerCase();
-		str = str.replace( /^\s+|\s+$/g, "" ); // trim
-
-		// remove diacritics
-		const from = "ãàáäâẽèéëêìíïîõòóöôùúüûñç";
-		const to   = "aaaaaeeeeeiiiiooooouuuunc";
-		for( let i = 0; i < from.length; i++ ) {
-			str = str.replace( new RegExp( from.charAt( i ), "g" ), to.charAt( i ) );
-		}
-
-		str = str.replace( /[^\w ]/g, "" ); // strip non-chars/letters
-		str = str.replace(/\s+/g, '-') // replace whitespace with -
-
-		return str;
-	}
-	</script>
 	<div x-data="{
 		show: false,
 		name: '',
@@ -259,7 +241,7 @@ templ shareButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 				if ownership == AlbumOwnership_Owned {
 					<button style="margin-block: 0.5rem"
 						x-text="sharing ? 'Disable sharing' : 'Enable sharing'"
-						hx-post="/Special:share"
+						hx-post="/Special:shareAlbum"
 						hx-disabled-elt="this"
 					/><br>
 					<input type="hidden" name="album_id" value={ album.ID }>

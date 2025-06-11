@@ -4,19 +4,21 @@ import "encoding/hex"
 import "strings"
 import "mikegram/sqlc"
 
-templ autorefresh( checksum string ) {
-	<script>
-		let checksum = "{{ checksum }}";
-		setInterval( function() {
-			fetch( "/Special:checksum" ).then( function( res ) {
-				return res.ok ? res.text() : null;
-			} ).then( function( cs ) {
-				if( cs != null && cs != checksum ) {
-					location.reload();
-				}
-			} ).catch( function() { } );
-		}, 1000 );
-	</script>
+templ autorefresh() {
+	if !IsReleaseBuild {
+		<script>
+			let checksum = "{{ checksum }}";
+			setInterval( function() {
+				fetch( "/Special:checksum" ).then( function( res ) {
+					return res.ok ? res.text() : null;
+				} ).then( function( cs ) {
+					if( cs != null && cs != checksum ) {
+						location.reload();
+					}
+				} ).catch( function() { } );
+			}, 1000 );
+		</script>
+	}
 }
 
 func isCurrentPage( current_url string, link templ.SafeURL, match_prefix bool ) bool {
@@ -49,13 +51,52 @@ templ sidebarAlbum( album sqlc.GetAlbumsForUserRow ) {
 	{ album.Name }
 }
 
-templ base( checksum string, title string ) {
+templ createAlbumButton() {
+	<div x-data="{
+		show: false,
+		name: '',
+		url: '',
+		auto_slug: true,
+		shared: false,
+	}">
+		<button @click="show = true; $el.parentElement.querySelector( 'form' ).reset()">Create album</button>
+
+		<dialog x-cloak x-show="show" x-htmldialog.noscroll="show = false">
+			<form>
+				<h2>New album</h2>
+
+				<b>Name</b>
+				<input type="text" name="name" x-model="name" autocomplete="off" autofocus>
+
+				<div>
+					<b>URL</b>
+					<label>
+						<input type="checkbox" x-model="auto_slug" checked> Auto
+					</label>
+				</div>
+
+				<input type="text" name="url" x-model="url" autocomplete="off" x-effect="if( auto_slug ) { url = MakeSlug( name ); }" :readonly="auto_slug">
+
+				<label>
+					<input type="checkbox" x-model="shared"> Shared
+				</label>
+
+				<button type="submit" style="width: min-content">Save</button>
+
+				<div class="error"></div>
+			</form>
+		</dialog>
+	</div>
+}
+
+templ base( title string ) {
 	<!DOCTYPE html>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
 	<title>{ title }</title>
 
-	@autorefresh( checksum )
+	@autorefresh()
+	<script src="/Special:alpinejs-dialog-2.1.1.js" defer></script>
 	<script src="/Special:alpinejs-3.14.9.js" defer></script>
 	<script src="/Special:fuzzysort-3.1.0.js"></script>
 	<script src="/Special:htmx-2.0.4.js"></script>
@@ -169,11 +210,38 @@ templ base( checksum string, title string ) {
 		align-items: center;
 		gap: 1rem;
 	}
+
+	dialog {
+		top: -20%;
+		width: max-content;
+		padding: 0.5rem;
+		background: #fff;
+		border: 4px solid #333;
+	}
 	</style>
 }
 
-templ baseWithSidebar( user User, checksum string, current_url string, title string, body templ.Component ) {
-	@base( checksum, title )
+templ baseWithSidebar( user User, current_url string, title string, body templ.Component ) {
+	@base( title )
+
+	<script>
+	function MakeSlug( str ) {
+		str = str.toLowerCase();
+		str = str.replace( /^\s+|\s+$/g, "" ); // trim
+
+		// remove diacritics
+		const from = "ãàáäâẽèéëêìíïîõòóöôùúüûñç";
+		const to   = "aaaaaeeeeeiiiiooooouuuunc";
+		for( let i = 0; i < from.length; i++ ) {
+			str = str.replace( new RegExp( from.charAt( i ), "g" ), to.charAt( i ) );
+		}
+
+		str = str.replace( /[^\w ]/g, "" ); // strip non-chars/letters
+		str = str.replace(/\s+/g, '-') // replace whitespace with -
+
+		return str;
+	}
+	</script>
 
 	<nav>
 		<style>
@@ -251,7 +319,7 @@ templ baseWithSidebar( user User, checksum string, current_url string, title str
 			@navlinkComplex( current_url, templ.URL( "/" + album.UrlSlug ), sidebarAlbum( album ), true )
 		}
 
-		<a href="lol">Create album</a>
+		@createAlbumButton()
 	</nav>
 
 	<main style="margin-left: var( --sidebar-width )">
@@ -259,8 +327,8 @@ templ baseWithSidebar( user User, checksum string, current_url string, title str
 	</main>
 }
 
-templ guestBase( checksum string, title string, body templ.Component ) {
-	@base( checksum, title )
+templ guestBase( title string, body templ.Component ) {
+	@base( title )
 	<main>
 		@body
 	</main>

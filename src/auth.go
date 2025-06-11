@@ -28,6 +28,10 @@ func secureRandomHexString( n int ) string {
 	return hex.EncodeToString( secureRandomBytes( n ) )
 }
 
+func secureRandomBase64String( n int ) string {
+	return base64.URLEncoding.EncodeToString( secureRandomBytes( n ) )
+}
+
 func encodeAuthCookie( username string, secret []byte ) string {
 	if len( secret ) != 16 {
 		panic( "bad cookie" )

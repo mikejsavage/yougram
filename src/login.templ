@@ -1,12 +1,12 @@
 package main
 
-templ loginFormTemplate( checksum string ) {
+templ loginFormTemplate() {
 	<!DOCTYPE html>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
 	<title>Scoutgram</title>
 
-	@autorefresh( checksum )
+	@autorefresh()
 	<script src="/Special:htmx-2.0.4.js"></script>
 
 	<style>
