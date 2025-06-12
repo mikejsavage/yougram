@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS album (
 	id INTEGER PRIMARY KEY,
 	owner INTEGER NOT NULL REFERENCES user( id ),
 	name TEXT NOT NULL UNIQUE CHECK( name <> '' ),
-	url_slug TEXT NOT NULL UNIQUE CHECK( url_slug <> '' ), -- maybe this can be a user defined function
+	url_slug TEXT NOT NULL UNIQUE CHECK( url_slug <> '' ),
 	key_photo INTEGER REFERENCES photo( id ) ON DELETE SET NULL,
 
 	shared INTEGER NOT NULL CHECK( shared = 0 OR shared = 1 ),
