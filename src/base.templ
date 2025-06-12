@@ -28,14 +28,6 @@ func isCurrentPage( current_url string, link templ.SafeURL, match_prefix bool ) 
 	return string( link ) == current_url
 }
 
-templ navlinkComplex( current_url string, link templ.SafeURL, text templ.Component, match_prefix bool ) {
-	if isCurrentPage( current_url, link, match_prefix ) {
-		<a class="curr" href={ link }>@text</a>
-	} else {
-		<a href={ link }>@text</a>
-	}
-}
-
 templ navlink( current_url string, link templ.SafeURL, text string, match_prefix bool ) {
 	if isCurrentPage( current_url, link, match_prefix ) {
 		<a class="curr" href={ link }>{ text }</a>
@@ -113,6 +105,8 @@ templ base( title string ) {
 		--sticky-z: 1;
 		--fullscreen-z: 2;
 		--modal-z: 3;
+
+		--pico-icon-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(136, 145, 164)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
 	}
 
 	* {
@@ -146,14 +140,14 @@ templ base( title string ) {
 		color: #aaa;
 	}
 
-	input, input[type=text], input[type=password] {
+	input, input[type=text], input[type=password], input[type=search] {
 		border: 1px solid #767676;
 		border-radius: 3px;
 		font-size: 100%;
 		padding: 0.5rem;
 	}
 
-	input:focus, input[type=text]:focus, input[type=password]:focus {
+	input:focus, input[type=text]:focus, input[type=password]:focus, input[type=search]:focus {
 		border-color: #333;
 		outline: 1.5px solid var( --blue );
 	}
@@ -165,6 +159,14 @@ templ base( title string ) {
 
 	input[type=radio], input[type=checkbox] {
 		margin-left: 0;
+	}
+
+	input[type=search] {
+		padding-left: calc( 0.9rem + 1lh );
+		background-image: var( --pico-icon-search );
+		background-repeat: no-repeat;
+		background-position: 0.5rem center;
+		background-size: 1lh;
 	}
 
 	button {
@@ -224,6 +226,27 @@ templ base( title string ) {
 templ baseWithSidebar( user User, current_url string, title string, body templ.Component ) {
 	@base( title )
 
+	{{
+		type HTMLAlbum struct {
+			Name string
+			UrlSlug string
+			KeyPhotoSha256 string
+		}
+		albums, err := queries.GetAlbumsForUser( ctx, user.ID )
+		if err != nil {
+			return err
+		}
+
+		html_albums := make( []HTMLAlbum, len( albums ) )
+		for i, album := range albums {
+			html_albums[ i ] = HTMLAlbum {
+				Name: album.Name,
+				UrlSlug: album.UrlSlug,
+				KeyPhotoSha256: hex.EncodeToString( album.KeyPhotoSha256 ),
+			}
+		}
+	}}
+
 	<script>
 	function MakeSlug( str ) {
 		str = str.toLowerCase();
@@ -241,90 +264,102 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 
 		return str;
 	}
+
+	function MakeAlbumList() {
+		return {{ html_albums }};
+	}
 	</script>
 
-	<nav>
-		<style>
-		@scope {
-			:scope {
-				display: flex;
-				flex-direction: column;
-				position: fixed;
-				left: 0;
-				top: 0;
-				bottom: 0;
-				width: var( --sidebar-width );
-				background: #eee;
-				border-right: 1px solid #ccc;
-				padding: 0.5rem;
+	<body x-data="{ albums: MakeAlbumList() }">
+		<nav x-data="{ search: '' }">
+			<style>
+			@scope {
+				:scope {
+					display: flex;
+					flex-direction: column;
+					position: fixed;
+					left: 0;
+					top: 0;
+					bottom: 0;
+					width: var( --sidebar-width );
+					background: #eee;
+					border-right: 1px solid #ccc;
+					padding: 0.5rem;
+				}
+
+				a {
+					color: black;
+					display: flex;
+					gap: 0.5rem;
+					text-decoration: none;
+				}
+
+				a:hover {
+					text-decoration: underline;
+				}
+
+				a:visited {
+					color: black;
+				}
+
+				a img {
+					aspect-ratio: 1;
+					object-fit: cover;
+					object-position: 50% 50%;
+				}
+
+				a:has( img ), button, input {
+					margin-block: 0.25rem;
+				}
+
+				div {
+					white-space: nowrap;
+					text-overflow: ellipsis;
+					overflow: hidden;
+				}
+
+				.curr {
+					font-weight: bold;
+				}
+
+				hr {
+					width: 50%;
+					border-color: transparent;
+				}
 			}
+			</style>
 
-			a {
-				color: black;
-				display: flex;
-				gap: 0.5rem;
-				text-decoration: none;
-			}
+			<b>{ user.Username }gram</b>
+			<span>Account settings</span>
+			<a href="/Special:logout">Log out</a>
 
-			a:hover {
-				text-decoration: underline;
-			}
+			<hr>
 
-			a:visited {
-				color: black;
-			}
+			@navlink( current_url, "/", "Library", false )
+			@navlink( current_url, "/Special:deleted", "Deleted", false )
 
-			a img {
-				aspect-ratio: 1;
-				object-fit: cover;
-				object-position: 50% 50%;
-			}
+			<hr>
 
-			a:has( img ) {
-				margin-block: 0.25rem;
-			}
+			@createAlbumButton()
+			<input type="search" placeholder="Search albums" x-model="search">
 
-			div {
-				white-space: nowrap;
-				text-overflow: ellipsis;
-				overflow: hidden;
-			}
+			<template x-for="album in albums">
+				<template x-if="album.Name.toLowerCase().includes( search.toLowerCase() )">
+					<a :href="'/' + album.UrlSlug" :class="window.location.pathname.startsWith( '/' + album.UrlSlug ) ? 'curr' : ''">
+						<template x-if="album.KeyPhotoSha256.length > 0">
+							<img :src="'/Special:thumbnail/' + album.KeyPhotoSha256" style="height: 1lh">
+						</template>
 
-			.curr {
-				font-weight: bold;
-			}
+						<span x-text="album.Name"></span>
+					</a>
+				</template>
+			</template>
+		</nav>
 
-			hr {
-				width: 50%;
-				border-color: transparent;
-			}
-		}
-		</style>
-
-		<b>{ user.Username }gram</b>
-		<span>Account settings</span>
-		<a href="/Special:logout">Log out</a>
-
-		<hr>
-
-		@navlink( current_url, "/", "Library", false )
-		@navlink( current_url, "/Special:deleted", "Deleted", false )
-
-		<hr>
-
-		{{ albums, err := queries.GetAlbumsForUser( ctx, user.ID ) }}
-		{{ if err != nil { return err } }}
-
-		for _, album := range albums {
-			@navlinkComplex( current_url, templ.URL( "/" + album.UrlSlug ), sidebarAlbum( album ), true )
-		}
-
-		@createAlbumButton()
-	</nav>
-
-	<main style="margin-left: var( --sidebar-width )">
-		@body
-	</main>
+		<main style="margin-left: var( --sidebar-width )">
+			@body
+		</main>
+	</body>
 }
 
 templ guestBase( title string, body templ.Component ) {
