@@ -304,8 +304,9 @@ func (q *Queries) GetAlbumAutoassignRules(ctx context.Context) ([]GetAlbumAutoas
 }
 
 const getAlbumByURL = `-- name: GetAlbumByURL :one
-SELECT album.id, owner, url_slug, user.username AS owner_username, album.name, shared, readonly_secret, readwrite_secret
+SELECT album.id, owner, url_slug, user.username AS owner_username, album.name, shared, readonly_secret, readwrite_secret, album_key_asset.sha256 AS key_photo_sha256
 FROM album
+LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
 INNER JOIN user ON album.owner = user.id
 WHERE url_slug = ?
 `
@@ -319,6 +320,7 @@ type GetAlbumByURLRow struct {
 	Shared          int64
 	ReadonlySecret  string
 	ReadwriteSecret string
+	KeyPhotoSha256  []byte
 }
 
 func (q *Queries) GetAlbumByURL(ctx context.Context, urlSlug string) (GetAlbumByURLRow, error) {
@@ -333,6 +335,7 @@ func (q *Queries) GetAlbumByURL(ctx context.Context, urlSlug string) (GetAlbumBy
 		&i.Shared,
 		&i.ReadonlySecret,
 		&i.ReadwriteSecret,
+		&i.KeyPhotoSha256,
 	)
 	return i, err
 }

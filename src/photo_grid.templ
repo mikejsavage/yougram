@@ -1,5 +1,6 @@
 package main
 
+import "encoding/hex"
 import "fmt"
 import "mikegram/sqlc"
 
@@ -530,5 +531,7 @@ templ sharedAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {
 }
 
 templ guestAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, can_upload bool ) {
+	<meta property="og:title" content={ album.Name }>
+	<meta property="og:image" content={ fmt.Sprintf( "%s/%s/%s/thumbnail/%s", guest_url, album.UrlSlug, album.ReadonlySecret, hex.EncodeToString( album.KeyPhotoSha256 ) ) }>
 	@albumTemplate( album, photos, AlbumOwnership_Guest, can_upload )
 }

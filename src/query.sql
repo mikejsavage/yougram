@@ -136,8 +136,9 @@ WHERE ( album.shared OR album.owner = ? )
 ORDER BY album.name;
 
 -- name: GetAlbumByURL :one
-SELECT album.id, owner, url_slug, user.username AS owner_username, album.name, shared, readonly_secret, readwrite_secret
+SELECT album.id, owner, url_slug, user.username AS owner_username, album.name, shared, readonly_secret, readwrite_secret, album_key_asset.sha256 AS key_photo_sha256
 FROM album
+LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
 INNER JOIN user ON album.owner = user.id
 WHERE url_slug = ?;
 
