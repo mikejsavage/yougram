@@ -128,7 +128,7 @@ func authenticate( w http.ResponseWriter, r *http.Request ) {
 	username := norm.NFKC.String( r.PostFormValue( "username" ) )
 
 	user := queryOptional( queries.GetUserAuthDetails( r.Context(), username ) )
-	if !user.Valid {
+	if !user.Valid || user.V.Enabled == 0 {
 		http.Error( w, "Incorrect username", http.StatusOK )
 		return
 	}
@@ -160,7 +160,7 @@ func requireAuth( handler func( http.ResponseWriter, *http.Request, User ) ) fun
 			var username string
 			username, secret = decodeAuthCookie( cookie.Value )
 			row := queryOptional( queries.GetUserAuthDetails( r.Context(), username ) )
-			if row.Valid {
+			if row.Valid && row.V.Enabled == 1 {
 				subtle.WithDataIndependentTiming( func() {
 					if subtle.ConstantTimeCompare( secret, row.V.Cookie ) == 1 {
 						authed = true

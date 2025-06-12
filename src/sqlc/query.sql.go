@@ -208,6 +208,24 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, 
 	return id, err
 }
 
+const disableUser = `-- name: DisableUser :exec
+UPDATE user SET enabled = 0 WHERE username = ?
+`
+
+func (q *Queries) DisableUser(ctx context.Context, username string) error {
+	_, err := q.db.ExecContext(ctx, disableUser, username)
+	return err
+}
+
+const enableUser = `-- name: EnableUser :exec
+UPDATE user SET enabled = 1 WHERE username = ?
+`
+
+func (q *Queries) EnableUser(ctx context.Context, username string) error {
+	_, err := q.db.ExecContext(ctx, enableUser, username)
+	return err
+}
+
 const getAlbumAssets = `-- name: GetAlbumAssets :many
 SELECT asset.sha256 AS asset, asset.type FROM asset
 INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
@@ -616,13 +634,14 @@ func (q *Queries) GetPhotoOwner(ctx context.Context, id int64) (sql.NullInt64, e
 }
 
 const getUserAuthDetails = `-- name: GetUserAuthDetails :one
-SELECT id, password, needs_to_reset_password, cookie FROM user WHERE username = ?
+SELECT id, password, needs_to_reset_password, enabled, cookie FROM user WHERE username = ?
 `
 
 type GetUserAuthDetailsRow struct {
 	ID                   int64
 	Password             string
 	NeedsToResetPassword int64
+	Enabled              int64
 	Cookie               []byte
 }
 
@@ -633,6 +652,7 @@ func (q *Queries) GetUserAuthDetails(ctx context.Context, username string) (GetU
 		&i.ID,
 		&i.Password,
 		&i.NeedsToResetPassword,
+		&i.Enabled,
 		&i.Cookie,
 	)
 	return i, err
@@ -675,7 +695,7 @@ func (q *Queries) GetUserPhotos(ctx context.Context, owner sql.NullInt64) ([]Get
 }
 
 const getUsers = `-- name: GetUsers :many
-SELECT username FROM user
+SELECT username FROM user WHERE enabled = 1
 `
 
 func (q *Queries) GetUsers(ctx context.Context) ([]string, error) {

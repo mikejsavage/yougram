@@ -79,5 +79,6 @@ type User struct {
 	Username             string
 	Password             string
 	NeedsToResetPassword int64
+	Enabled              int64
 	Cookie               []byte
 }

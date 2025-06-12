@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS user (
 	username TEXT NOT NULL UNIQUE CHECK( username <> '' ),
 	password TEXT NOT NULL,
 	needs_to_reset_password INTEGER NOT NULL CHECK( needs_to_reset_password = 0 OR needs_to_reset_password = 1 ),
+	enabled INTEGER DEFAULT 1 NOT NULL CHECK( enabled = 0 OR enabled = 1 ),
 	cookie BLOB NOT NULL CHECK( length( cookie ) = 16 )
 ) STRICT;
 

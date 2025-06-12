@@ -13,13 +13,19 @@ UPDATE user SET password = ?, cookie = ? WHERE username = ?;
 UPDATE user SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = ?;
 
 -- name: GetUserAuthDetails :one
-SELECT id, password, needs_to_reset_password, cookie FROM user WHERE username = ?;
+SELECT id, password, needs_to_reset_password, enabled, cookie FROM user WHERE username = ?;
 
 -- name: GetUsers :many
-SELECT username FROM user;
+SELECT username FROM user WHERE enabled = 1;
 
 -- name: AreThereAnyUsers :one
 SELECT EXISTS( SELECT 1 FROM user LIMIT 1 );
+
+-- name: EnableUser :exec
+UPDATE user SET enabled = 1 WHERE username = ?;
+
+-- name: DisableUser :exec
+UPDATE user SET enabled = 0 WHERE username = ?;
 
 
 ------------

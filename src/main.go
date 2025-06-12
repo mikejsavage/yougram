@@ -1371,9 +1371,17 @@ func main() {
 			os.Exit( 0 )
 
 		case "disable-user":
+			if len( os.Args ) != 3 {
+				showHelpAndQuit()
+			}
+			must( queries.DisableUser( context.Background(), norm.NFKC.String( os.Args[ 2 ] ) ) )
 			os.Exit( 0 )
 
 		case "enable-user":
+			if len( os.Args ) != 3 {
+				showHelpAndQuit()
+			}
+			must( queries.EnableUser( context.Background(), norm.NFKC.String( os.Args[ 2 ] ) ) )
 			os.Exit( 0 )
 
 		default: showHelpAndQuit()
