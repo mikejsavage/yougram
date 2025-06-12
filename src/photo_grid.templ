@@ -464,7 +464,9 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 					flex-direction: row;
 					align-items: center;
 				}
+			}
 
+			@media (max-width: 479px) {
 				.no-mobile {
 					display: none;
 				}
