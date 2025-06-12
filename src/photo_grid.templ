@@ -336,7 +336,7 @@ templ uploadButton() {
 				}
 
 				const xhr = new XMLHttpRequest();
-				xhr.open( "POST", window.location.pathname, true );
+				xhr.open( "PUT", window.location.pathname, true );
 				xhr.upload.onprogress = e => this.files[ idx ].progress = e.loaded / e.total;
 				xhr.onload = () => {
 					this.files[ idx ].progress = 1;

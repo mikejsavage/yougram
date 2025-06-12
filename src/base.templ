@@ -53,8 +53,8 @@ templ createAlbumButton() {
 	}">
 		<button @click="show = true; $el.parentElement.querySelector( 'form' ).reset()">Create album</button>
 
-		<dialog x-cloak x-show="show" x-htmldialog.noscroll="show = false">
-			<form>
+		<dialog x-cloak x-show="show" x-htmldialog.noscroll="show = false" x-data="{ error: '' }">
+			<form hx-put="/Special:createAlbum" x-htmx.json="albums" x-htmx-error="error">
 				<h2>New album</h2>
 
 				<b>Name</b>
@@ -75,7 +75,7 @@ templ createAlbumButton() {
 
 				<button type="submit" style="width: min-content">Save</button>
 
-				<div class="error"></div>
+				<div class="error" x-text="error"></div>
 			</form>
 		</dialog>
 	</div>
@@ -93,6 +93,38 @@ templ base( title string ) {
 	<script src="/Special:fuzzysort-3.1.0.js"></script>
 	<script src="/Special:htmx-2.0.4.js"></script>
 	<script src="/Special:thumbhash-1.0.0.js"></script>
+
+	<script>
+	document.addEventListener( "alpine:init", function() {
+		Alpine.directive( "htmx", function( el, { expression, modifiers }, { Alpine } ) {
+			el.addEventListener( "htmx:beforeSwap", function( ev ) {
+				if( ev.detail.isError )
+					return;
+				ev.preventDefault();
+				Alpine.$data( el )[ expression ] = modifiers.includes( "json" ) ? JSON.parse( ev.detail.serverResponse ) : ev.detail.serverResponse;
+				console.log( Alpine.$data( el )[ expression ][ 0 ] );
+				console.log( ev.detail.serverResponse );
+			} );
+		} );
+
+		Alpine.directive( "htmx-err", function( el, { expression, modifiers }, { Alpine } ) {
+			el.addEventListener( "htmx:beforeRequest", function( ev ) {
+				Alpine.$data( el )[ expression ] = "";
+			} );
+
+			el.addEventListener( "htmx:sendError", function( ev ) {
+				Alpine.$data( el )[ expression ] = "Can't connect to server";
+			} );
+
+			el.addEventListener( "htmx:beforeSwap", function( ev ) {
+				if( !ev.detail.isError )
+					return;
+				ev.preventDefault();
+				Alpine.$data( el )[ expression ] = modifiers.includes( "json" ) ? JSON.parse( ev.detail.serverResponse ) : ev.detail.serverResponse;
+			} );
+		} );
+	} );
+	</script>
 
 	<style>
 	:root {
@@ -220,6 +252,11 @@ templ base( title string ) {
 		background: #fff;
 		border: 4px solid #333;
 	}
+
+	dialog form {
+		display: flex;
+		flex-direction: column;
+	}
 	</style>
 }
 
@@ -227,23 +264,9 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 	@base( title )
 
 	{{
-		type HTMLAlbum struct {
-			Name string
-			UrlSlug string
-			KeyPhotoSha256 string
-		}
 		albums, err := queries.GetAlbumsForUser( ctx, user.ID )
 		if err != nil {
 			return err
-		}
-
-		html_albums := make( []HTMLAlbum, len( albums ) )
-		for i, album := range albums {
-			html_albums[ i ] = HTMLAlbum {
-				Name: album.Name,
-				UrlSlug: album.UrlSlug,
-				KeyPhotoSha256: hex.EncodeToString( album.KeyPhotoSha256 ),
-			}
 		}
 	}}
 
@@ -266,7 +289,7 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 	}
 
 	function MakeAlbumList() {
-		return {{ html_albums }};
+		return {{ toHTMLAlbums( albums ) }};
 	}
 	</script>
 
@@ -308,7 +331,7 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 					object-position: 50% 50%;
 				}
 
-				a:has( img ), button, input {
+				a:has( img, .placeholder ), button, input {
 					margin-block: 0.25rem;
 				}
 
@@ -325,6 +348,12 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 				hr {
 					width: 50%;
 					border-color: transparent;
+				}
+
+				.placeholder {
+					border: 1px solid #333;
+					width: 1lh;
+					height: 1lh;
 				}
 			}
 			</style>
@@ -348,6 +377,9 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 					<a :href="'/' + album.UrlSlug" :class="window.location.pathname.startsWith( '/' + album.UrlSlug ) ? 'curr' : ''">
 						<template x-if="album.KeyPhotoSha256.length > 0">
 							<img :src="'/Special:thumbnail/' + album.KeyPhotoSha256" style="height: 1lh">
+						</template>
+						<template x-if="album.KeyPhotoSha256.length == 0">
+							<span class="placeholder"></span>
 						</template>
 
 						<span x-text="album.Name"></span>

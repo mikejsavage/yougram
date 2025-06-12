@@ -456,19 +456,40 @@ func getThumbnail( w http.ResponseWriter, r *http.Request, user User ) {
 	serveThumbnail( w, asset.V.Thumbnail, asset.V.OriginalFilename )
 }
 
+type HTMLAlbum struct {
+	Name string
+	UrlSlug string
+	KeyPhotoSha256 string
+}
+
+func toHTMLAlbums( albums []sqlc.GetAlbumsForUserRow ) []HTMLAlbum {
+	html_albums := make( []HTMLAlbum, len( albums ) )
+	for i, album := range albums {
+		html_albums[ i ] = HTMLAlbum {
+			Name: album.Name,
+			UrlSlug: album.UrlSlug,
+			KeyPhotoSha256: hex.EncodeToString( album.KeyPhotoSha256 ),
+		}
+	}
+	return html_albums
+}
+
 func createAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	name := r.PostFormValue( "name" )
 	url := r.PostFormValue( "url" )
 	shared := r.PostFormValue( "shared" ) == "1"
 
-	queries.CreateAlbum( r.Context(), sqlc.CreateAlbumParams {
+	try( queries.CreateAlbum( r.Context(), sqlc.CreateAlbumParams {
 		Owner: user.ID,
 		Name: name,
 		UrlSlug: url,
 		Shared: int64( sel( shared, 1, 0 ) ),
 		ReadonlySecret: secureRandomBase64String( 6 ),
 		ReadwriteSecret: secureRandomBase64String( 6 ),
-	} )
+	} ) )
+
+	albums := try1( queries.GetAlbumsForUser( r.Context(), user.ID ) )
+	_ = try1( w.Write( must1( json.Marshal( toHTMLAlbums( albums ) ) ) ) )
 }
 
 func updateAlbumSettings( w http.ResponseWriter, r *http.Request, user User ) {
@@ -1382,7 +1403,7 @@ func main() {
 		{ "GET",  "/Special:thumbnail/{asset}", requireAuth( getThumbnail ) },
 		// { "GET",  "/Special:geocode", geocode },
 
-		{ "PUT", "/Special:createAlbum", requireAuth( createAlbum ) },
+		{ "PUT",  "/Special:createAlbum", requireAuth( createAlbum ) },
 		{ "POST", "/Special:albumSettings", requireAuth( updateAlbumSettings ) },
 		{ "POST", "/Special:shareAlbum", requireAuth( shareAlbum ) },
 
@@ -1392,9 +1413,9 @@ func main() {
 		{ "GET",  "/", requireAuth( viewLibrary ) },
 		{ "GET",  "/{album}", requireAuth( viewAlbum ) },
 
-		{ "POST", "/", requireAuth( uploadToLibrary ) },
-		{ "POST", "/{album}", requireAuth( uploadToAlbum ) },
-		{ "POST", "/Special:uploadToPhoto", requireAuth( uploadToPhoto ) },
+		{ "PUT",  "/", requireAuth( uploadToLibrary ) },
+		{ "PUT",  "/{album}", requireAuth( uploadToAlbum ) },
+		{ "PUT",  "/Special:uploadToPhoto", requireAuth( uploadToPhoto ) },
 	} )
 
 	guest_http_server := startHttpServer( guest_listen_addr, []Route {
