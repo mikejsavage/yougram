@@ -1199,6 +1199,10 @@ func serveString( content string ) func( http.ResponseWriter, *http.Request ) {
 	}
 }
 
+func serveAjax( w http.ResponseWriter, r *http.Request ) {
+	http.ServeFile( w, r, "ajax.html" )
+}
+
 func makeRouteRegex( route string ) *regexp.Regexp {
 	regex := "^" + route + "$"
 	regex = strings.ReplaceAll( regex, ".", "\\." ) // escape .
@@ -1424,6 +1428,9 @@ func main() {
 		{ "PUT",  "/", requireAuth( uploadToLibrary ) },
 		{ "PUT",  "/{album}", requireAuth( uploadToAlbum ) },
 		{ "PUT",  "/Special:uploadToPhoto", requireAuth( uploadToPhoto ) },
+
+		{ "GET", "/:gg", serveString( "[ { \"a\": 4 }, { \"a\": 5 }, { \"a\": 6 } ]" ) },
+		{ "GET", "/:ajax", serveAjax },
 	} )
 
 	guest_http_server := startHttpServer( guest_listen_addr, []Route {
