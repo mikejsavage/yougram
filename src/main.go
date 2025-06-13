@@ -1263,7 +1263,7 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 
 	go func() {
 		err := http_server.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
+		if err != nil && !errors.Is( err, http.ErrServerClosed ) {
 			log.Fatal( err )
 		}
 	}()
