@@ -1160,11 +1160,28 @@ type ZipFile struct {
 }
 
 func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.ResponseWriter ) {
-	// TODO: compute Content-Length, non-trivial but it is possible
+	content_length := int64( 22 )
+	for _, asset := range assets {
+		dir := "assets"
+		disk_extension := asset.Type
+		zip_extension := asset.Type
+		if heic_as_jpeg && asset.Type == "heic" {
+			dir = "generated"
+			disk_extension = "heic.jpg"
+			zip_extension = "jpg"
+		}
+
+		filename := hex.EncodeToString( asset.Sha256 )
+		f := try1( os.Open( dir + "/" + filename + "." + disk_extension ) )
+		info := try1( f.Stat() )
+		content_length += 92 + info.Size() + 2 * int64( len( filename + "." + zip_extension ) )
+	}
+
 	w.Header().Set( "Content-Disposition", fmt.Sprintf( "attachment; filename=\"%s.zip\"", filename ) )
 	w.Header().Set( "Content-Type", "application/zip" )
+	w.Header().Set( "Content-Length", strconv.FormatInt( content_length, 10 ) )
 
-	zip := zip.NewWriter( w )
+	archive := zip.NewWriter( w )
 
 	for _, asset := range assets {
 		dir := "assets"
@@ -1180,11 +1197,14 @@ func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.Resp
 		a := try1( os.Open( dir + "/" + filename + "." + disk_extension ) )
 		defer a.Close()
 
-		z := try1( zip.Create( filename + "." + zip_extension ) )
+		z := try1( archive.CreateHeader( &zip.FileHeader {
+			Name: filename + "." + zip_extension,
+			Method: zip.Store,
+		} ) )
 		_ = try1( io.Copy( z, a ) )
 	}
 
-	try( zip.Close() )
+	try( archive.Close() )
 }
 
 func serveString( content string ) func( http.ResponseWriter, *http.Request ) {
