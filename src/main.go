@@ -385,13 +385,19 @@ func pathValueAsset( r *http.Request ) ( string, []byte, error ) {
 }
 
 func serveAsset( w http.ResponseWriter, r *http.Request, sha256 string, asset_type string, original_filename string ) {
+	dir := "assets"
 	ext := ".jpg"
 	if asset_type == "heic" {
 		accepts := strings.Split( r.Header.Get( "Accept" ), "," )
-		ext = sel( slices.Contains( accepts, "image/heic" ), ".heic", ".heic.jpg" )
+		if slices.Contains( accepts, "image/heic" ) {
+			ext = ".heic"
+		} else {
+			dir = "generated"
+			ext = ".heic.jpg"
+		}
 	}
 
-	filename := "assets/" + sha256 + ext
+	filename := dir + "/" + sha256 + ext
 	f := try1( os.Open( filename ) )
 	defer f.Close()
 
@@ -940,6 +946,10 @@ func saveAsset( data []byte, filename string ) error {
 	return os.WriteFile( "assets/" + filename, data, 0644 )
 }
 
+func saveGenerated( data []byte, filename string ) error {
+	return os.WriteFile( "generated/" + filename, data, 0644 )
+}
+
 type AddedAsset struct {
 	Sha256 [32]byte
 	Date sql.NullInt64
@@ -1036,7 +1046,7 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 	if is_heic {
 		jpeg := must1( stb.StbToJpg( reoriented, 95 ) )
 		fmt.Printf( "\theic -> jpeg %dms %d -> %d\n", time.Now().Sub( before ).Milliseconds(), len( data ), len( jpeg ) )
-		err = saveAsset( jpeg, hex_sha256 + ".heic.jpg" )
+		err = saveGenerated( jpeg, hex_sha256 + ".heic.jpg" )
 		if err != nil {
 			return AddedAsset { }, err
 		}
@@ -1174,15 +1184,17 @@ func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.Resp
 	zip := zip.NewWriter( w )
 
 	for _, asset := range assets {
+		dir := "assets"
 		disk_extension := asset.Type
 		zip_extension := asset.Type
 		if heic_as_jpeg && asset.Type == "heic" {
+			dir = "generated"
 			disk_extension = "heic.jpg"
 			zip_extension = "jpg"
 		}
 
 		filename := hex.EncodeToString( asset.Sha256 )
-		a := try1( os.Open( "assets/" + filename + "." + disk_extension ) )
+		a := try1( os.Open( dir + "/" + filename + "." + disk_extension ) )
 		defer a.Close()
 
 		z := try1( zip.Create( filename + "." + zip_extension ) )
@@ -1276,6 +1288,13 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 	return http_server
 }
 
+func mustMakeDir( path string ) {
+	err := os.Mkdir( path, 0755 )
+	if err != nil && !errors.Is( err, os.ErrExist ) {
+		log.Fatalf( "Can't make %s dir: %v", path, err )
+	}
+}
+
 func showHelpAndQuit() {
 	fmt.Printf(
 `Usage: %s <command>
@@ -1300,10 +1319,8 @@ func main() {
 	cookie_encryption_key := initCookieEncryptionKey()
 	cookie_aead = try1( chacha20poly1305.NewX( cookie_encryption_key ) )
 
-	err := os.Mkdir( "assets", 0755 )
-	if err != nil && !errors.Is( err, os.ErrExist ) {
-		log.Fatalf( "Can't make assets dir: %v", err )
-	}
+	mustMakeDir( "assets" )
+	mustMakeDir( "generated" )
 
 	db_path := "db.sq3"
 	private_listen_addr := "0.0.0.0:5678"
