@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"golang.org/x/crypto/chacha20poly1305"
 	"crypto/sha256"
 	"database/sql"
 	_ "embed"
@@ -153,22 +152,6 @@ func queryOptional[ T any ]( row T, err error ) sql.Null[ T ] {
 		panic( err )
 	}
 	return just( row )
-}
-
-func initCookieEncryptionKey() []byte {
-	filename := "cookie_encryption_key.bin"
-	key, err := os.ReadFile( filename )
-	if err == nil && len( key ) == chacha20poly1305.KeySize {
-		return key
-	}
-
-	if !errors.Is( err, os.ErrNotExist ) {
-		must( err )
-	}
-
-	key = secureRandomBytes( chacha20poly1305.KeySize )
-	must( os.WriteFile( filename, key, 0644 ) )
-	return key
 }
 
 func initDB( memory_db bool ) {
@@ -1316,8 +1299,7 @@ func main() {
 
 	checksum = exeChecksum()
 
-	cookie_encryption_key := initCookieEncryptionKey()
-	cookie_aead = try1( chacha20poly1305.NewX( cookie_encryption_key ) )
+	initCookieAEAD()
 
 	mustMakeDir( "assets" )
 	mustMakeDir( "generated" )

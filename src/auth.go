@@ -8,8 +8,10 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"golang.org/x/text/unicode/norm"
 	"time"
@@ -30,6 +32,27 @@ func secureRandomHexString( n int ) string {
 
 func secureRandomBase64String( n int ) string {
 	return base64.URLEncoding.EncodeToString( secureRandomBytes( n ) )
+}
+
+func initCookieEncryptionKey() []byte {
+	filename := "cookie_encryption_key.bin"
+	key, err := os.ReadFile( filename )
+	if err == nil && len( key ) == chacha20poly1305.KeySize {
+		return key
+	}
+
+	if !errors.Is( err, os.ErrNotExist ) {
+		must( err )
+	}
+
+	key = secureRandomBytes( chacha20poly1305.KeySize )
+	must( os.WriteFile( filename, key, 0644 ) )
+	return key
+}
+
+func initCookieAEAD() {
+	cookie_encryption_key := initCookieEncryptionKey()
+	cookie_aead = try1( chacha20poly1305.NewX( cookie_encryption_key ) )
 }
 
 func encodeAuthCookie( username string, secret []byte ) string {
