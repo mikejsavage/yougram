@@ -1160,6 +1160,7 @@ type ZipFile struct {
 }
 
 func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.ResponseWriter ) {
+	// magic numbers obtained from ImHex and Wikipedia
 	content_length := int64( 22 )
 	for _, asset := range assets {
 		dir := "assets"
