@@ -285,7 +285,7 @@ func selectButton() templ.Component {
 	})
 }
 
-func downloadButton(album sqlc.GetAlbumByURLRow) templ.Component {
+func downloadButton(album sqlc.GetAlbumByURLRow, ownership AlbumOwnership) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -306,29 +306,38 @@ func downloadButton(album sqlc.GetAlbumByURLRow) templ.Component {
 			templ_7745c5c3_Var16 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div x-data=\"{\n\t\tshow_download_dialog: false,\n\t\tinclude: null,\n\t\tvariants: null,\n\t\theic_as_jpg: null,\n\t}\"><button @click=\"show_download_dialog = true; $el.parentElement.querySelector( &#39;form&#39; ).reset()\">Download</button><div class=\"dropdown\" x-cloak x-show=\"show_download_dialog\" @click.away=\"show_download_dialog = false\" @keydown.window.escape=\"show_download_dialog = false\"><form method=\"GET\" action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div x-data=\"{\n\t\tshow_download_dialog: false,\n\t\tinclude: null,\n\t\tvariants: null,\n\t\theic_as_jpg: null,\n\t}\"><button @click=\"show_download_dialog = true; $el.parentElement.querySelector( &#39;form&#39; ).reset()\">Download</button><div class=\"dropdown\" x-cloak x-show=\"show_download_dialog\" @click.away=\"show_download_dialog = false\" @keydown.window.escape=\"show_download_dialog = false\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var17 templ.SafeURL = "/Special:download/" + templ.URL(album.UrlSlug)
+
+		action := sel(ownership != AlbumOwnership_Guest,
+			"/Special:download/"+templ.URL(album.UrlSlug),
+			templ.URL(fmt.Sprintf("/%s/%s/download", album.UrlSlug, album.ReadonlySecret)),
+		)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<form method=\"GET\" action=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var17 templ.SafeURL = action
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var17)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"><h2>Download ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\"><h2>Download ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 288, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 295, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</h2><div style=\"display: grid; grid-template-columns: auto auto; column-gap: 1rem\"><b>Variants</b><div style=\"display: flex; gap: 1rem\"><label><input type=\"radio\" name=\"variants\" x-model=\"variants\" value=\"key_only\" checked> Key photos only</label> <label><input type=\"radio\" name=\"variants\" x-model=\"variants\" value=\"key_and_raw\"> Key + RAW</label> <label><input type=\"radio\" name=\"variants\" x-model=\"variants\" value=\"everything\"> Everything</label></div><b>Formats</b><fieldset :disabled=\"variants == &#39;everything&#39;\"><label><input type=\"checkbox\" name=\"heic_as_jpeg\" x-model=\"heic_as_jpg\" checked> Download HEIC as JPEG</label></fieldset></div><button type=\"submit\" style=\"margin-top: 0.5rem\">Download</button></form></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</h2><div style=\"display: grid; grid-template-columns: auto auto; column-gap: 1rem\"><b>Variants</b><div style=\"display: flex; gap: 1rem\"><label><input type=\"radio\" name=\"variants\" x-model=\"variants\" value=\"key_only\" checked> Key photos only</label> <label><input type=\"radio\" name=\"variants\" x-model=\"variants\" value=\"key_and_raw\"> Key + RAW</label> <label><input type=\"radio\" name=\"variants\" x-model=\"variants\" value=\"everything\"> Everything</label></div><b>Formats</b><fieldset :disabled=\"variants == &#39;everything&#39;\"><label><input type=\"checkbox\" name=\"heic_as_jpeg\" x-model=\"heic_as_jpg\" checked> Download HEIC as JPEG</label></fieldset></div><button type=\"submit\" style=\"margin-top: 0.5rem\">Download</button></form></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

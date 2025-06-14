@@ -555,27 +555,31 @@ func shareAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	w.Header().Set( "HX-Trigger", sel( shared == 0, "album:stop_sharing", "album:start_sharing" ) )
 }
 
+func serveAlbumZip( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumByURLRow ) {
+	query := r.URL.Query()
+	download_everything := query.Get( "variants" ) == "everything"
+	download_raws := query.Get( "variants" ) != "key_only"
+
+	rows := try1( queries.GetAlbumAssets( r.Context(), sqlc.GetAlbumAssetsParams {
+		ID: album.ID,
+		Column2: !download_everything,
+		Column3: !download_raws,
+	} ) )
+
+	files := make( []ZipFile, len( rows ) )
+	for i, row := range rows {
+		files[ i ] = ZipFile {
+			Sha256: row.Asset,
+			Type: row.Type,
+		}
+	}
+
+	serveZip( album.Name, files, true, w )
+}
+
 func downloadAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
-		query := r.URL.Query()
-		download_everything := query.Get( "variants" ) == "everything"
-		download_raws := query.Get( "variants" ) != "key_only"
-
-		rows := try1( queries.GetAlbumAssets( r.Context(), sqlc.GetAlbumAssetsParams {
-			ID: album.ID,
-			Column2: !download_everything,
-			Column3: !download_raws,
-		} ) )
-
-		files := make( []ZipFile, len( rows ) )
-		for i, row := range rows {
-			files[ i ] = ZipFile {
-				Sha256: row.Asset,
-				Type: row.Type,
-			}
-		}
-
-		serveZip( album.Name, files, true, w )
+		serveAlbumZip( w, r, album )
 	} )
 }
 
@@ -825,9 +829,8 @@ func getThumbnailAsGuest( w http.ResponseWriter, r *http.Request ) {
 	serveThumbnail( w, asset.V.Thumbnail, asset.V.OriginalFilename )
 }
 
-func viewAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
+func guestAlbumHandler( w http.ResponseWriter, r *http.Request, handler func( http.ResponseWriter, *http.Request, sqlc.GetAlbumByURLRow, bool ) ) {
 	album := queryOptional( queries.GetAlbumByURL( r.Context(), r.PathValue( "album" ) ) )
-
 	if !album.Valid {
 		httpError( w, http.StatusNotFound )
 		return
@@ -839,17 +842,29 @@ func viewAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
 		return
 	}
 
-	photos := []Photo { }
-	for _, photo := range try1( queries.GetAlbumPhotos( r.Context(), album.V.ID ) ) {
-		photos = append( photos, Photo {
-			ID: photo.ID,
-			Asset: hex.EncodeToString( photo.Sha256 ),
-			Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
-		} )
-	}
+	handler( w, r, album.V, secret == album.V.ReadwriteSecret )
+}
 
-	album_templ := guestAlbumTemplate( album.V, photos, secret == album.V.ReadwriteSecret )
-	try( guestBase( album.V.Name, album_templ ).Render( r.Context(), w ) )
+func viewAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
+	guestAlbumHandler( w, r, func( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumByURLRow, writeable bool ) {
+		photos := []Photo { }
+		for _, photo := range try1( queries.GetAlbumPhotos( r.Context(), album.ID ) ) {
+			photos = append( photos, Photo {
+				ID: photo.ID,
+				Asset: hex.EncodeToString( photo.Sha256 ),
+				Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
+			} )
+		}
+
+		album_templ := guestAlbumTemplate( album, photos, writeable )
+		try( guestBase( album.Name, album_templ ).Render( r.Context(), w ) )
+	} )
+}
+
+func downloadAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
+	guestAlbumHandler( w, r, func( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumByURLRow, writeable bool ) {
+		serveAlbumZip( w, r, album )
+	} )
 }
 
 type LatLong struct {
@@ -1464,6 +1479,8 @@ func main() {
 		{ "GET",  "/{album}/{secret}", viewAlbumAsGuest },
 		{ "GET",  "/{album}/{secret}/asset/{asset}", getAssetAsGuest },
 		{ "GET",  "/{album}/{secret}/thumbnail/{asset}", getThumbnailAsGuest },
+
+		{ "GET",  "/{album}/{secret}/download", downloadAlbumAsGuest },
 		// { "POST", "/{album}/{secret}", uploadPhotosAsGuest ) },
 	} )
 

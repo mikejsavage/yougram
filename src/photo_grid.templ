@@ -268,7 +268,7 @@ templ selectButton() {
 	</button>
 }
 
-templ downloadButton( album sqlc.GetAlbumByURLRow ) {
+templ downloadButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 	<div x-data="{
 		show_download_dialog: false,
 		include: null,
@@ -284,7 +284,14 @@ templ downloadButton( album sqlc.GetAlbumByURLRow ) {
 			@click.away="show_download_dialog = false"
 			@keydown.window.escape="show_download_dialog = false"
 		>
-			<form method="GET" action={ "/Special:download/" + templ.URL( album.UrlSlug ) }>
+			{{
+				action := sel( ownership != AlbumOwnership_Guest,
+					"/Special:download/" + templ.URL( album.UrlSlug ),
+					templ.URL( fmt.Sprintf( "/%s/%s/download", album.UrlSlug, album.ReadonlySecret ) ),
+				)
+			}}
+
+			<form method="GET" action={ action }>
 				<h2>Download { album.Name }</h2>
 
 				<div style="display: grid; grid-template-columns: auto auto; column-gap: 1rem">
