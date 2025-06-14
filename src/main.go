@@ -1174,6 +1174,7 @@ func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.Resp
 
 		filename := hex.EncodeToString( asset.Sha256 )
 		f := try1( os.Open( dir + "/" + filename + "." + disk_extension ) )
+		defer f.Close()
 		info := try1( f.Stat() )
 		content_length += 92 + info.Size() + 2 * int64( len( filename + "." + zip_extension ) )
 	}
