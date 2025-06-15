@@ -467,9 +467,22 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 					gap: 0;
 				}
 
+				:scope > div {
+					display: flex;
+					flex-direction: column;
+				}
+
+				:scope > div > span {
+					display: flex;
+					flex-direction: row;
+					align-items: center;
+					gap: 1rem;
+				}
+
 				@media (max-width: 479px) {
 					:scope {
-						background: linear-gradient( rgba( 0, 0, 0, 0.2 ) 80%, transparent );
+						background: rgba( 0, 0, 0, 0.2 );linear-gradient( rgba( 0, 0, 0, 0.2 ) 80%, transparent );
+						box-shadow: 0 0.5rem 0.5rem rgba( 0, 0, 0, 0.2 );
 						border: 0;
 					}
 
@@ -481,18 +494,10 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 					.no-mobile {
 						display: none !important;
 					}
-				}
 
-				:scope > div {
-					display: flex;
-					flex-direction: column;
-				}
-
-				:scope > div > span {
-					display: flex;
-					flex-direction: row;
-					align-items: center;
-					gap: 1rem;
+					:scope > div > span {
+						gap: 0.5rem;
+					}
 				}
 			}
 			</style>
