@@ -263,7 +263,7 @@ templ shareButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 
 templ selectButton() {
 	<button style="display: flex; align-items: center; gap: 0.25rem">
-		<input type="checkbox" style="pointer-events: none; margin: 0">
+		<input type="checkbox" class="no-mobile" style="pointer-events: none; margin: 0">
 		Select
 	</button>
 }
@@ -467,16 +467,20 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 					gap: 0;
 				}
 
-				:scope > div {
+				.left {
 					display: flex;
 					flex-direction: column;
 				}
 
-				:scope > div > span {
+				.right {
 					display: flex;
 					flex-direction: row;
 					align-items: center;
 					gap: 1rem;
+				}
+
+				.right > div {
+					line-height: 1;
 				}
 
 				@media (max-width: 479px) {
@@ -495,14 +499,14 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 						display: none !important;
 					}
 
-					:scope > div > span {
+					.right {
 						gap: 0.5rem;
 					}
 				}
 			}
 			</style>
 
-			<div>
+			<div class="left">
 				<h1>{ album.Name }</h1>
 				<span style="font-size: 80%" class="no-mobile">
 					if ownership != AlbumOwnership_Owned {
@@ -514,10 +518,9 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 				</span>
 			</div>
 
-			<span style="flex-grow: 1"></span>
+			<div style="flex-grow: 1"></div>
 
-			<div>
-				<span>
+			<div class="right">
 					if ownership == AlbumOwnership_Owned {
 						@albumSettings( album )
 					}
@@ -532,7 +535,6 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 					}
 
 					@selectButton()
-				</span>
 			</div>
 		</aside>
 
