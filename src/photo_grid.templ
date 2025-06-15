@@ -420,7 +420,7 @@ templ uploadButton() {
 			<div style="max-height: 50vh; overflow-y: scroll">
 				<template x-for="(file, i) in files">
 					<div>
-						<img :src="file.thumbnail">
+						<!-- <img :src="file.thumbnail"> -->
 						<span x-text="Math.floor( file.progress * 100 )"></span>%
 						<span x-text="file.name"></span>
 					</div>
@@ -450,103 +450,109 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 	}
 	</style>
 
-	<aside>
-		<style>
-		@scope {
-			:scope {
-				position: sticky;
-				top: 0;
-				z-index: var( --sticky-z );
-				padding: 0.5rem;
-				background: white;
-				border-bottom: 1px solid #ccc;
-				display: flex;
-				flex-direction: column;
-				align-items: flex-start;
-				gap: 0;
-			}
-
-			@media (min-width: 480px) {
+	<main x-data="{ selected: new Map(), last_selected: null }">
+		<aside>
+			<style>
+			@scope {
 				:scope {
+					position: sticky;
+					top: 0;
+					z-index: var( --sticky-z );
+					padding: 0.5rem;
+					background: white;
+					border-bottom: 1px solid #ccc;
+					display: flex;
+					flex-direction: column;
+					align-items: flex-start;
+					gap: 0;
+				}
+
+				@media (min-width: 480px) {
+					:scope {
+						flex-direction: row;
+						align-items: center;
+					}
+				}
+
+				@media (max-width: 479px) {
+					h1 {
+						font-size: 1rem;
+					}
+
+					.no-mobile {
+						display: none !important;
+					}
+				}
+
+				:scope > div {
+					display: flex;
+					flex-direction: column;
+				}
+
+				:scope > div > span {
+					display: flex;
 					flex-direction: row;
 					align-items: center;
+					gap: 1rem;
 				}
 			}
+			</style>
 
-			@media (max-width: 479px) {
-				.no-mobile {
-					display: none !important;
-				}
-			}
+			<div>
+				<h1>{ album.Name }</h1>
+				<span style="font-size: 80%" class="no-mobile">
+					if ownership != AlbumOwnership_Owned {
+						<span>{ album.OwnerUsername }'s album</span>
+					}
 
-			:scope > div {
-				display: flex;
-				flex-direction: column;
-			}
+					<span>Oct 2023 &ndash; Jan 2025</span>
+					<span>{ len( photos ) } { sel( len( photos ) == 1, "photo", "photos" ) }</span>
+				</span>
+			</div>
 
-			:scope > div > span {
-				display: flex;
-				flex-direction: row;
-				align-items: center;
-				gap: 1rem;
-			}
+			<span style="flex-grow: 1"></span>
+
+			<div>
+				<span>
+					if ownership == AlbumOwnership_Owned {
+						@albumSettings( album )
+					}
+
+					if ownership != AlbumOwnership_Guest {
+						@shareButton( album, ownership )
+					}
+
+					@downloadButton( album, ownership )
+					if can_upload {
+						@uploadButton()
+					}
+
+					@selectButton()
+				</span>
+			</div>
+		</aside>
+
+		if can_upload && ownership == AlbumOwnership_Guest {
+			<b>
+				This page lets you add and remove photos so don't share it with randoms, give them
+				<a href={ templ.URL( guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret ) }>this read only link</a>
+				instead!!
+			</b>
 		}
-		</style>
 
-		<div>
-			<h1>{ album.Name }</h1>
-			<span style="font-size: 80%" class="no-mobile">
-				if ownership != AlbumOwnership_Owned {
-					<span>{ album.OwnerUsername }'s album</span>
-				}
+		<noscript>
+			<div style="padding: 0.5rem">Sorry but nothing works without Javascript</div>
+		</noscript>
 
-				<span>Oct 2023 &ndash; Jan 2025</span>
-				<span>{ len( photos ) } { sel( len( photos ) == 1, "photo", "photos" ) }</span>
-			</span>
-		</div>
+		{{ asset_base_url := "/Special:asset/" }}
+		{{ thumbnail_base_url := "/Special:thumbnail/" }}
+		if ownership == AlbumOwnership_Guest {
+			{{ asset_base_url = fmt.Sprintf( "/%s/%s/asset/", album.UrlSlug, sel( can_upload, album.ReadwriteSecret, album.ReadonlySecret ) ) }}
+			{{ thumbnail_base_url = fmt.Sprintf( "/%s/%s/thumbnail/", album.UrlSlug, sel( can_upload, album.ReadwriteSecret, album.ReadonlySecret ) ) }}
+		}
 
-		<span style="flex-grow: 1"></span>
-
-		<div>
-			<span>
-				if ownership == AlbumOwnership_Owned {
-					@albumSettings( album )
-				}
-
-				if ownership != AlbumOwnership_Guest {
-					@shareButton( album, ownership )
-				}
-
-				@downloadButton( album )
-				if can_upload {
-					@uploadButton()
-				}
-
-				@selectButton()
-			</span>
-		</div>
-	</aside>
-
-	if can_upload && ownership == AlbumOwnership_Guest {
-		<b>
-			This page lets you add and remove photos so don't share it with randoms, give them
-			<a href={ templ.URL( guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret ) }>this read only link</a>
-			instead!!
-		</b>
-	}
-
-	<noscript>
-		<div style="padding: 0.5rem">Sorry but nothing works without Javascript</div>
-	</noscript>
-
-	{{ asset_base_url := "/Special:asset/" }}
-	{{ thumbnail_base_url := "/Special:thumbnail/" }}
-	if ownership == AlbumOwnership_Guest {
-		{{ asset_base_url = fmt.Sprintf( "/%s/%s/asset/", album.UrlSlug, sel( can_upload, album.ReadwriteSecret, album.ReadonlySecret ) ) }}
-		{{ thumbnail_base_url = fmt.Sprintf( "/%s/%s/thumbnail/", album.UrlSlug, sel( can_upload, album.ReadwriteSecret, album.ReadonlySecret ) ) }}
-	}
-
-	@photogrid( photos, asset_base_url, thumbnail_base_url )
+		@photogrid( photos, asset_base_url, thumbnail_base_url )
+	</main>
 }
 
 templ ownedAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo ) {

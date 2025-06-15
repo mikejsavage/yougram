@@ -263,6 +263,12 @@ templ base( title string ) {
 templ baseWithSidebar( user User, current_url string, title string, body templ.Component ) {
 	@base( title )
 
+	<style>
+	main {
+		margin-left: var( --sidebar-width );
+	}
+	</style>
+
 	{{
 		albums, err := queries.GetAlbumsForUser( ctx, user.ID )
 		if err != nil {
@@ -388,15 +394,11 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 			</template>
 		</nav>
 
-		<main style="margin-left: var( --sidebar-width )">
-			@body
-		</main>
+		@body
 	</body>
 }
 
 templ guestBase( title string, body templ.Component ) {
 	@base( title )
-	<main>
-		@body
-	</main>
+	@body
 }
