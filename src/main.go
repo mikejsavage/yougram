@@ -678,69 +678,73 @@ func uploadToLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 	tx.Commit()
 }
 
-func uploadToAlbum( w http.ResponseWriter, r *http.Request, user User ) {
-	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
-		const megabyte = 1000 * 1000
-		try( r.ParseMultipartForm( 10 * megabyte ) )
+func uploadPhotos( w http.ResponseWriter, r *http.Request, userID sql.NullInt64, album sqlc.GetAlbumByURLRow ) {
+	const megabyte = 1000 * 1000
+	try( r.ParseMultipartForm( 10 * megabyte ) )
 
-		if len( r.MultipartForm.File[ "assets" ] ) == 0 {
-			httpError( w, http.StatusBadRequest )
-			return
-		}
+	if len( r.MultipartForm.File[ "assets" ] ) == 0 {
+		httpError( w, http.StatusBadRequest )
+		return
+	}
 
-		assets := make( []AddedAsset, len( r.MultipartForm.File[ "assets" ] ) )
+	assets := make( []AddedAsset, len( r.MultipartForm.File[ "assets" ] ) )
 
-		for i, header := range r.MultipartForm.File[ "assets" ] {
-			f := try1( header.Open() )
-			defer f.Close()
-			assets[ i ] = try1( addAsset( r.Context(), try1( io.ReadAll( f ) ), header.Filename ) )
-		}
+	for i, header := range r.MultipartForm.File[ "assets" ] {
+		f := try1( header.Open() )
+		defer f.Close()
+		assets[ i ] = try1( addAsset( r.Context(), try1( io.ReadAll( f ) ), header.Filename ) )
+	}
 
-		var photo_id sql.Null[ int64 ]
-		for _, asset := range assets {
-			photos := try1( queries.GetAssetPhotos( r.Context(), sqlc.GetAssetPhotosParams {
-				AssetID: asset.Sha256[:],
-				Owner: sql.NullInt64 { user.ID, true },
-			} ) )
-
-			if len( photos ) == 0 {
-				continue
-			}
-
-			if len( photos ) == 1 && !photo_id.Valid {
-				photo_id = just( photos[ 0 ] )
-				continue
-			}
-
-			httpError( w, http.StatusConflict )
-			return
-		}
-
-		tx := try1( db.Begin() )
-		defer tx.Rollback()
-		qtx := queries.WithTx( tx )
-
-		if !photo_id.Valid {
-			photo_id = just( try1( qtx.CreatePhoto( r.Context(), sqlc.CreatePhotoParams {
-				Owner: sql.NullInt64 { user.ID, true },
-				CreatedAt: time.Now().Unix(),
-				PrimaryAsset: assets[ 0 ].Sha256[:],
-			} ) ) )
-		}
-
-		for _, asset := range assets {
-			try( qtx.AddAssetToPhoto( r.Context(), sqlc.AddAssetToPhotoParams {
-				AssetID: asset.Sha256[:],
-				PhotoID: photo_id.V,
-			} ) )
-		}
-
-		try( qtx.AddPhotoToAlbum( r.Context(), sqlc.AddPhotoToAlbumParams {
-			PhotoID: photo_id.V,
-			AlbumID: album.ID,
+	var photo_id sql.Null[ int64 ]
+	for _, asset := range assets {
+		photos := try1( queries.GetAssetPhotos( r.Context(), sqlc.GetAssetPhotosParams {
+			AssetID: asset.Sha256[:],
+			Owner: userID,
 		} ) )
 
-		tx.Commit()
+		if len( photos ) == 0 {
+			continue
+		}
+
+		if len( photos ) == 1 && !photo_id.Valid {
+			photo_id = just( photos[ 0 ] )
+			continue
+		}
+
+		httpError( w, http.StatusConflict )
+		return
+	}
+
+	tx := try1( db.Begin() )
+	defer tx.Rollback()
+	qtx := queries.WithTx( tx )
+
+	if !photo_id.Valid {
+		photo_id = just( try1( qtx.CreatePhoto( r.Context(), sqlc.CreatePhotoParams {
+			Owner: userID,
+			CreatedAt: time.Now().Unix(),
+			PrimaryAsset: assets[ 0 ].Sha256[:],
+		} ) ) )
+	}
+
+	for _, asset := range assets {
+		try( qtx.AddAssetToPhoto( r.Context(), sqlc.AddAssetToPhotoParams {
+			AssetID: asset.Sha256[:],
+			PhotoID: photo_id.V,
+		} ) )
+	}
+
+	try( qtx.AddPhotoToAlbum( r.Context(), sqlc.AddPhotoToAlbumParams {
+		PhotoID: photo_id.V,
+		AlbumID: album.ID,
+	} ) )
+
+	tx.Commit()
+}
+
+func uploadToAlbum( w http.ResponseWriter, r *http.Request, user User ) {
+	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+		uploadPhotos( w, r, sql.NullInt64 { user.ID, true }, album )
 	} )
 }
 
@@ -864,6 +868,17 @@ func viewAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
 func downloadAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
 	guestAlbumHandler( w, r, func( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumByURLRow, writeable bool ) {
 		serveAlbumZip( w, r, album )
+	} )
+}
+
+func uploadAsGuest( w http.ResponseWriter, r *http.Request ) {
+	guestAlbumHandler( w, r, func( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumByURLRow, writeable bool ) {
+		if !writeable {
+			httpError( w, http.StatusForbidden )
+			return
+		}
+
+		uploadPhotos( w, r, sql.NullInt64 { }, album )
 	} )
 }
 
@@ -1481,7 +1496,7 @@ func main() {
 		{ "GET",  "/{album}/{secret}/thumbnail/{asset}", getThumbnailAsGuest },
 
 		{ "GET",  "/{album}/{secret}/download", downloadAlbumAsGuest },
-		// { "POST", "/{album}/{secret}", uploadPhotosAsGuest ) },
+		{ "PUT",  "/{album}/{secret}", uploadAsGuest },
 	} )
 
 	done := make( chan os.Signal, 1 )
