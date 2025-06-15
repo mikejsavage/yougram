@@ -38,7 +38,7 @@ templ navlink( current_url string, link templ.SafeURL, text string, match_prefix
 
 templ sidebarAlbum( album sqlc.GetAlbumsForUserRow ) {
 	if len( album.KeyPhotoSha256 ) > 0 {
-		<img src={ "/Special:thumbnail/" + hex.EncodeToString( album.KeyPhotoSha256 ) } style="height: 1lh" />
+		<img src={ "/Special:thumbnail/" + hex.EncodeToString( album.KeyPhotoSha256 ) } style="height: 1lh">
 	}
 	{ album.Name }
 }
@@ -83,8 +83,8 @@ templ createAlbumButton() {
 
 templ base( title string ) {
 	<!DOCTYPE html>
-	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
 	<title>{ title }</title>
 
 	@autorefresh()
