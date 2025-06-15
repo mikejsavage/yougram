@@ -77,12 +77,12 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 				display: grid;
 				grid-template-columns: repeat( auto-fill, minmax( 6cm, 1fr ) );
 				gap: 0.2rem;
-				padding: 0.5rem 0;
+				padding: 0.5rem;
 			}
 
-			@media (min-width: 480px) {
+			@media (max-width: 479px) {
 				.grid {
-					padding: 0.5rem;
+					padding: 0;
 				}
 			}
 
@@ -482,7 +482,7 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 				@media (max-width: 479px) {
 					:scope {
 						background: rgba( 0, 0, 0, 0.2 );linear-gradient( rgba( 0, 0, 0, 0.2 ) 80%, transparent );
-						box-shadow: 0 0 0.5rem rgba( 0, 0, 0, 0.2 );
+						box-shadow: 0 0.5rem 0.5rem rgba( 0, 0, 0, 0.2 );
 						border: 0;
 					}
 
