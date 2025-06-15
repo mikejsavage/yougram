@@ -539,11 +539,11 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 		</aside>
 
 		if can_upload && ownership == AlbumOwnership_Guest {
-			<b>
+			<div style="font-weight: bold; padding: 0.5rem 0.5rem 0">
 				This page lets you add and remove photos so don't share it with randoms, give them
 				<a href={ templ.URL( guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret ) }>this read only link</a>
 				instead!!
-			</b>
+			</div>
 		}
 
 		<noscript>
