@@ -60,6 +60,28 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 				this.height = ( grid.row_height * last_row + grid.gap * Math.max( 0, last_row - 1 ) ) + "px";
 				this.top = ( grid.row_height * top_row + grid.gap * Math.max( 0, top_row - 1 ) ) + "px";
 			},
+
+			PhotoClicked( idx, shift ) {
+				if( !this.selecting ) {
+					this.fullscreen = idx;
+					return;
+				}
+
+				if( shift && this.last_selected != null ) {
+					for( let i = Math.min( idx, this.last_selected ); i <= Math.max( idx, this.last_selected ); i++ ) {
+						this.selected.set( i, true );
+					}
+				}
+				else {
+					if( this.selected.has( idx ) ) {
+						this.selected.delete( idx );
+					}
+					else {
+						this.selected.set( idx, true );
+					}
+				}
+				this.last_selected = idx;
+			},
 		} ) );
 	} );
 	</script>
@@ -86,11 +108,24 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 				}
 			}
 
+			.stack {
+				display: grid;
+			}
+
+			.stack img {
+				grid-row: 1;
+				grid-column: 1;
+			}
+
 			.thumbnail img {
 				aspect-ratio: 1;
 				width: 100%;
 				object-fit: cover;
 				object-position: 50% 50%;
+			}
+
+			.selected {
+				border: red 2px solid;
 			}
 
 			.fullscreen {
@@ -110,17 +145,7 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 				width: 100vw;
 				max-height: 100vh;
 				object-fit: contain;
-				/* padding: 2.5vmax; */
 				user-select: none;
-			}
-
-			.stack {
-				display: grid;
-			}
-
-			.stack > * {
-				grid-row: 1;
-				grid-column: 1;
 			}
 
 			.settings {
@@ -159,7 +184,11 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 
 		<div class="grid" :style="{ top: top }">
 			<template x-for="i in visible_range[ 1 ] - visible_range[ 0 ]">
-				<a class="thumbnail stack" :href="'/Special:asset/' + photos[ visible_range[ 0 ] + i - 1 ].asset" @click.prevent="fullscreen = visible_range[ 0 ] + i - 1">
+				<a class="thumbnail stack"
+					:href="'/Special:asset/' + photos[ visible_range[ 0 ] + i - 1 ].asset"
+					:class="selected.has( visible_range[ 0 ] + i - 1 ) ? 'selected' : ''"
+					@click.prevent="PhotoClicked( visible_range[ 0 ] + i - 1, $event.shiftKey )"
+				>
 					<img x-init="MakeThumbhash( $el, photos[ visible_range[ 0 ] + i - 1 ].thumbhash )">
 					<img :src={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", thumbnail_base_url ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.remove()">
 				</a>
@@ -176,7 +205,7 @@ const (
 )
 
 templ albumSettings( album sqlc.GetAlbumByURLRow ) {
-	<div x-data="{
+	<div x-show="!selecting" x-data="{
 		show: false,
 		name: '',
 		url: '',
@@ -222,7 +251,7 @@ templ albumSettings( album sqlc.GetAlbumByURLRow ) {
 }
 
 templ shareButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
-	<div
+	<div x-show="!selecting"
 		x-data={ templ.JSONString( map[string]any {
 			"show_dialog": false,
 			"sharing": album.Shared,
@@ -262,8 +291,8 @@ templ shareButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 }
 
 templ selectButton() {
-	<button style="display: flex; align-items: center; gap: 0.25rem">
-		<input type="checkbox" class="no-mobile" style="pointer-events: none; margin: 0">
+	<button style="display: flex; align-items: center; gap: 0.25rem" @click="selecting = !selecting; selected = new Map(); last_selected = null">
+		<input type="checkbox" x-model="selecting" class="no-mobile" style="pointer-events: none; margin: 0">
 		Select
 	</button>
 }
@@ -395,7 +424,7 @@ templ uploadButton() {
 	}
 	</script>
 
-	<div x-data="MakeUploadForm()">
+	<div x-show="!selecting" x-data="MakeUploadForm()">
 		<style>
 		@scope {
 			img {
@@ -450,7 +479,7 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 	}
 	</style>
 
-	<main x-data="{ selected: new Map(), last_selected: null }">
+	<main x-data="{ selecting: false, selected: new Map(), last_selected: null }">
 		<aside>
 			<style>
 			@scope {
@@ -477,6 +506,10 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 					flex-direction: row;
 					align-items: center;
 					gap: 1rem;
+				}
+
+				.right {
+					flex-wrap: wrap;
 				}
 
 				.right > div {
@@ -521,20 +554,28 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 			<div style="flex-grow: 1"></div>
 
 			<div class="right">
-					if ownership == AlbumOwnership_Owned {
-						@albumSettings( album )
-					}
+				if ownership == AlbumOwnership_Owned {
+					@albumSettings( album )
+				}
 
-					if ownership != AlbumOwnership_Guest {
-						@shareButton( album, ownership )
-					}
+				if ownership != AlbumOwnership_Guest {
+					@shareButton( album, ownership )
+				}
 
-					@downloadButton( album, ownership )
-					if can_upload {
-						@uploadButton()
-					}
+				if can_upload {
+					@uploadButton()
+				}
 
-					@selectButton()
+				if ownership == AlbumOwnership_Owned {
+					<button x-cloak x-show="selecting">Select all</button>
+					<button x-cloak x-show="selecting">Deselect all</button>
+					<button x-cloak x-show="selecting">Add to</button>
+					<button x-cloak x-show="selecting">Move to</button>
+					<button x-cloak x-show="selecting">Remove</button>
+				}
+
+				@downloadButton( album, ownership )
+				@selectButton()
 			</div>
 		</aside>
 
