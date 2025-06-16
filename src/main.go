@@ -678,7 +678,7 @@ func uploadToLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 	tx.Commit()
 }
 
-func uploadPhotos( w http.ResponseWriter, r *http.Request, userID sql.NullInt64, album sqlc.GetAlbumByURLRow ) {
+func uploadToAlbumImpl( w http.ResponseWriter, r *http.Request, userID sql.NullInt64, album sqlc.GetAlbumByURLRow ) {
 	const megabyte = 1000 * 1000
 	try( r.ParseMultipartForm( 10 * megabyte ) )
 
@@ -744,7 +744,7 @@ func uploadPhotos( w http.ResponseWriter, r *http.Request, userID sql.NullInt64,
 
 func uploadToAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
-		uploadPhotos( w, r, sql.NullInt64 { user.ID, true }, album )
+		uploadToAlbumImpl( w, r, sql.NullInt64 { user.ID, true }, album )
 	} )
 }
 
@@ -871,14 +871,14 @@ func downloadAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
 	} )
 }
 
-func uploadAsGuest( w http.ResponseWriter, r *http.Request ) {
+func uploadToAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
 	guestAlbumHandler( w, r, func( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumByURLRow, writeable bool ) {
 		if !writeable {
 			httpError( w, http.StatusForbidden )
 			return
 		}
 
-		uploadPhotos( w, r, sql.NullInt64 { }, album )
+		uploadToAlbumImpl( w, r, sql.NullInt64 { }, album )
 	} )
 }
 
@@ -1496,7 +1496,7 @@ func main() {
 		{ "GET",  "/{album}/{secret}/thumbnail/{asset}", getThumbnailAsGuest },
 
 		{ "GET",  "/{album}/{secret}/download", downloadAlbumAsGuest },
-		{ "PUT",  "/{album}/{secret}", uploadAsGuest },
+		{ "PUT",  "/{album}/{secret}", uploadToAlbumAsGuest },
 	} )
 
 	done := make( chan os.Signal, 1 )
