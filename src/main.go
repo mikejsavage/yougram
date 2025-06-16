@@ -574,13 +574,57 @@ func serveAlbumZip( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumB
 		}
 	}
 
-	serveZip( album.Name, files, true, w )
+	serveZip( album.Name, files, true, w ) // TODO: heic as jpg?
 }
 
 func downloadAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
 		serveAlbumZip( w, r, album )
 	} )
+}
+
+func downloadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
+	query := r.URL.Query()
+	download_everything := query.Get( "variants" ) == "everything"
+	download_raws := query.Get( "variants" ) != "key_only"
+
+	var ids []int64
+	decoder := json.NewDecoder( r.Body )
+	err := decoder.Decode( &ids )
+	if err != nil {
+		httpError( w, http.StatusBadRequest )
+		return
+	}
+
+	var files []ZipFile
+	for _, id := range ids {
+		rows := try1( queries.GetPhotoAssets( r.Context(), sqlc.GetPhotoAssetsParams {
+			Owner: sql.NullInt64 { user.ID, true },
+			ID: id,
+			Column3: !download_everything,
+			Column4: !download_raws,
+		} ) )
+
+		if len( rows ) == 0 {
+			httpError( w, http.StatusNotFound )
+			return
+		}
+
+		for _, row := range rows {
+			if !row.Owned { // TODO: need to check if the photo is in a shared album too
+				httpError( w, http.StatusForbidden )
+				return
+			}
+
+			files = append( files, ZipFile {
+				Sha256: row.Asset,
+				Type: row.Type,
+			} )
+		}
+	}
+
+	now := time.Now().Format( "yougram-20060102-150405" )
+	serveZip( now, files, true, w ) // TODO: heic as jpg?
 }
 
 type Photo struct {
@@ -1471,7 +1515,7 @@ func main() {
 		{ "POST", "/Special:shareAlbum", requireAuth( shareAlbum ) },
 
 		{ "GET",  "/Special:download/{album}", requireAuth( downloadAlbum ) },
-		// { "POST", "/Special:download", requireAuth( downloadPhotos ) },
+		{ "POST", "/Special:download", requireAuth( downloadPhotos ) },
 
 		{ "GET",  "/", requireAuth( viewLibrary ) },
 		{ "GET",  "/{album}", requireAuth( viewAlbum ) },

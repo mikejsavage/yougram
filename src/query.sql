@@ -84,10 +84,10 @@ INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
 INNER JOIN photo ON photo.id = photo_asset.photo_id
 INNER JOIN album_photo ON photo.id = album_photo.photo_id
 INNER JOIN album ON album.id = album_photo.album_id
-WHERE album.id = ?
-	AND ( ? OR photo.primary_asset = asset.sha256 ) -- primary assets only
-	AND ( ? OR asset.type = "raw" ); -- primary assets + raws
-
+WHERE album.id = ? AND (
+	( ? OR photo.primary_asset = asset.sha256 ) -- primary assets only
+	OR ( ? OR asset.type = "raw" ) -- primary assets + raws
+);
 
 
 ------------
@@ -119,6 +119,16 @@ WHERE photo.id = ? AND asset.sha256 = IFNULL( photo.primary_asset,
 
 -- name: GetPhotoOwner :one
 SELECT owner FROM photo WHERE id = ?;
+
+-- name: GetPhotoAssets :many
+SELECT asset.sha256 AS asset, asset.type, photo.owner = ? AS owned
+FROM asset
+INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
+INNER JOIN photo ON photo.id = photo_asset.photo_id
+WHERE photo.id = ? AND (
+	( ? OR photo.primary_asset = asset.sha256 ) -- primary assets only
+	OR ( ? OR asset.type = "raw" ) -- primary assets + raws
+);
 
 
 ------------

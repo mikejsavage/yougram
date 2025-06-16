@@ -161,9 +161,6 @@ func (q *Queries) CreateAsset(ctx context.Context, arg CreateAssetParams) error 
 
 const createPhoto = `-- name: CreatePhoto :one
 
-
-
-
 INSERT INTO photo ( owner, created_at, primary_asset )
 VALUES( ?, ?, ? )
 RETURNING id
@@ -175,7 +172,6 @@ type CreatePhotoParams struct {
 	PrimaryAsset []byte
 }
 
-// primary assets + raws
 // ----------
 // PHOTOS --
 // ----------
@@ -232,9 +228,10 @@ INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
 INNER JOIN photo ON photo.id = photo_asset.photo_id
 INNER JOIN album_photo ON photo.id = album_photo.photo_id
 INNER JOIN album ON album.id = album_photo.album_id
-WHERE album.id = ?
-	AND ( ? OR photo.primary_asset = asset.sha256 ) -- primary assets only
-	AND ( ? OR asset.type = "raw" )
+WHERE album.id = ? AND (
+	( ? OR photo.primary_asset = asset.sha256 ) -- primary assets only
+	OR ( ? OR asset.type = "raw" ) -- primary assets + raws
+)
 `
 
 type GetAlbumAssetsParams struct {
@@ -620,6 +617,58 @@ func (q *Queries) GetPhoto(ctx context.Context, id int64) (GetPhotoRow, error) {
 	var i GetPhotoRow
 	err := row.Scan(&i.Sha256, &i.Type, &i.OriginalFilename)
 	return i, err
+}
+
+const getPhotoAssets = `-- name: GetPhotoAssets :many
+SELECT asset.sha256 AS asset, asset.type, photo.owner = ? AS owned
+FROM asset
+INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
+INNER JOIN photo ON photo.id = photo_asset.photo_id
+WHERE photo.id = ? AND (
+	( ? OR photo.primary_asset = asset.sha256 ) -- primary assets only
+	OR ( ? OR asset.type = "raw" ) -- primary assets + raws
+)
+`
+
+type GetPhotoAssetsParams struct {
+	Owner   sql.NullInt64
+	ID      int64
+	Column3 interface{}
+	Column4 interface{}
+}
+
+type GetPhotoAssetsRow struct {
+	Asset []byte
+	Type  string
+	Owned bool
+}
+
+func (q *Queries) GetPhotoAssets(ctx context.Context, arg GetPhotoAssetsParams) ([]GetPhotoAssetsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPhotoAssets,
+		arg.Owner,
+		arg.ID,
+		arg.Column3,
+		arg.Column4,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPhotoAssetsRow
+	for rows.Next() {
+		var i GetPhotoAssetsRow
+		if err := rows.Scan(&i.Asset, &i.Type, &i.Owned); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getPhotoOwner = `-- name: GetPhotoOwner :one
