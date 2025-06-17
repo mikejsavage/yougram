@@ -1548,6 +1548,7 @@ func main() {
 		{ "GET",  "/Special:checksum", getChecksum },
 		{ "GET",  "/Special:alpinejs-3.14.9.js", serveString( alpinejs ) },
 		{ "GET",  "/Special:fuzzysort-3.1.0.js", serveString( fuzzysortjs ) },
+		{ "GET",  "/Special:alpinejs-dialog-2.1.1.js", serveString( alpinejs_dialog ) },
 		{ "GET",  "/Special:htmx-2.0.4.js", serveString( htmxjs ) },
 		{ "GET",  "/Special:thumbhash-1.0.0.js", serveString( thumbhashjs ) },
 
