@@ -185,7 +185,7 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 		<div class="grid" :style="{ top: top }">
 			<template x-for="i in visible_range[ 1 ] - visible_range[ 0 ]">
 				<a class="thumbnail stack"
-					:href="'/Special:asset/' + photos[ visible_range[ 0 ] + i - 1 ].asset"
+					:href={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", asset_base_url ) }
 					:class="selected.has( visible_range[ 0 ] + i - 1 ) ? 'selected' : ''"
 					@click.prevent="PhotoClicked( visible_range[ 0 ] + i - 1, $event.shiftKey )"
 				>
