@@ -18,12 +18,18 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 	document.addEventListener( "alpine:init", () => {
 		Alpine.data( "photos", () => ( {
 			photos: {{ photos }},
-			fullscreen: null,
 			base_year: 2014,
 			year_transitions: [ 0.1, 0.3, 0.5, 0.6, 0.9 ],
+
 			height: 0,
 			top: 0,
 			visible_range: [ 0, 0 ],
+
+			fullscreen: null,
+			fullscreen_thumbnail_loaded: false,
+			fullscreen_thumbnail_failed: false,
+			fullscreen_asset_loaded: false,
+			fullscreen_asset_failed: false,
 
 			StripPx( size ) {
 				return size.replace( /px$/, "" );
@@ -61,9 +67,25 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 				this.top = ( grid.row_height * top_row + grid.gap * Math.max( 0, top_row - 1 ) ) + "px";
 			},
 
+			EnterFullscreen( idx ) {
+				idx = Math.max( 0, Math.min( this.photos.length - 1, idx ) );
+				if( this.fullscreen == idx )
+					return;
+
+				this.fullscreen = Math.max( 0, Math.min( this.photos.length - 1, idx ) );
+				this.fullscreen_thumbnail_loaded = false;
+				this.fullscreen_thumbnail_failed = false;
+				this.fullscreen_asset_loaded = false;
+				this.fullscreen_asset_failed = false;
+			},
+
+			Visible( p ) {
+				return { display: p ? 'block' : 'none' };
+			},
+
 			PhotoClicked( idx, shift ) {
 				if( !this.selecting ) {
-					this.fullscreen = idx;
+					this.EnterFullscreen( idx );
 					return;
 				}
 
@@ -165,23 +187,6 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 		}
 		</style>
 
-		<template x-if="fullscreen != null">
-			<div class="fullscreen"
-				@click="fullscreen = null"
-				@keydown.window.escape="fullscreen = null"
-				@keydown.window.left="fullscreen = Math.max( 0, fullscreen - 1 )"
-				@keydown.window.right="fullscreen = Math.min( photos.length - 1, fullscreen + 1 )"
-			>
-				<div class="stack">
-					<img x-init="MakeThumbhash( $el, photos[ fullscreen ].thumbhash )">
-					<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", thumbnail_base_url ) } onload="this.previousElementSibling.remove()" @error="$el.remove()">
-					<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", asset_base_url ) } onload="this.previousElementSibling.remove()" @error="$el.remove()">
-				</div>
-
-				<div class="settings">[cog] [bin]</div>
-			</div>
-		</template>
-
 		<div class="grid" :style="{ top: top }">
 			<template x-for="i in visible_range[ 1 ] - visible_range[ 0 ]">
 				<a class="thumbnail stack"
@@ -189,8 +194,42 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 					:class="selected.has( visible_range[ 0 ] + i - 1 ) ? 'selected' : ''"
 					@click.prevent="PhotoClicked( visible_range[ 0 ] + i - 1, $event.shiftKey )"
 				>
+					// NOTE(mike 20250618): if you change an img's src the browser displays the old
+					// image until the new one has loaded, so this has to go inside the for loop so
+					// the imgs are deleted and recreated when cycling between photos or you get
+					// visual glitches
+					<template x-if="fullscreen == i - 1">
+						<div class="fullscreen"
+							@click="fullscreen = null"
+							@keydown.window.escape="fullscreen = null"
+							@keydown.window.left="EnterFullscreen( fullscreen - 1 )"
+							@keydown.window.right="EnterFullscreen( fullscreen + 1 )"
+						>
+							<div class="stack">
+								<img x-init="MakeThumbhash( $el, photos[ fullscreen ].thumbhash )" :style="Visible( !fullscreen_thumbnail_loaded && !fullscreen_asset_loaded )">
+								<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", thumbnail_base_url ) }
+									@load="fullscreen_thumbnail_loaded = true"
+									@error="fullscreen_thumbnail_failed = true"
+									:style="Visible( !fullscreen_thumbnail_failed && !fullscreen_asset_loaded )">
+								<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", asset_base_url ) }
+									@load="fullscreen_asset_loaded = true"
+									@error="fullscreen_asset_failed = true"
+									:style="Visible( !fullscreen_asset_failed )">
+							</div>
+
+							<div class="settings">
+								<span style="font-weight: bold" x-text="fullscreen"></span>
+								<span x-text="photos[ fullscreen ].asset"></span>
+								<span x-text="fullscreen_thumbnail_loaded"></span>
+								<span x-text="fullscreen_asset_loaded"></span>
+								[cog]
+								[bin]
+							</div>
+						</div>
+					</template>
+
 					<img x-init="MakeThumbhash( $el, photos[ visible_range[ 0 ] + i - 1 ].thumbhash )">
-					<img :src={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", thumbnail_base_url ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.remove()">
+					<img :src={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", thumbnail_base_url ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.style.display = 'none'">
 				</a>
 			</template>
 		</div>
