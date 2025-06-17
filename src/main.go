@@ -1235,7 +1235,8 @@ type ZipFile struct {
 
 func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.ResponseWriter ) {
 	// magic numbers obtained from ImHex and Wikipedia
-	content_length := int64( 22 )
+	const end_of_central_directory_size = 22
+	content_length := int64( end_of_central_directory_size )
 	for _, asset := range assets {
 		dir := "assets"
 		disk_extension := asset.Type
@@ -1250,7 +1251,13 @@ func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.Resp
 		f := try1( os.Open( dir + "/" + filename + "." + disk_extension ) )
 		defer f.Close()
 		info := try1( f.Stat() )
-		content_length += 92 + info.Size() + 2 * int64( len( filename + "." + zip_extension ) )
+
+		const local_file_header_size = 30
+		const central_directory_entry_size = 46
+		const data_descriptor_size = 16
+		content_length += local_file_header_size + central_directory_entry_size + data_descriptor_size
+		content_length += info.Size()
+		content_length += 2 * int64( len( filename + "." + zip_extension ) )
 	}
 
 	w.Header().Set( "Content-Disposition", fmt.Sprintf( "attachment; filename=\"%s.zip\"", filename ) )
