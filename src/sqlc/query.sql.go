@@ -770,6 +770,17 @@ func (q *Queries) GetUsers(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const isAlbumURLInUse = `-- name: IsAlbumURLInUse :one
+SELECT EXISTS ( SELECT 1 FROM album WHERE url_slug = ? )
+`
+
+func (q *Queries) IsAlbumURLInUse(ctx context.Context, urlSlug string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, isAlbumURLInUse, urlSlug)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const resetPassword = `-- name: ResetPassword :exec
 UPDATE user SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = ?
 `

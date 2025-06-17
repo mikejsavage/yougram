@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS album (
 	id INTEGER PRIMARY KEY,
 	owner INTEGER NOT NULL REFERENCES user( id ),
 	name TEXT NOT NULL UNIQUE CHECK( name <> '' ),
+	-- TODO: this forces a unique slug across all users which is really awkward
 	url_slug TEXT NOT NULL UNIQUE CHECK( url_slug <> '' ),
 	key_photo INTEGER REFERENCES photo( id ) ON DELETE SET NULL,
 

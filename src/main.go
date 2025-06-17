@@ -523,6 +523,14 @@ func updateAlbumSettings( w http.ResponseWriter, r *http.Request, user User ) {
 	w.Header().Set( "HX-Redirect", "/" + r.PostFormValue( "url" ) )
 }
 
+func checkAlbumURL( w http.ResponseWriter, r *http.Request, user User ) {
+	url := r.URL.Query().Get( "url_slug" )
+	exists := try1( queries.IsAlbumURLInUse( r.Context(), url ) )
+	if exists == 1 {
+		_ = try1( w.Write( []byte( "URL already in use" ) ) )
+	}
+}
+
 func shareAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	album_id, err := strconv.ParseInt( r.PostFormValue( "album_id" ), 10, 64 )
 	if err != nil {
@@ -1519,6 +1527,7 @@ func main() {
 
 		{ "PUT",  "/Special:createAlbum", requireAuth( createAlbum ) },
 		{ "POST", "/Special:albumSettings", requireAuth( updateAlbumSettings ) },
+		{ "GET",  "/Special:checkAlbumURL", requireAuth( checkAlbumURL ) },
 		{ "POST", "/Special:shareAlbum", requireAuth( shareAlbum ) },
 
 		{ "GET",  "/Special:download/{album}", requireAuth( downloadAlbum ) },

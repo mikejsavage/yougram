@@ -204,6 +204,7 @@ const (
 	AlbumOwnership_Guest
 )
 
+// TODO: dedupe this with the create album form
 templ albumSettings( album sqlc.GetAlbumByURLRow ) {
 	<div x-show="!selecting" x-data="{
 		show: false,
@@ -298,21 +299,17 @@ templ selectButton() {
 }
 
 templ downloadButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
-	<div x-data="{
-		show_download_dialog: false,
+	<div x-show="!selecting" x-data="{
+		show: false,
 		include: null,
 		variants: null,
 		heic_as_jpg: null,
 	}">
-		<button @click="show_download_dialog = true; $el.parentElement.querySelector( 'form' ).reset()">
+		<button @click="show = true; $el.parentElement.querySelector( 'form' ).reset()">
 			Download
 		</button>
 
-		<div class="dropdown"
-			x-cloak x-show="show_download_dialog"
-			@click.away="show_download_dialog = false"
-			@keydown.window.escape="show_download_dialog = false"
-		>
+		<dialog x-cloak x-show="show" x-htmldialog="show = false">
 			{{
 				action := sel( ownership != AlbumOwnership_Guest,
 					"/Special:download/" + templ.URL( album.UrlSlug ),
@@ -324,18 +321,6 @@ templ downloadButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 				<h2>Download { album.Name }</h2>
 
 				<div style="display: grid; grid-template-columns: auto auto; column-gap: 1rem">
-					// <b>Include</b>
-					// <div>
-					// 	<label>
-					// 		<input type="radio" name="include" x-model="include" value="all">
-					// 		All photos
-					// 	</label>
-					// 	<label>
-					// 		<input type="radio" name="include" x-model="include" value="selected">
-					// 		Only selected
-					// 	</label>
-					// </div>
-
 					<b>Variants</b>
 					<div style="display: flex; gap: 1rem">
 						<label>
@@ -363,7 +348,54 @@ templ downloadButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 
 				<button type="submit" style="margin-top: 0.5rem">Download</button>
 			</form>
-		</div>
+		</dialog>
+	</div>
+}
+
+templ downloadSelectedButton() {
+	<div x-cloak x-show="selecting" x-data="{
+		show: false,
+		include: null,
+		variants: null,
+		heic_as_jpg: null,
+	}">
+		<button @click="show = true; $el.parentElement.querySelector( 'form' ).reset()" :disabled="selected.size == 0">
+			Download
+		</button>
+
+		<dialog x-cloak x-show="show" x-htmldialog="show = false">
+			<form method="POST" action="/Special:download">
+				<h2>Download <span x-text="selected.size"></span> selected</h2>
+
+				<div style="display: grid; grid-template-columns: auto auto; gap: 0.5rem 1rem">
+					<b>Variants</b>
+					<div style="display: flex; gap: 1rem">
+						<label>
+							<input type="radio" name="variants" x-model="variants" value="key_only" checked>
+							Key photos only
+						</label>
+						<label>
+							<input type="radio" name="variants" x-model="variants" value="key_and_raw">
+							Key + RAW
+						</label>
+						<label>
+							<input type="radio" name="variants" x-model="variants" value="everything">
+							Everything
+						</label>
+					</div>
+
+					<b>Formats</b>
+					<fieldset :disabled="variants == 'everything'">
+						<label>
+							<input type="checkbox" name="heic_as_jpeg" x-model="heic_as_jpg" checked>
+							Download HEIC as JPEG
+						</label>
+					</fieldset>
+				</div>
+
+				<button type="submit">Download</button>
+			</form>
+		</dialog>
 	</div>
 }
 
@@ -499,9 +531,10 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 				.left {
 					display: flex;
 					flex-direction: column;
+					flex-shrink: 0;
 				}
 
-				.right, .left > span {
+				.left > span {
 					display: flex;
 					flex-direction: row;
 					align-items: center;
@@ -509,7 +542,12 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 				}
 
 				.right {
+					display: flex;
+					flex-direction: row;
+					align-items: center;
 					flex-wrap: wrap;
+					justify-content: flex-end;
+					gap: 0.5rem 1rem;
 				}
 
 				.right > div {
@@ -567,14 +605,15 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 				}
 
 				if ownership == AlbumOwnership_Owned {
-					<button x-cloak x-show="selecting">Select all</button>
-					<button x-cloak x-show="selecting">Deselect all</button>
-					<button x-cloak x-show="selecting">Add to</button>
-					<button x-cloak x-show="selecting">Move to</button>
-					<button x-cloak x-show="selecting">Remove</button>
+					<button x-cloak x-show="selecting" :disabled="selected.size == 0">Select all</button>
+					<button x-cloak x-show="selecting" :disabled="selected.size == 0">Deselect all</button>
+					<button x-cloak x-show="selecting" :disabled="selected.size == 0">Add to</button>
+					<button x-cloak x-show="selecting" :disabled="selected.size == 0">Move to</button>
+					<button x-cloak x-show="selecting" :disabled="selected.size == 0">Remove</button>
 				}
 
 				@downloadButton( album, ownership )
+				@downloadSelectedButton()
 				@selectButton()
 			</div>
 		</aside>

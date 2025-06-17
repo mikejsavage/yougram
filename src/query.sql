@@ -184,3 +184,6 @@ UPDATE album SET name = ?, url_slug = ? WHERE id = ? AND owner = ?;
 
 -- name: SetAlbumIsShared :exec
 UPDATE album SET shared = ? WHERE id = ? AND owner = ?;
+
+-- name: IsAlbumURLInUse :one
+SELECT EXISTS ( SELECT 1 FROM album WHERE url_slug = ? );
