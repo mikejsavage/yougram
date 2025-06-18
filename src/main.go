@@ -43,6 +43,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+const megabyte = 1000 * 1000
+
 var db *sql.DB
 var queries *sqlc.Queries
 
@@ -590,16 +592,19 @@ func downloadAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 }
 
 func downloadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
-	query := r.URL.Query()
-	download_everything := query.Get( "variants" ) == "everything"
-	download_raws := query.Get( "variants" ) != "key_only"
+	download_everything := r.FormValue( "variants" ) == "everything"
+	download_raws := r.FormValue( "variants" ) != "key_only"
 
-	var ids []int64
-	decoder := json.NewDecoder( r.Body )
-	err := decoder.Decode( &ids )
-	if err != nil {
-		httpError( w, http.StatusBadRequest )
-		return
+	str_ids := strings.Split( r.FormValue( "photos" ), "," )
+	ids := make( []int64, len( str_ids ) )
+
+	for i, id := range str_ids {
+		var err error
+		ids[ i ], err = strconv.ParseInt( id, 10, 64 )
+		if err != nil {
+			httpError( w, http.StatusBadRequest )
+			return
+		}
 	}
 
 	var files []ZipFile
@@ -649,7 +654,7 @@ func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 		} )
 	}
 
-	body := photogrid( photos, "/Special:asset/", "/Special:thumbnail/" )
+	body := libraryTemplate( photos )
 	try( baseWithSidebar( user, r.URL.Path, "Library", body ).Render( r.Context(), w ) )
 }
 
@@ -664,14 +669,13 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 			} )
 		}
 
-		album_templ := ownedAlbumTemplate( album, photos )
+		album_templ := albumTemplate( album, photos, sel( album.Owner == user.ID, AlbumOwnership_Owned, AlbumOwnership_SharedWithMe ) )
 		try( baseWithSidebar( user, r.URL.Path, album.Name, album_templ ).Render( r.Context(), w ) )
 	} )
 }
 
 func uploadToLibrary( w http.ResponseWriter, r *http.Request, user User ) {
-	const megabyte = 1000 * 1000
-	try( r.ParseMultipartForm( 10 * megabyte ) )
+	try( r.ParseMultipartForm( 100 * megabyte ) )
 
 	if len( r.MultipartForm.File[ "assets" ] ) == 0 {
 		httpError( w, http.StatusBadRequest )
@@ -729,8 +733,7 @@ func uploadToLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 }
 
 func uploadToAlbumImpl( w http.ResponseWriter, r *http.Request, userID sql.NullInt64, album sqlc.GetAlbumByURLRow ) {
-	const megabyte = 1000 * 1000
-	try( r.ParseMultipartForm( 10 * megabyte ) )
+	try( r.ParseMultipartForm( 100 * megabyte ) )
 
 	if len( r.MultipartForm.File[ "assets" ] ) == 0 {
 		httpError( w, http.StatusBadRequest )
@@ -800,8 +803,7 @@ func uploadToAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 
 func uploadToPhoto( w http.ResponseWriter, r *http.Request, user User ) {
 	pathPhotoHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, photo_id int64 ) {
-		const megabyte = 1000 * 1000
-		try( r.ParseMultipartForm( 10 * megabyte ) )
+		try( r.ParseMultipartForm( 100 * megabyte ) )
 
 		if len( r.MultipartForm.File[ "assets" ] ) == 0 {
 			httpError( w, http.StatusBadRequest )
@@ -1553,6 +1555,7 @@ func main() {
 		{ "GET",  "/{album}/{secret}/thumbnail/{asset}", getThumbnailAsGuest },
 
 		{ "GET",  "/{album}/{secret}/download", downloadAlbumAsGuest },
+		// { "POST", "/Special:download", downloadPhotosAsGuest ) },
 		{ "PUT",  "/{album}/{secret}", uploadToAlbumAsGuest },
 	} )
 
