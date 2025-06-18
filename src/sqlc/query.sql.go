@@ -671,6 +671,63 @@ func (q *Queries) GetPhotoAssets(ctx context.Context, arg GetPhotoAssetsParams) 
 	return items, nil
 }
 
+const getPhotoAssetsForGuest = `-- name: GetPhotoAssetsForGuest :many
+SELECT asset.sha256 AS asset, asset.type, EXISTS(
+	SELECT 1 FROM album_photo
+	WHERE album_photo.photo_id = ? AND album_photo.album_id = ?
+) AS has_permission
+FROM asset
+INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
+INNER JOIN photo ON photo.id = photo_asset.photo_id
+WHERE photo.id = ? AND (
+	( ? OR photo.primary_asset = asset.sha256 ) -- primary assets only
+	OR ( ? OR asset.type = "raw" ) -- primary assets + raws
+)
+`
+
+type GetPhotoAssetsForGuestParams struct {
+	PhotoID int64
+	AlbumID int64
+	ID      int64
+	Column4 interface{}
+	Column5 interface{}
+}
+
+type GetPhotoAssetsForGuestRow struct {
+	Asset         []byte
+	Type          string
+	HasPermission int64
+}
+
+func (q *Queries) GetPhotoAssetsForGuest(ctx context.Context, arg GetPhotoAssetsForGuestParams) ([]GetPhotoAssetsForGuestRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPhotoAssetsForGuest,
+		arg.PhotoID,
+		arg.AlbumID,
+		arg.ID,
+		arg.Column4,
+		arg.Column5,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPhotoAssetsForGuestRow
+	for rows.Next() {
+		var i GetPhotoAssetsForGuestRow
+		if err := rows.Scan(&i.Asset, &i.Type, &i.HasPermission); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPhotoOwner = `-- name: GetPhotoOwner :one
 SELECT owner FROM photo WHERE id = ?
 `

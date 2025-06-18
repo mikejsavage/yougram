@@ -4,7 +4,13 @@ import "encoding/hex"
 import "fmt"
 import "mikegram/sqlc"
 
-templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url string ) {
+type BaseURLs struct {
+	Asset string
+	Thumbnail string
+	Download string
+}
+
+templ photogrid( photos []Photo, base_urls BaseURLs ) {
 	<script>
 	function MakeThumbhash( img, thumbhash ) {
 		let raw_thumbhash = atob( thumbhash );
@@ -189,7 +195,7 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 		<div class="grid" :style="{ top: top }">
 			<template x-for="i in visible_range[ 1 ] - visible_range[ 0 ]">
 				<a class="thumbnail stack"
-					:href={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", asset_base_url ) }
+					:href={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", base_urls.Asset ) }
 					:class="selected.has( visible_range[ 0 ] + i - 1 ) ? 'selected' : ''"
 					@click.prevent="PhotoClicked( visible_range[ 0 ] + i - 1, $event.shiftKey )"
 				>
@@ -206,11 +212,11 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 						>
 							<div class="stack">
 								<img x-init="MakeThumbhash( $el, photos[ fullscreen ].thumbhash )" :style="Visible( !fullscreen_thumbnail_loaded && !fullscreen_asset_loaded )">
-								<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", thumbnail_base_url ) }
+								<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", base_urls.Thumbnail ) }
 									@load="fullscreen_thumbnail_loaded = true"
 									@error="fullscreen_thumbnail_failed = true"
 									:style="Visible( !fullscreen_thumbnail_failed && !fullscreen_asset_loaded )">
-								<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", asset_base_url ) }
+								<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", base_urls.Asset ) }
 									@load="fullscreen_asset_loaded = true"
 									@error="fullscreen_asset_failed = true"
 									:style="Visible( !fullscreen_asset_failed )">
@@ -224,7 +230,7 @@ templ photogrid( photos []Photo, asset_base_url string, thumbnail_base_url strin
 					</template>
 
 					<img x-init="MakeThumbhash( $el, photos[ visible_range[ 0 ] + i - 1 ].thumbhash )">
-					<img :src={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", thumbnail_base_url ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.style.display = 'none'">
+					<img :src={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", base_urls.Thumbnail ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.style.display = 'none'">
 				</a>
 			</template>
 		</div>
@@ -332,7 +338,7 @@ templ selectButton() {
 	</button>
 }
 
-templ downloadButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
+templ downloadButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership, base_urls BaseURLs ) {
 	<div x-show="!selecting" x-data="{
 		show: false,
 		include: null,
@@ -344,14 +350,8 @@ templ downloadButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 		</button>
 
 		<dialog x-cloak x-show="show" x-htmldialog="show = false">
-			{{
-				action := sel( ownership != AlbumOwnership_Guest,
-					"/Special:download/" + templ.URL( album.UrlSlug ),
-					templ.URL( fmt.Sprintf( "/%s/%s/download", album.UrlSlug, album.ReadonlySecret ) ),
-				)
-			}}
-
-			<form method="GET" action={ action }>
+			{{ action := base_urls.Download + sel( ownership != AlbumOwnership_Guest, album.UrlSlug, "" ) }}
+			<form method="GET" action={ templ.URL( action ) }>
 				<h2>Download { album.Name }</h2>
 
 				<div style="display: grid; grid-template-columns: auto auto; column-gap: 1rem">
@@ -386,7 +386,7 @@ templ downloadButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 	</div>
 }
 
-templ downloadSelectedButton() {
+templ downloadSelectedButton( base_urls BaseURLs ) {
 	<div x-cloak x-show="selecting" x-data="{
 		show: false,
 		include: null,
@@ -406,7 +406,7 @@ templ downloadSelectedButton() {
 		</button>
 
 		<dialog x-cloak x-show="show" x-htmldialog="show = false">
-			<form method="POST" action="/Special:download"
+			<form method="POST" action={ templ.URL( base_urls.Download ) }
 				@submit="$el.querySelector( 'input[name=photos]' ).value = PhotosFormValue()"
 			>
 				<input type="hidden" name="photos">
@@ -537,7 +537,7 @@ templ uploadButton() {
 	</div>
 }
 
-templ albumHeader( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwnership, can_upload bool ) {
+templ albumHeader( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwnership, can_upload bool, base_urls BaseURLs ) {
 	<div class="left">
 		<h1>{ album.Name }</h1>
 		<span style="font-size: 80%" class="no-mobile">
@@ -573,8 +573,8 @@ templ albumHeader( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Remove</button>
 		}
 
-		@downloadButton( album, ownership )
-		@downloadSelectedButton()
+		@downloadButton( album, ownership, base_urls )
+		@downloadSelectedButton( base_urls )
 		@selectButton()
 	</div>
 }
@@ -589,7 +589,7 @@ templ guestReadWriteWarning( album sqlc.GetAlbumByURLRow, can_upload bool ) {
 	}
 }
 
-templ photogridWithHeader( photos []Photo, header templ.Component, subheader templ.Component, asset_base_url string, thumbnail_base_url string ) {
+templ photogridWithHeader( photos []Photo, header templ.Component, subheader templ.Component, base_urls BaseURLs ) {
 	<style>
 	/* see https://www.w3schools.com/Css/css_dropdowns.asp */
 	.dropdown {
@@ -692,27 +692,44 @@ templ photogridWithHeader( photos []Photo, header templ.Component, subheader tem
 			<div style="padding: 0.5rem">Sorry but nothing works without Javascript</div>
 		</noscript>
 
-		@photogrid( photos, asset_base_url, thumbnail_base_url )
+		@photogrid( photos, base_urls )
 	</main>
 }
 
+func getStandardBaseURLs() BaseURLs {
+	return BaseURLs {
+		Asset: "/Special:asset/",
+		Thumbnail: "/Special:thumbnail/",
+		Download: "/Special:download",
+	}
+}
+
+func makeGuestBaseURLs( album sqlc.GetAlbumByURLRow, can_upload bool ) BaseURLs {
+	base := fmt.Sprintf( "/%s/%s", album.UrlSlug, sel( can_upload, album.ReadwriteSecret, album.ReadonlySecret ) )
+	return BaseURLs {
+		Asset: base + "/asset/",
+		Thumbnail: base + "/thumbnail/",
+		Download: base + "/download",
+	}
+}
+
 templ libraryTemplate( photos []Photo ) {
-	@photogridWithHeader( photos, nil, nil, "/Special:asset/", "/Special:thumbnail/" )
+	@photogridWithHeader( photos, nil, nil, getStandardBaseURLs() )
 }
 
 templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwnership ) {
-	{{ header := albumHeader( album, photos, AlbumOwnership_SharedWithMe, true ) }}
-	@photogridWithHeader( photos, header, nil, "/Special:asset/", "/Special:thumbnail/" )
+	{{ base_urls := getStandardBaseURLs() }}
+	{{ header := albumHeader( album, photos, AlbumOwnership_SharedWithMe, true, base_urls ) }}
+	@photogridWithHeader( photos, header, nil, base_urls )
 }
 
 templ guestAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, can_upload bool ) {
 	<meta property="og:title" content={ album.Name }>
 	<meta property="og:image" content={ fmt.Sprintf( "%s/%s/%s/thumbnail/%s", guest_url, album.UrlSlug, album.ReadonlySecret, hex.EncodeToString( album.KeyPhotoSha256 ) ) }>
 
-	{{ header := albumHeader( album, photos, AlbumOwnership_Guest, can_upload ) }}
+	{{ base_urls := makeGuestBaseURLs( album, can_upload ) }}
+	{{ header := albumHeader( album, photos, AlbumOwnership_Guest, can_upload, base_urls ) }}
 	{{ subheader := guestReadWriteWarning( album, can_upload ) }}
-	{{ asset_base_url := fmt.Sprintf( "/%s/%s/asset/", album.UrlSlug, sel( can_upload, album.ReadwriteSecret, album.ReadonlySecret ) ) }}
-	{{ thumbnail_base_url := fmt.Sprintf( "/%s/%s/thumbnail/", album.UrlSlug, sel( can_upload, album.ReadwriteSecret, album.ReadonlySecret ) ) }}
 
-	@photogridWithHeader( photos, header, subheader, asset_base_url, thumbnail_base_url )
+	@photogridWithHeader( photos, header, subheader, base_urls )
 }

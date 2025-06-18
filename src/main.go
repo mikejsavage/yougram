@@ -638,6 +638,56 @@ func downloadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
 	serveZip( now, files, true, w ) // TODO: heic as jpg?
 }
 
+func downloadPhotosAsGuest( w http.ResponseWriter, r *http.Request ) {
+	guestAlbumHandler( w, r, func( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumByURLRow, writeable bool ) {
+		download_everything := r.FormValue( "variants" ) == "everything"
+		download_raws := r.FormValue( "variants" ) != "key_only"
+
+		str_ids := strings.Split( r.FormValue( "photos" ), "," )
+		ids := make( []int64, len( str_ids ) )
+
+		for i, id := range str_ids {
+			var err error
+			ids[ i ], err = strconv.ParseInt( id, 10, 64 )
+			if err != nil {
+				httpError( w, http.StatusBadRequest )
+				return
+			}
+		}
+
+		var files []ZipFile
+		for _, id := range ids {
+			rows := try1( queries.GetPhotoAssetsForGuest( r.Context(), sqlc.GetPhotoAssetsForGuestParams {
+				PhotoID: id,
+				AlbumID: album.ID,
+				ID: id,
+				Column4: !download_everything,
+				Column5: !download_raws,
+			} ) )
+
+			if len( rows ) == 0 {
+				httpError( w, http.StatusNotFound )
+				return
+			}
+
+			for _, row := range rows {
+				if row.HasPermission == 0 {
+					httpError( w, http.StatusForbidden )
+					return
+				}
+
+				files = append( files, ZipFile {
+					Sha256: row.Asset,
+					Type: row.Type,
+				} )
+			}
+		}
+
+		now := time.Now().Format( "yougram-20060102-150405" )
+		serveZip( now, files, true, w ) // TODO: heic as jpg?
+	} )
+}
+
 type Photo struct {
 	ID int64 `json:"id"`
 	Asset string `json:"asset"`
@@ -1555,7 +1605,7 @@ func main() {
 		{ "GET",  "/{album}/{secret}/thumbnail/{asset}", getThumbnailAsGuest },
 
 		{ "GET",  "/{album}/{secret}/download", downloadAlbumAsGuest },
-		// { "POST", "/Special:download", downloadPhotosAsGuest ) },
+		{ "POST", "/{album}/{secret}/download", downloadPhotosAsGuest },
 		{ "PUT",  "/{album}/{secret}", uploadToAlbumAsGuest },
 	} )
 
