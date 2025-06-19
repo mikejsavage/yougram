@@ -565,6 +565,8 @@ templ albumHeader( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 			@uploadButton()
 		}
 
+		@downloadButton( album, ownership, base_urls )
+
 		if ownership == AlbumOwnership_Owned {
 			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Select all</button>
 			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Deselect all</button>
@@ -573,7 +575,6 @@ templ albumHeader( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Remove</button>
 		}
 
-		@downloadButton( album, ownership, base_urls )
 		@downloadSelectedButton( base_urls )
 		@selectButton()
 	</div>
@@ -589,7 +590,7 @@ templ guestReadWriteWarning( album sqlc.GetAlbumByURLRow, can_upload bool ) {
 	}
 }
 
-templ photogridWithHeader( photos []Photo, header templ.Component, subheader templ.Component, base_urls BaseURLs ) {
+templ photogridWithHeader( photos []Photo, subheader templ.Component, base_urls BaseURLs ) {
 	<style>
 	/* see https://www.w3schools.com/Css/css_dropdowns.asp */
 	.dropdown {
@@ -681,7 +682,7 @@ templ photogridWithHeader( photos []Photo, header templ.Component, subheader tem
 			}
 			</style>
 
-			@header
+			{ children... }
 		</aside>
 
 		if subheader != nil {
@@ -714,13 +715,35 @@ func makeGuestBaseURLs( album sqlc.GetAlbumByURLRow, can_upload bool ) BaseURLs 
 }
 
 templ libraryTemplate( photos []Photo ) {
-	@photogridWithHeader( photos, nil, nil, getStandardBaseURLs() )
+	{{ base_urls := getStandardBaseURLs() }}
+	@photogridWithHeader( photos, nil, base_urls ) {
+		<div class="left">
+			<h1>Library</h1>
+			<span style="font-size: 80%" class="no-mobile">
+				<span>Oct 2023 &ndash; Jan 2025</span>
+				<span>{ len( photos ) } { sel( len( photos ) == 1, "photo", "photos" ) }</span>
+			</span>
+		</div>
+
+		<div style="flex-grow: 1"></div>
+
+		<div class="right">
+			@uploadButton()
+
+			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Select all</button>
+			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Deselect all</button>
+			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Add to</button>
+			@downloadSelectedButton( base_urls )
+			@selectButton()
+		</div>
+	}
 }
 
 templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwnership ) {
 	{{ base_urls := getStandardBaseURLs() }}
-	{{ header := albumHeader( album, photos, AlbumOwnership_SharedWithMe, true, base_urls ) }}
-	@photogridWithHeader( photos, header, nil, base_urls )
+	@photogridWithHeader( photos, nil, base_urls ) {
+		@albumHeader( album, photos, AlbumOwnership_SharedWithMe, true, base_urls )
+	}
 }
 
 templ guestAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, can_upload bool ) {
@@ -728,8 +751,9 @@ templ guestAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, can_uploa
 	<meta property="og:image" content={ fmt.Sprintf( "%s/%s/%s/thumbnail/%s", guest_url, album.UrlSlug, album.ReadonlySecret, hex.EncodeToString( album.KeyPhotoSha256 ) ) }>
 
 	{{ base_urls := makeGuestBaseURLs( album, can_upload ) }}
-	{{ header := albumHeader( album, photos, AlbumOwnership_Guest, can_upload, base_urls ) }}
 	{{ subheader := guestReadWriteWarning( album, can_upload ) }}
 
-	@photogridWithHeader( photos, header, subheader, base_urls )
+	@photogridWithHeader( photos, subheader, base_urls ) {
+		@albumHeader( album, photos, AlbumOwnership_Guest, can_upload, base_urls )
+	}
 }
