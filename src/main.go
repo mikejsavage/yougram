@@ -290,45 +290,6 @@ func initFSWatcher() *fsnotify.Watcher {
 	return watcher
 }
 
-type MapboxGeocodingFeature struct {
-	Address string
-	Latitude float32
-	Longitude float32
-}
-
-type MapboxGeocodingResponse struct {
-	Features []MapboxGeocodingFeature `json:"features"`
-}
-
-func ( feature *MapboxGeocodingFeature ) UnmarshalJSON( b []byte ) error {
-	var f interface{}
-	json.Unmarshal( b, &f )
-
-	m := f.( map[string]interface{} )
-
-	properties := m[ "properties" ].( map[string]interface{} )
-	geometry := m[ "geometry" ].( map[string]interface{} )
-	coordinates := geometry[ "coordinates" ].( []interface{} )
-
-	feature.Address = properties[ "full_address" ].( string )
-	feature.Latitude = float32( coordinates[ 0 ].( float64 ) )
-	feature.Longitude = float32( coordinates[ 1 ].( float64 ) )
-
-	return nil
-}
-
-func geocode() {
-	resp := try1( http.Get( "https://api.mapbox.com/search/geocode/v6/forward?q=Los%20Angeles&access_token=pk.eyJ1IjoibWlrZWpzYXZhZ2UiLCJhIjoiY2x6bGZ0ajI0MDI2YTJrcG5tc2tmazZ1ZCJ9.vMTIB8J0J9fAiI2IrNrc5w" ) )
-	body := try1( io.ReadAll( resp.Body ) )
-	fmt.Printf( "%s\n", body )
-	var decoded MapboxGeocodingResponse
-	try( json.Unmarshal( []byte( body ), &decoded ) )
-
-	for _, feature := range decoded.Features {
-		fmt.Printf( "%s %f,%f\n", feature.Address, feature.Latitude, feature.Longitude )
-	}
-}
-
 func exeChecksum() string {
 	path := must1( os.Executable() )
 	f := must1( os.Open( path ) )
@@ -1572,7 +1533,6 @@ func main() {
 
 		{ "GET",  "/Special:asset/{asset}", requireAuth( getAsset ) },
 		{ "GET",  "/Special:thumbnail/{asset}", requireAuth( getThumbnail ) },
-		// { "GET",  "/Special:geocode", geocode },
 
 		{ "PUT",  "/Special:createAlbum", requireAuth( createAlbum ) },
 		{ "POST", "/Special:albumSettings", requireAuth( updateAlbumSettings ) },
