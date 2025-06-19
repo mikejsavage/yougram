@@ -15,6 +15,7 @@ yougram is a self-hosted image app.
   disk, so it works well with standard backup solutions (restic/borg/etc)
 - No lock-in: getting your data out of yougram is an explicitly supported and
   documented workflow, feel free to take your photos elsewhere
+- Private: yougram has no external dependencies and nothing leaves your computer
 - Compatible with the Immich app: automatically upload your phone library to
   yougram
 - Snappy: I have realistic expectations of how a photo management app should
@@ -63,12 +64,26 @@ yougram/
     moondream/ <- contains AI models for image classification, you downloaded these from the internet so again feel free to kill it
 
 
+## System requirements
+
+I develop on macOS and Linux. Yougram should run on Windows and other Unixes but
+I haven't and won't test them.
+
+Yougram should run on arbitrarily bad hardware. Probably don't enable the AI
+features on a Raspberry Pi.
+
+The yougram binary is around 15MB, which is very embarassing for software that
+does almost nothing. The moondream AI model is 2GB. The geocoding database is
+?MB. The PMTiles map data is ?MB.
+
+
 ## Security
 
 The private/guest split makes it easy to hide most of yougram behind a VPN,
 which makes certain classes of attacks impossible, for example an XSS
 vulnerability in the guest interface cannot be leveraged into stealing accounts.
-Beyond that I make no claims regarding the security of the app, other than that
+Beyond that I make no claims regarding the security of the app beyond that I
+have thought about it a bit.
 
 Probably don't invite untrusted users to make an account on your instance, but
 the guest interface is legitimately trivial and can be shared freely.
