@@ -13,7 +13,6 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/galdor/go-thumbhash v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.28
-	github.com/tdewolff/minify/v2 v2.20.37
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/text v0.25.0
 )
@@ -24,7 +23,6 @@ require (
 	github.com/philhofer/fwd v1.1.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
-	github.com/tdewolff/parse/v2 v2.7.15 // indirect
 	github.com/tinylib/msgp v1.1.8 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 )
