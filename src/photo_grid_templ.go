@@ -620,7 +620,7 @@ func photogridWithHeader(photos []Photo, subheader templ.Component, base_urls Ba
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, ";\n\t}\n\t</script><main x-data=\"{ photos: MakePhotos(), selecting: false, selected: new Map(), last_selected: null }\"><aside><style>\n\t\t\t@scope {\n\t\t\t\t:scope {\n\t\t\t\t\tposition: sticky;\n\t\t\t\t\ttop: 0;\n\t\t\t\t\tz-index: var( --sticky-z );\n\t\t\t\t\tpadding: 0.5rem;\n\t\t\t\t\tbackground: white;\n\t\t\t\t\tborder-bottom: 1px solid #ccc;\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tflex-direction: row;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tgap: 0;\n\t\t\t\t}\n\n\t\t\t\t.left {\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tflex-direction: column;\n\t\t\t\t\tflex-shrink: 0;\n\t\t\t\t}\n\n\t\t\t\t.left > span {\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tflex-direction: row;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tgap: 1rem;\n\t\t\t\t}\n\n\t\t\t\t.right {\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tflex-direction: row;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tflex-wrap: wrap;\n\t\t\t\t\tjustify-content: flex-end;\n\t\t\t\t\tgap: 0.5rem 1rem;\n\t\t\t\t}\n\n\t\t\t\t.right > div {\n\t\t\t\t\tline-height: 1;\n\t\t\t\t}\n\n\t\t\t\t@media (max-width: 479px) {\n\t\t\t\t\t:scope {\n\t\t\t\t\t\tbackground: rgba( 0, 0, 0, 0.2 );linear-gradient( rgba( 0, 0, 0, 0.2 ) 80%, transparent );\n\t\t\t\t\t\tbox-shadow: 0 0.5rem 0.5rem rgba( 0, 0, 0, 0.2 );\n\t\t\t\t\t\tborder: 0;\n\t\t\t\t\t}\n\n\t\t\t\t\th1 {\n\t\t\t\t\t\tcolor: #fff;\n\t\t\t\t\t\tfont-size: 1rem;\n\t\t\t\t\t}\n\n\t\t\t\t\t.no-mobile {\n\t\t\t\t\t\tdisplay: none !important;\n\t\t\t\t\t}\n\n\t\t\t\t\t.right {\n\t\t\t\t\t\tgap: 0.5rem;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t\t</style>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, ";\n\t}\n\t</script><main x-data=\"{ photos: MakePhotos(), selecting: false, selected: new Map(), last_selected: null }\"><aside><style>\n\t\t\t@scope {\n\t\t\t\t:scope {\n\t\t\t\t\tposition: sticky;\n\t\t\t\t\ttop: 0;\n\t\t\t\t\tz-index: var( --sticky-z );\n\t\t\t\t\tpadding: 0.5rem;\n\t\t\t\t\tbackground: white;\n\t\t\t\t\tborder-bottom: 1px solid #ccc;\n\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tflex-direction: row;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tgap: 1rem;\n\t\t\t\t}\n\n\t\t\t\t.left {\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tflex-direction: column;\n\t\t\t\t\tflex-shrink: 0;\n\t\t\t\t}\n\n\t\t\t\t.left > span {\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tflex-direction: row;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tgap: 1rem;\n\t\t\t\t}\n\n\t\t\t\t.right {\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tflex-direction: row;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tflex-wrap: wrap;\n\t\t\t\t\tjustify-content: flex-end;\n\t\t\t\t\tgap: 0.5rem 1rem;\n\t\t\t\t}\n\n\t\t\t\t.right > div {\n\t\t\t\t\tline-height: 1;\n\t\t\t\t}\n\n\t\t\t\t@media (max-width: 479px) {\n\t\t\t\t\t:scope {\n\t\t\t\t\t\tbackground: rgba( 0, 0, 0, 0.2 );linear-gradient( rgba( 0, 0, 0, 0.2 ) 80%, transparent );\n\t\t\t\t\t\tbox-shadow: 0 0.5rem 0.5rem rgba( 0, 0, 0, 0.2 );\n\t\t\t\t\t\tborder: 0;\n\t\t\t\t\t}\n\n\t\t\t\t\th1 {\n\t\t\t\t\t\tcolor: #fff;\n\t\t\t\t\t\tfont-size: 1rem;\n\t\t\t\t\t}\n\n\t\t\t\t\t.no-mobile {\n\t\t\t\t\t\tdisplay: none !important;\n\t\t\t\t\t}\n\n\t\t\t\t\t.right {\n\t\t\t\t\t\tgap: 0.5rem;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t\t</style>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -712,7 +712,7 @@ func libraryTemplate(photos []Photo) templ.Component {
 			var templ_7745c5c3_Var33 string
 			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(len(photos))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 724, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 725, Col: 25}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
@@ -725,7 +725,7 @@ func libraryTemplate(photos []Photo) templ.Component {
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(sel(len(photos) == 1, "photo", "photos"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 724, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 725, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 			if templ_7745c5c3_Err != nil {
@@ -841,7 +841,7 @@ func guestAlbumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, can_upload 
 		var templ_7745c5c3_Var38 string
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 750, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 751, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 		if templ_7745c5c3_Err != nil {
@@ -854,7 +854,7 @@ func guestAlbumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, can_upload 
 		var templ_7745c5c3_Var39 string
 		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s/%s/%s/thumbnail/%s", guest_url, album.UrlSlug, album.ReadonlySecret, hex.EncodeToString(album.KeyPhotoSha256)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 751, Col: 167}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 752, Col: 167}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 		if templ_7745c5c3_Err != nil {
