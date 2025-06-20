@@ -144,7 +144,7 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 				grid-column: 1;
 			}
 
-			.thumbnail img {
+			.thumbnail > img {
 				aspect-ratio: 1;
 				width: 100%;
 				object-fit: cover;
@@ -156,6 +156,7 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 			}
 
 			.fullscreen {
+				/*
 				background: rgba( 26, 26, 26, 0.9 );
 				position: fixed;
 				top: 0;
@@ -163,6 +164,13 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 				z-index: var( --fullscreen-z );
 				width: 100vw;
 				height: 100vh;
+				*/
+				max-width: 100vw;
+				max-height: 100vh;
+				background: transparent;
+				padding: 0;
+				border: 0;
+				top: 0 !important;
 				display: flex;
 				justify-content: center;
 				align-items: center;
@@ -194,19 +202,14 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 
 		<div class="grid" :style="{ top: top }">
 			<template x-for="i in visible_range[ 1 ] - visible_range[ 0 ]">
-				<a class="thumbnail stack"
-					:href={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", base_urls.Asset ) }
-					:class="selected.has( visible_range[ 0 ] + i - 1 ) ? 'selected' : ''"
-					@click.prevent="PhotoClicked( visible_range[ 0 ] + i - 1, $event.shiftKey )"
-				>
+				<div>
 					// NOTE(mike 20250618): if you change an img's src the browser displays the old
 					// image until the new one has loaded, so this has to go inside the for loop so
 					// the imgs are deleted and recreated when cycling between photos or you get
 					// visual glitches
 					<template x-if="fullscreen == i - 1">
-						<div class="fullscreen"
+						<dialog class="fullscreen" x-init="$el.showModal()" x-htmldialog="fullscreen = null"
 							@click="fullscreen = null"
-							@keydown.window.escape="fullscreen = null"
 							@keydown.window.left="EnterFullscreen( fullscreen - 1 )"
 							@keydown.window.right="EnterFullscreen( fullscreen + 1 )"
 						>
@@ -226,12 +229,18 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 								[cog]
 								[bin]
 							</div>
-						</div>
+						</dialog>
 					</template>
 
-					<img x-init="MakeThumbhash( $el, photos[ visible_range[ 0 ] + i - 1 ].thumbhash )">
-					<img :src={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", base_urls.Thumbnail ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.style.display = 'none'">
-				</a>
+					<a class="thumbnail stack"
+						:href={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", base_urls.Asset ) }
+						:class="selected.has( visible_range[ 0 ] + i - 1 ) ? 'selected' : ''"
+						@click.prevent="PhotoClicked( visible_range[ 0 ] + i - 1, $event.shiftKey )"
+					>
+						<img x-init="MakeThumbhash( $el, photos[ visible_range[ 0 ] + i - 1 ].thumbhash )">
+						<img :src={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", base_urls.Thumbnail ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.style.display = 'none'">
+					</a>
+				</div>
 			</template>
 		</div>
 	</div>
@@ -743,7 +752,7 @@ templ libraryTemplate( photos []Photo ) {
 templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwnership ) {
 	{{ base_urls := getStandardBaseURLs() }}
 	@photogridWithHeader( photos, nil, base_urls ) {
-		@albumHeader( album, photos, AlbumOwnership_SharedWithMe, true, base_urls )
+		@albumHeader( album, photos, ownership, true, base_urls )
 	}
 }
 

@@ -518,6 +518,7 @@ SELECT type, original_filename, EXISTS(
 	INNER JOIN photo ON photo.id = photo_asset.photo_id
 	INNER JOIN album_photo ON album_photo.photo_id = photo.id
 	INNER JOIN album ON album.id = album_photo.album_id
+	-- TODO: this is failing when the photo is owned but not in an album
 	WHERE photo_asset.asset_id = ? AND ( photo.owner = ? OR album.owner = ? OR album.shared )
 ) AS has_permission
 FROM asset WHERE sha256 = ?

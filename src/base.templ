@@ -53,7 +53,7 @@ templ createAlbumButton() {
 	}">
 		<button @click="show = true; $el.parentElement.querySelector( 'form' ).reset()">Create album</button>
 
-		<dialog x-cloak x-show="show" x-htmldialog.noscroll="show = false" x-data="{ error: '' }">
+		<dialog x-cloak x-show="show" x-htmldialog="show = false" x-data="{ error: '' }">
 			<form hx-put="/Special:createAlbum" x-htmx.json="albums" x-htmx-error="error">
 				<h2>New album</h2>
 
@@ -153,8 +153,12 @@ templ base( title string ) {
 		margin: 0;
 	}
 
-	body:has( .fullscreen ) {
+	body:has( dialog:open ) {
 		overflow: hidden;
+	}
+
+	body:has( dialog.fullscreen ) ::backdrop {
+		background: rgba( 0, 0, 0, 0.9 );
 	}
 
 	h1, h2  {
@@ -242,11 +246,15 @@ templ base( title string ) {
 	}
 
 	dialog {
-		top: -20%;
 		width: max-content;
 		padding: 0.5rem;
 		background: #fff;
 		border: 4px solid #333;
+		outline: 0; /* dialogs get outlines when using arrow keys */
+	}
+
+	dialog:has( > form ) {
+		top: -20%;
 	}
 
 	dialog form {
