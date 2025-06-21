@@ -407,6 +407,18 @@ func getThumbnail( w http.ResponseWriter, r *http.Request, user User ) {
 	serveThumbnail( w, asset.V.Thumbnail, asset.V.OriginalFilename )
 }
 
+func geocodeRoute( w http.ResponseWriter, r *http.Request, user User ) {
+	query := r.URL.Query().Get( "q" )
+	if query == "" {
+		httpError( w, http.StatusBadRequest )
+		return
+	}
+
+	w.Header().Set( "Content-Type", "application/json" )
+	_ = try1( w.Write( must1( json.Marshal( geocode( query ) ) ) ) )
+
+}
+
 type HTMLAlbum struct {
 	Name string
 	UrlSlug string
@@ -1434,6 +1446,7 @@ func main() {
 	checksum = exeChecksum()
 
 	initCookieAEAD()
+	initGeocoder()
 
 	mustMakeDir( "assets" )
 	mustMakeDir( "generated" )
@@ -1545,6 +1558,7 @@ func main() {
 
 		{ "GET",  "/Special:asset/{asset}", requireAuth( getAsset ) },
 		{ "GET",  "/Special:thumbnail/{asset}", requireAuth( getThumbnail ) },
+		{ "GET",  "/Special:geocode", requireAuthNoLoginForm( geocodeRoute ) },
 
 		{ "PUT",  "/Special:createAlbum", requireAuth( createAlbum ) },
 		{ "POST", "/Special:albumSettings", requireAuth( updateAlbumSettings ) },
@@ -1593,4 +1607,6 @@ func main() {
 
 	must( private_http_server.Shutdown( ctx ) )
 	must( guest_http_server.Shutdown( ctx ) )
+
+	shutdownGeocoder()
 }

@@ -170,40 +170,52 @@ func logout( w http.ResponseWriter, r *http.Request ) {
 	http.Redirect( w, r, "/", http.StatusSeeOther )
 }
 
+func checkAuth( w http.ResponseWriter, r *http.Request, handler func( http.ResponseWriter, *http.Request, User ) ) bool {
+	authed := false
+	cookie, err_cookie := r.Cookie( "auth" )
+
+	var user User
+	var secret []byte
+	if err_cookie == nil {
+		var username string
+		username, secret = decodeAuthCookie( cookie.Value )
+		row := queryOptional( queries.GetUserAuthDetails( r.Context(), username ) )
+		if row.Valid && row.V.Enabled == 1 {
+			subtle.WithDataIndependentTiming( func() {
+				if subtle.ConstantTimeCompare( secret, row.V.Cookie ) == 1 {
+					authed = true
+					user = User { row.V.ID, username }
+				}
+			} )
+		}
+	}
+
+	if !authed {
+		return false
+	}
+
+	setAuthCookie( w, r, encodeAuthCookie( user.Username, secret ) )
+	handler( w, r, user )
+	return true
+}
+
 func requireAuth( handler func( http.ResponseWriter, *http.Request, User ) ) func( http.ResponseWriter, *http.Request ) {
 	return func( w http.ResponseWriter, r *http.Request ) {
-		authed := false
-
-		cookie, err_cookie := r.Cookie( "auth" )
-
-		var user User
-		var secret []byte
-
-		if err_cookie == nil {
-			var username string
-			username, secret = decodeAuthCookie( cookie.Value )
-			row := queryOptional( queries.GetUserAuthDetails( r.Context(), username ) )
-			if row.Valid && row.V.Enabled == 1 {
-				subtle.WithDataIndependentTiming( func() {
-					if subtle.ConstantTimeCompare( secret, row.V.Cookie ) == 1 {
-						authed = true
-						user = User { row.V.ID, username }
-					}
-				} )
-			}
-		}
-
-		if !authed {
+		if !checkAuth( w, r, handler ) {
 			if r.Method == "GET" {
 				w.WriteHeader( http.StatusUnauthorized )
 				loginForm( w, r )
 			} else {
-				httpError( w, http.StatusForbidden )
+				httpError( w, http.StatusUnauthorized )
 			}
-			return
 		}
+	}
+}
 
-		setAuthCookie( w, r, encodeAuthCookie( user.Username, secret ) )
-		handler( w, r, user )
+func requireAuthNoLoginForm( handler func( http.ResponseWriter, *http.Request, User ) ) func( http.ResponseWriter, *http.Request ) {
+	return func( w http.ResponseWriter, r *http.Request ) {
+		if !checkAuth( w, r, handler ) {
+			httpError( w, http.StatusUnauthorized )
+		}
 	}
 }

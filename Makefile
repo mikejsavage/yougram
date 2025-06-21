@@ -7,12 +7,12 @@ endif
 all:
 	sqlc generate
 	templ generate -path src
-	go build -C src -o ../mikegram $(GOFLAGS)
+	go build -C src -o ../mikegram $(GOFLAGS) -tags fts5
 
 release:
 	sqlc generate
 	templ generate -path src
-	go build -C src -o ../mikegram $(GOFLAGS) -tags release
+	go build -C src -o ../mikegram $(GOFLAGS) -tags "fts5 release"
 
 mikegram: src/* src/stb/* src/sqlc/*
 	templ generate -path src

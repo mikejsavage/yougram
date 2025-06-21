@@ -8,7 +8,8 @@ yougram is a self-hosted image app.
 
 - Trivial to deploy: copy a single file to your server with zero dependencies
 - Multi-user capable: your family can use it too
-- (optionally) AI powered: you can search for "cat" to find all your cat photos
+- (optionally) AI powered: AI photo tagging so you can search for "cat",
+  and facial recognition so you can search for "Mike"
 - Guest access: share secret album links with your friends, both writeable (for group vacations) and
   read-only (for everyone else)
 - Backup friendly: yougram stores your data unmodified as a bunch of files on disk, so it works well
@@ -43,7 +44,7 @@ yougram is a self-hosted image app.
 5. Run it with `yougram --private-interface 0.0.0.0:12345 --guest-interface 0.0.0.0:12346
    --guest-url https://guestgram.example.com`. Remember, yougram stores everything in the current
    working directory, so make sure you're in the right place first!
-6. Optionally, if you want AI image classification, download the moondream model and put it in the
+6. Optionally, if you want AI image classification, download the Moondream model and put it in the
    `moondream` directory.
 
 For a concrete example, the mikejsavage.co.uk HAProxy config looks like this:
@@ -109,8 +110,7 @@ test them.
 Yougram should run on arbitrarily bad hardware. Probably don't enable the AI features on a Raspberry
 Pi.
 
-The yougram binary is around 15MB, which is very embarassing for software that does almost nothing.
-The moondream AI model is 2GB. The geocoding database is ?MB. The PMTiles map data is ?MB.
+The yougram binary is around 25MB. The optional Moondream AI model is 2GB.
 
 
 ## Security
