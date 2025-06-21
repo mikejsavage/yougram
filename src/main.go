@@ -294,10 +294,10 @@ func initFSWatcher() *fsnotify.Watcher {
 func exeChecksum() string {
 	path := must1( os.Executable() )
 	f := must1( os.Open( path ) )
-	defer f.Close()
 
 	hasher := fnv.New64a()
 	_ = must1( io.Copy( hasher, f ) )
+	must( f.Close() )
 
 	return hex.EncodeToString( hasher.Sum( nil ) )
 }
@@ -698,8 +698,8 @@ func uploadToLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 
 	for i, header := range r.MultipartForm.File[ "assets" ] {
 		f := try1( header.Open() )
-		defer f.Close()
 		assets[ i ] = try1( addAsset( r.Context(), try1( io.ReadAll( f ) ), header.Filename ) )
+		try( f.Close() )
 	}
 
 	var photo_id sql.Null[ int64 ]
@@ -756,8 +756,8 @@ func uploadToAlbumImpl( w http.ResponseWriter, r *http.Request, userID sql.NullI
 
 	for i, header := range r.MultipartForm.File[ "assets" ] {
 		f := try1( header.Open() )
-		defer f.Close()
 		assets[ i ] = try1( addAsset( r.Context(), try1( io.ReadAll( f ) ), header.Filename ) )
+		try( f.Close() )
 	}
 
 	var photo_id sql.Null[ int64 ]
@@ -826,8 +826,8 @@ func uploadToPhoto( w http.ResponseWriter, r *http.Request, user User ) {
 
 		for i, header := range r.MultipartForm.File[ "assets" ] {
 			f := try1( header.Open() )
-			defer f.Close()
 			assets[ i ] = try1( addAsset( r.Context(), try1( io.ReadAll( f ) ), header.Filename ) )
+			try( f.Close() )
 		}
 
 		tx := try1( db.Begin() )
@@ -1280,8 +1280,8 @@ func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.Resp
 
 		filename := hex.EncodeToString( asset.Sha256 )
 		f := try1( os.Open( dir + "/" + filename + "." + disk_extension ) )
-		defer f.Close()
 		info := try1( f.Stat() )
+		try( f.Close() )
 
 		const local_file_header_size = 30
 		const central_directory_entry_size = 46
@@ -1309,13 +1309,13 @@ func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.Resp
 
 		filename := hex.EncodeToString( asset.Sha256 )
 		a := try1( os.Open( dir + "/" + filename + "." + disk_extension ) )
-		defer a.Close()
 
 		z := try1( archive.CreateHeader( &zip.FileHeader {
 			Name: filename + "." + zip_extension,
 			Method: zip.Store,
 		} ) )
 		_ = try1( io.Copy( z, a ) )
+		try( a.Close() )
 	}
 
 	try( archive.Close() )
