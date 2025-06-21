@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS asset (
 	longitude REAL CHECK( longitude >= -180 AND longitude < 180 )
 ) STRICT;
 
+CREATE INDEX IF NOT EXISTS idx_asset__date_taken ON asset( date_taken );
+
 ------------
 -- PHOTOS --
 ------------
@@ -52,6 +54,10 @@ INNER JOIN asset ON asset.sha256 = IFNULL( photo.primary_asset, (
 		WHERE photo_asset.photo_id = photo.id AND lol.type != "raw"
 		ORDER BY lol.created_at DESC LIMIT 1
 ) );
+
+CREATE INDEX IF NOT EXISTS idx_photo__owner ON photo( owner );
+CREATE INDEX IF NOT EXISTS idx_photo_asset__photo_id ON photo_asset( photo_id );
+CREATE INDEX IF NOT EXISTS idx_photo_asset__asset_id ON photo_asset( asset_id );
 
 ------------
 -- ALBUMS --
@@ -101,3 +107,6 @@ LEFT OUTER JOIN photo_primary_asset ON photo_primary_asset.photo_id = IFNULL( al
 	WHERE album_photo.album_id = album.id
 	ORDER BY lol.date_taken DESC LIMIT 1
 ) );
+
+CREATE INDEX IF NOT EXISTS idx_album_photo__album_id ON album_photo( album_id );
+CREATE INDEX IF NOT EXISTS idx_album_photo__photo_id ON album_photo( photo_id );
