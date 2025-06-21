@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -1018,8 +1019,19 @@ func generateThumbnail( image *image.RGBA ) ( []byte, []byte ) {
 	return thumbnail_jpg, thumbhash.EncodeImage( thumbnail )
 }
 
+func writeFileFSync( name string, data []byte, perm os.FileMode ) error {
+	f, err := os.OpenFile( name, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, perm )
+	if err != nil {
+		return err
+	}
+	_, err = f.Write( data )
+	err1 := f.Sync()
+	err2 := f.Close()
+	return cmp.Or( err, err1, err2 )
+}
+
 func saveAsset( data []byte, filename string ) error {
-	return os.WriteFile( "assets/" + filename, data, 0644 )
+	return writeFileFSync( "assets/" + filename, data, 0644 )
 }
 
 func saveGenerated( data []byte, filename string ) error {
