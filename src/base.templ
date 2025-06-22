@@ -53,29 +53,34 @@ templ createAlbumButton() {
 	}">
 		<button @click="show = true; $el.parentElement.querySelector( 'form' ).reset()">Create album</button>
 
-		<dialog x-cloak x-show="show" x-htmldialog="show = false" x-data="{ error: '' }">
+		<dialog style="width: 20rem"
+			x-cloak x-show="show" x-htmldialog="show = false"
+			x-data="{ error: '' }">
 			<form hx-put="/Special:createAlbum" x-htmx.json="albums" x-htmx-error="error">
 				<h2>New album</h2>
 
-				<b>Name</b>
-				<input type="text" name="name" x-model="name" autocomplete="off" autofocus>
+				<label>
+					Name
+					<br>
+					<input type="text" name="name" x-model="name" autocomplete="off" autofocus>
+				</label>
 
-				<div>
-					<b>URL</b>
-					<label>
-						<input type="checkbox" x-model="auto_slug" checked> Auto
-					</label>
-				</div>
-
-				<input type="text" name="url" x-model="url" autocomplete="off" x-effect="if( auto_slug ) { url = MakeSlug( name ); }" :readonly="auto_slug">
+				<fieldset>
+					<legend><label for="url">URL</label></legend>
+					<input type="text" name="url" x-model="url" autocomplete="off" x-effect="if( auto_slug ) { url = MakeSlug( name ); }" :readonly="auto_slug">
+					<button style="display: inline-flex; align-items: center; gap: 0.25em" @click="selecting = !selecting">
+						<input type="checkbox" x-model="auto_slug" :checked="auto_slug"> Auto
+					</button>
+				</fieldset>
 
 				<label>
 					<input type="checkbox" x-model="shared"> Shared
 				</label>
 
-				<button type="submit" style="width: min-content">Save</button>
-
-				<div class="error" x-text="error"></div>
+				<div>
+					<button type="submit" style="width: min-content">Save</button>
+					<span class="error" x-text="error"></span>
+				</div>
 			</form>
 		</dialog>
 	</div>
@@ -178,11 +183,12 @@ templ base( title string ) {
 		color: #aaa;
 	}
 
-	input, input[type=text], input[type=password], input[type=search] {
+	input[type=text], input[type=password], input[type=search] {
 		border: 1px solid #767676;
 		border-radius: 3px;
 		font-size: 100%;
 		padding: 0.5rem;
+		width: 100%;
 	}
 
 	input:focus, input[type=text]:focus, input[type=password]:focus, input[type=search]:focus {
@@ -307,7 +313,7 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 	<body x-data="{ albums: MakeAlbumList() }">
 		<nav x-data="{ search: '' }">
 			<style>
-			@scope {
+			@scope to (dialog) {
 				:scope {
 					display: flex;
 					flex-direction: column;
@@ -342,7 +348,7 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 					object-position: 50% 50%;
 				}
 
-				a:has( img, .placeholder ), button, input {
+				a.album, button, input {
 					margin-block: 0.25rem;
 				}
 
@@ -385,7 +391,7 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 
 			<template x-for="album in albums">
 				<template x-if="album.Name.toLowerCase().includes( search.toLowerCase() )">
-					<a :href="'/' + album.UrlSlug" :class="window.location.pathname.startsWith( '/' + album.UrlSlug ) ? 'curr' : ''">
+					<a class="album" :href="'/' + album.UrlSlug" :class="window.location.pathname.startsWith( '/' + album.UrlSlug ) ? 'curr' : ''">
 						<template x-if="album.KeyPhotoSha256.length > 0">
 							<img :src="'/Special:thumbnail/' + album.KeyPhotoSha256" style="height: 1lh">
 						</template>
