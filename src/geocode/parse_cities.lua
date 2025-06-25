@@ -24,6 +24,8 @@ CREATE TABLE city (
 ) STRICT;
 
 CREATE VIRTUAL TABLE geocode USING fts5( name, alternative_names, content=city, content_rowid=id );
+
+BEGIN TRANSACTION;
 ]] )
 
 -- https://download.geonames.org/export/dump/
@@ -42,3 +44,5 @@ for line in io.lines( "cities5000.txt" ) do
 		VALUES( last_insert_rowid(), "%s", "%s" );
 	]], name, all_alt_names )
 end
+
+print( "COMMIT" )
