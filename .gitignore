@@ -1,5 +1,6 @@
 /assets
 /cookie_encryption_key.bin
+/db.sq3*
 /mikegram
 *.jpg
 *.jpeg
