@@ -528,7 +528,7 @@ templ uploadButton() {
 		<button type="button">
 			<label>
 				Upload
-				<input type="file" name="photos" multiple @change="Changed" style="display: none">
+				<input type="file" name="photos" accept=".jpg,.jpeg,.png,.heic,image/heic,image/*,video/*" multiple @change="Changed" style="display: none">
 			</label>
 		</button>
 
