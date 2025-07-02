@@ -151,6 +151,11 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 				object-position: 50% 50%;
 			}
 
+			img {
+				user-select: none;
+				-webkit-user-select: none;
+			}
+
 			.selected {
 				border: red 2px solid;
 			}
