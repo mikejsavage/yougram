@@ -11,7 +11,7 @@ import (
 )
 
 const addAssetToPhoto = `-- name: AddAssetToPhoto :exec
-INSERT INTO photo_asset ( photo_id, asset_id ) VALUES ( ?, ? )
+INSERT OR IGNORE INTO photo_asset ( photo_id, asset_id ) VALUES ( ?, ? )
 `
 
 type AddAssetToPhotoParams struct {
@@ -551,7 +551,7 @@ func (q *Queries) GetAssetMetadata(ctx context.Context, arg GetAssetMetadataPara
 
 const getAssetPhotos = `-- name: GetAssetPhotos :many
 SELECT photo.id FROM photo, photo_asset
-WHERE photo_asset.asset_id = ? AND photo.owner = ? AND photo.id = photo_asset.photo_id
+WHERE photo_asset.asset_id = ? AND photo.owner IS ? AND photo.id = photo_asset.photo_id
 `
 
 type GetAssetPhotosParams struct {

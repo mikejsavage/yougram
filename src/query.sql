@@ -43,7 +43,7 @@ INSERT OR IGNORE INTO asset (
 VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );
 
 -- name: AddAssetToPhoto :exec
-INSERT INTO photo_asset ( photo_id, asset_id ) VALUES ( ?, ? );
+INSERT OR IGNORE INTO photo_asset ( photo_id, asset_id ) VALUES ( ?, ? );
 
 -- name: GetAssetMetadata :one
 SELECT type, original_filename, EXISTS(
@@ -108,7 +108,7 @@ WHERE owner = ? ORDER BY photo_primary_asset.date_taken DESC;
 
 -- name: GetAssetPhotos :many
 SELECT photo.id FROM photo, photo_asset
-WHERE photo_asset.asset_id = ? AND photo.owner = ? AND photo.id = photo_asset.photo_id;
+WHERE photo_asset.asset_id = ? AND photo.owner IS ? AND photo.id = photo_asset.photo_id;
 
 -- name: GetPhoto :one
 SELECT asset.sha256, asset.type, asset.original_filename FROM photo, asset
