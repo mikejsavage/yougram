@@ -3,26 +3,30 @@ yougram
 
 yougram is a self-hosted image app.
 
+Please note that yougram is very early in development and parts of this readme have been written for
+an idealised future yougram that doesn't exist yet, so expect contradictions and falsehoods.
+
 
 ## Why yougram is good for you, a user
 
 - Trivial to deploy: copy a single file to your server with zero dependencies
-- Multi-user capable: your family can use it too
+- Set and forget: yougram will never make breaking changes and doesn't depend on external services
+  that may disappear in the future. If you like it today you will like it a decade from now too
+- Multi-user: your family can use it too
 - (optionally) AI powered: AI photo tagging so you can search for "cat",
   and facial recognition so you can search for "Mike"
 - Guest access: share secret album links with your friends, both writeable (for group vacations) and
   read-only (for everyone else)
-- Backup friendly: yougram stores your data unmodified as a bunch of files on disk, so it works well
-  with standard backup solutions (restic/borg/etc)
+- Backup friendly: yougram stores your data unmodified as files on disk, so it works well with
+  standard backup solutions (restic/borg/etc)
 - No lock-in: getting your data out of yougram is an explicitly supported and documented workflow,
   feel free to take your photos elsewhere
-- Private: yougram has no external dependencies and nothing leaves your computer
+- Private: nothing leaves your computer
 - Compatible with the Immich app: automatically upload your phone library to yougram
 - Snappy: I have realistic expectations of how a photo management app should perform, i.e.
   everything should run instantly, and I know nothing about web development so everything actually
   does run instantly
-- Scalable: yougram does not currently scale well to millions of photos, but anything less than that
-  is ok
+- Scalable: yougram does not currently scale to millions of photos, but tens of thousands is ok
 
 
 ## Installation instructions
@@ -102,6 +106,11 @@ yougram/
     moondream/ <- contains AI models for image classification, you downloaded these from the internet so again feel free to kill it
 
 
+## Updating
+
+Download a new binary.
+
+
 ## System requirements
 
 I develop on macOS and Linux. Yougram should run on Windows and other Unixes but I haven't and won't
@@ -116,12 +125,12 @@ The yougram binary is around 25MB. The optional Moondream AI model is 2GB.
 ## Security
 
 The private/guest split makes it easy to hide most of yougram behind a VPN, which makes certain
-classes of attacks impossible, for example an XSS vulnerability in the guest interface cannot be
+classes of attacks impossible, for example frontend vulnerabilities in the guest interface cannot be
 leveraged into stealing accounts. Beyond that I make no claims regarding the security of the app
 beyond that I have thought about it a bit.
 
-Probably don't invite untrusted users to make an account on your instance, but the guest interface
-is legitimately trivial and can be shared freely.
+Probably don't make accounts for untrusted users on your instance, but the guest interface is
+legitimately trivial and can be shared freely.
 
 
 ## Why yougram is good for you, a developer
@@ -135,8 +144,7 @@ easy to set up a dev environment.
 
 ## Techie stuff
 
-The backend "stack" is Go/SQLC/templ and SQLite. The frontend "stack" is raw CSS, HTMX, and
-Alpine.js
+The backend stack is Go/SQLC/templ and SQLite. The frontend stack is raw CSS, HTMX, and Alpine.js
 
 If you want to compile yougram yourself, first you need to install a not particularly recent version
 (probably anything 2024 or later) of Go. You can do it through your package manager or just
