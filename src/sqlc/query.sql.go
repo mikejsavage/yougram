@@ -237,15 +237,15 @@ INNER JOIN photo ON photo.id = photo_asset.photo_id
 INNER JOIN album_photo ON photo.id = album_photo.photo_id
 INNER JOIN album ON album.id = album_photo.album_id
 WHERE album.id = ? AND (
-	( ? OR photo.primary_asset = asset.sha256 ) -- primary assets only
-	OR ( ? OR asset.type = "raw" ) -- primary assets + raws
+	( ? OR photo.primary_asset = asset.sha256 )
+	OR ( ? AND asset.type = "raw" )
 )
 `
 
 type GetAlbumAssetsParams struct {
-	ID      int64
-	Column2 interface{}
-	Column3 interface{}
+	ID                int64
+	IncludeEverything interface{}
+	IncludeRaws       interface{}
 }
 
 type GetAlbumAssetsRow struct {
@@ -254,7 +254,7 @@ type GetAlbumAssetsRow struct {
 }
 
 func (q *Queries) GetAlbumAssets(ctx context.Context, arg GetAlbumAssetsParams) ([]GetAlbumAssetsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getAlbumAssets, arg.ID, arg.Column2, arg.Column3)
+	rows, err := q.db.QueryContext(ctx, getAlbumAssets, arg.ID, arg.IncludeEverything, arg.IncludeRaws)
 	if err != nil {
 		return nil, err
 	}
@@ -645,16 +645,16 @@ FROM asset
 INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
 INNER JOIN photo ON photo.id = photo_asset.photo_id
 WHERE photo.id = ? AND (
-	( ? OR photo.primary_asset = asset.sha256 ) -- primary assets only
-	OR ( ? OR asset.type = "raw" ) -- primary assets + raws
+	( ? OR photo.primary_asset = asset.sha256 )
+	OR ( ? AND asset.type = "raw" )
 )
 `
 
 type GetPhotoAssetsParams struct {
-	Owner   sql.NullInt64
-	ID      int64
-	Column3 interface{}
-	Column4 interface{}
+	Owner             sql.NullInt64
+	ID                int64
+	IncludeEverything interface{}
+	IncludeRaws       interface{}
 }
 
 type GetPhotoAssetsRow struct {
@@ -667,8 +667,8 @@ func (q *Queries) GetPhotoAssets(ctx context.Context, arg GetPhotoAssetsParams) 
 	rows, err := q.db.QueryContext(ctx, getPhotoAssets,
 		arg.Owner,
 		arg.ID,
-		arg.Column3,
-		arg.Column4,
+		arg.IncludeEverything,
+		arg.IncludeRaws,
 	)
 	if err != nil {
 		return nil, err
@@ -700,17 +700,17 @@ FROM asset
 INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
 INNER JOIN photo ON photo.id = photo_asset.photo_id
 WHERE photo.id = ? AND (
-	( ? OR photo.primary_asset = asset.sha256 ) -- primary assets only
-	OR ( ? OR asset.type = "raw" ) -- primary assets + raws
+	( ? OR photo.primary_asset = asset.sha256 )
+	OR ( ? AND asset.type = "raw" )
 )
 `
 
 type GetPhotoAssetsForGuestParams struct {
-	PhotoID int64
-	AlbumID int64
-	ID      int64
-	Column4 interface{}
-	Column5 interface{}
+	PhotoID           int64
+	AlbumID           int64
+	ID                int64
+	IncludeEverything interface{}
+	IncludeRaws       interface{}
 }
 
 type GetPhotoAssetsForGuestRow struct {
@@ -724,8 +724,8 @@ func (q *Queries) GetPhotoAssetsForGuest(ctx context.Context, arg GetPhotoAssets
 		arg.PhotoID,
 		arg.AlbumID,
 		arg.ID,
-		arg.Column4,
-		arg.Column5,
+		arg.IncludeEverything,
+		arg.IncludeRaws,
 	)
 	if err != nil {
 		return nil, err

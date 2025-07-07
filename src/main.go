@@ -632,8 +632,8 @@ func serveAlbumZip( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumB
 
 	rows := try1( queries.GetAlbumAssets( r.Context(), sqlc.GetAlbumAssetsParams {
 		ID: album.ID,
-		Column2: !download_everything,
-		Column3: !download_raws,
+		IncludeEverything: download_everything,
+		IncludeRaws: download_raws,
 	} ) )
 
 	files := make( []ZipFile, len( rows ) )
@@ -674,8 +674,8 @@ func downloadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
 		rows := try1( queries.GetPhotoAssets( r.Context(), sqlc.GetPhotoAssetsParams {
 			Owner: sql.NullInt64 { user.ID, true },
 			ID: id,
-			Column3: !download_everything,
-			Column4: !download_raws,
+			IncludeEverything: download_everything,
+			IncludeRaws: download_raws,
 		} ) )
 
 		if len( rows ) == 0 {
@@ -723,8 +723,8 @@ func downloadPhotosAsGuest( w http.ResponseWriter, r *http.Request ) {
 				PhotoID: id,
 				AlbumID: album.ID,
 				ID: id,
-				Column4: !download_everything,
-				Column5: !download_raws,
+				IncludeEverything: !download_everything,
+				IncludeRaws: !download_raws,
 			} ) )
 
 			if len( rows ) == 0 {
