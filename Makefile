@@ -23,12 +23,3 @@ src/sqlc/query.sql.go: src/schema.sql src/query.sql
 
 clean:
 	rm mikegram
-
-get:
-	go get mikegram
-
-update:
-	go get -u
-
-tidy:
-	go mod tidy
