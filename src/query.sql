@@ -6,17 +6,20 @@
 INSERT INTO user ( username, password, needs_to_reset_password, cookie ) VALUES ( ?, ?, 1, ? )
 RETURNING id;
 
--- name: ChangePassword :exec
-UPDATE user SET password = ?, cookie = ? WHERE username = ?;
+-- name: GetUserPassword :one
+SELECT password FROM user WHERE id = ?;
 
--- name: ResetPassword :exec
+-- name: SetUserPassword :exec
+UPDATE user SET password = ? WHERE id = ?;
+
+-- name: ResetUserPassword :exec
 UPDATE user SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = ?;
 
 -- name: GetUserAuthDetails :one
 SELECT id, password, needs_to_reset_password, enabled, cookie FROM user WHERE username = ?;
 
 -- name: GetUsers :many
-SELECT username FROM user WHERE enabled = 1;
+SELECT username, avatar FROM user WHERE enabled = 1 ORDER BY username;
 
 -- name: AreThereAnyUsers :one
 SELECT EXISTS( SELECT 1 FROM user LIMIT 1 );
@@ -26,6 +29,18 @@ UPDATE user SET enabled = 1 WHERE username = ?;
 
 -- name: DisableUser :exec
 UPDATE user SET enabled = 0 WHERE username = ?;
+
+-- name: AddAvatar :exec
+INSERT OR IGNORE INTO avatar ( sha256, avatar ) VALUES ( ?, ? );
+
+-- name: GetAvatar :one
+SELECT avatar FROM avatar WHERE sha256 = ?;
+
+-- name: SetUserAvatar :exec
+UPDATE user SET avatar = ? WHERE id = ?;
+
+-- name: DeleteUnusedAvatars :exec
+DELETE FROM avatar WHERE NOT EXISTS( SELECT 1 FROM user WHERE user.avatar = avatar.sha256 );
 
 
 ------------

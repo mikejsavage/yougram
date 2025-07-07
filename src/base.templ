@@ -152,6 +152,10 @@ templ base( title string ) {
 		box-sizing: border-box;
 	}
 
+	[x-cloak] {
+		display: none !important;
+	}
+
 	body {
 		font-family: sans-serif;
 		line-height: 1.5;
@@ -247,8 +251,12 @@ templ base( title string ) {
 		font-weight: bold;
 	}
 
-	[x-cloak] {
-		display: none !important;
+	.avatar {
+		aspect-ratio: 1;
+		object-fit: cover;
+		object-position: 50% 50%;
+		vertical-align: middle;
+		border-radius: 50%;
 	}
 
 	dialog {
@@ -375,8 +383,8 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 			}
 			</style>
 
-			<b>{ user.Username }gram</b>
-			<span>Account settings</span>
+			<b style="background: #333; color: white; padding: 0.25rem; margin: -0.25rem -0.25rem 0; text-transform: uppercase; line-height: 1">{ user.Username }gram</b>
+			@navlink( current_url, "/Special:account", "Account settings", false )
 			<a href="/Special:logout">Log out</a>
 
 			<hr>

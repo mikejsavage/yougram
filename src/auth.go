@@ -10,11 +10,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
 	"golang.org/x/text/unicode/norm"
 	"time"
+
+	"mikegram/sqlc"
 )
 
 var cookie_aead cipher.AEAD
@@ -32,6 +35,10 @@ func secureRandomHexString( n int ) string {
 
 func secureRandomBase64String( n int ) string {
 	return base64.URLEncoding.EncodeToString( secureRandomBytes( n ) )
+}
+
+func unicodeNormalize( str string ) string {
+	return norm.NFKC.String( str )
 }
 
 func initCookieEncryptionKey() []byte {
@@ -86,7 +93,7 @@ func decodeAuthCookie( cookie string ) ( username string, secret []byte ) {
 }
 
 func hashPasswordWithSalt( password string, salt []byte ) string {
-	password = norm.NFKC.String( password )
+	password = unicodeNormalize( password )
 
 	recommended_time := uint32( 3 )
 	_32mb_in_kb := uint32( 32 * 1024 )
@@ -147,29 +154,6 @@ func setAuthCookie( w http.ResponseWriter, r *http.Request, value string ) {
 	http.SetCookie( w, &cookie )
 }
 
-func authenticate( w http.ResponseWriter, r *http.Request ) {
-	username := norm.NFKC.String( r.PostFormValue( "username" ) )
-
-	user := queryOptional( queries.GetUserAuthDetails( r.Context(), username ) )
-	if !user.Valid || user.V.Enabled == 0 {
-		http.Error( w, "Incorrect username", http.StatusOK )
-		return
-	}
-
-	if !verifyPassword( r.PostFormValue( "password" ), user.V.Password ) {
-		http.Error( w, "Incorrect password", http.StatusOK )
-		return
-	}
-
-	setAuthCookie( w, r, encodeAuthCookie( username, user.V.Cookie ) )
-	w.Header().Set( "HX-Refresh", "true" )
-}
-
-func logout( w http.ResponseWriter, r *http.Request ) {
-	setAuthCookie( w, r, "" )
-	http.Redirect( w, r, "/", http.StatusSeeOther )
-}
-
 func checkAuth( w http.ResponseWriter, r *http.Request, handler func( http.ResponseWriter, *http.Request, User ) ) bool {
 	authed := false
 	cookie, err_cookie := r.Cookie( "auth" )
@@ -218,4 +202,57 @@ func requireAuthNoLoginForm( handler func( http.ResponseWriter, *http.Request, U
 			httpError( w, http.StatusUnauthorized )
 		}
 	}
+}
+
+func authenticate( w http.ResponseWriter, r *http.Request ) {
+	username := unicodeNormalize( r.PostFormValue( "username" ) )
+
+	user := queryOptional( queries.GetUserAuthDetails( r.Context(), username ) )
+	if !user.Valid || user.V.Enabled == 0 {
+		http.Error( w, "Incorrect username", http.StatusOK )
+		return
+	}
+
+	if !verifyPassword( r.PostFormValue( "password" ), user.V.Password ) {
+		http.Error( w, "Incorrect password", http.StatusOK )
+		return
+	}
+
+	setAuthCookie( w, r, encodeAuthCookie( username, user.V.Cookie ) )
+	w.Header().Set( "HX-Refresh", "true" )
+}
+
+func logout( w http.ResponseWriter, r *http.Request ) {
+	setAuthCookie( w, r, "" )
+	http.Redirect( w, r, "/", http.StatusSeeOther )
+}
+
+func setPassword( w http.ResponseWriter, r *http.Request, user User ) {
+	old_password := unicodeNormalize( r.PostFormValue( "old_password" ) )
+	new_password := unicodeNormalize( r.PostFormValue( "new_password" ) )
+	new_password2 := unicodeNormalize( r.PostFormValue( "new_password2" ) )
+
+	if new_password != new_password2 {
+		_ = try1( io.WriteString( w, "New passwords don't match" ) )
+		return
+	}
+
+	db_password := queryOptional( queries.GetUserPassword( r.Context(), user.ID ) )
+	if !db_password.Valid {
+		httpError( w, http.StatusUnauthorized )
+		return
+	}
+
+	if !verifyPassword( old_password, db_password.V ) {
+		_ = try1( io.WriteString( w, "Old password is incorrect" ) )
+		return
+	}
+
+	try( queries.SetUserPassword( r.Context(), sqlc.SetUserPasswordParams {
+		ID: user.ID,
+		Password: hashPassword( new_password ),
+	} ) )
+
+	_ = try1( io.WriteString( w, green_checkmark ) )
+	// w.Header().Set( "HX-Refresh", "true" )
 }

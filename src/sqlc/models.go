@@ -47,6 +47,11 @@ type Asset struct {
 	Longitude        sql.NullFloat64
 }
 
+type Avatar struct {
+	Sha256 []byte
+	Avatar []byte
+}
+
 type Photo struct {
 	ID           int64
 	Owner        sql.NullInt64
@@ -81,4 +86,5 @@ type User struct {
 	NeedsToResetPassword int64
 	Enabled              int64
 	Cookie               []byte
+	Avatar               []byte
 }

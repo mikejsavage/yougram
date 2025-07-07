@@ -1,5 +1,10 @@
 package main
 
+import (
+	"encoding/hex"
+	"unicode"
+)
+
 templ loginFormTemplate() {
 	<!DOCTYPE html>
 	<meta charset="utf-8" />
@@ -92,6 +97,16 @@ templ loginFormTemplate() {
 				filter: grayscale( 100% );
 			}
 
+			.users div {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				width: 2lh;
+				height: 2lh;
+				border: 2px solid #333;
+				border-radius: 50%;
+			}
+
 			.users input[type=radio] {
 				display: none;
 			}
@@ -139,9 +154,13 @@ templ loginFormTemplate() {
 
 			for _, user := range users {
 				<label onclick="document.getElementById( 'password' ).focus(); document.getElementById( 'subtitle' ).innerText = this.querySelector( 'input' ).value;">
-					<input type="radio" name="username" value={ user } required>
-					<img src="https://f.mikejsavage.co.uk/DSCF1748.png">
-					{ user }
+					<input type="radio" name="username" value={ user.Username } required>
+					if user.Avatar != nil {
+						<img src={ "/Special:avatar/" + hex.EncodeToString( user.Avatar ) }>
+					} else {
+						<div>{ string( unicode.ToUpper( []rune( user.Username )[ 0 ] ) ) }</div>
+					}
+					{ user.Username }
 				</label>
 			}
 		</div>
@@ -149,4 +168,79 @@ templ loginFormTemplate() {
 		<input type="password" id="password" name="password" placeholder="Password" required>
 		<div id="error"></div>
 	</form>
+}
+
+templ accountSettingsTemplate() {
+	<style>
+	form {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		max-width: 20rem;
+	}
+	</style>
+	<main style="padding: 0.5rem">
+		<script>
+		function MakeAvatarForm() {
+			return {
+				img: null,
+				async FilePicked( e ) {
+					if( e.target.files.length == 0 ) {
+						this.img = null;
+						return;
+					}
+
+					let reader = new FileReader();
+					reader.onload = e => this.img = e.target.result;
+					reader.readAsDataURL( e.target.files[ 0 ] );
+				}
+			}
+		}
+		</script>
+		<form x-data="MakeAvatarForm()"
+			hx-post="/Special:avatar" hx-encoding="multipart/form-data"
+			hx-target="find span" hx-disabled-elt="find button"
+		>
+			<h1>Avatar</h1>
+
+			<div style="display: flex; align-items: center; gap: 1rem">
+				<img class="avatar" :src="img" x-show="img != null" x-cloak style="width: 2lh">
+				<div x-show="img == null" style="width: 2lh; height: 2lh; border: 2px solid #333; border-radius: 50%;"></div>
+
+				<button type="button">
+					<label>
+						Pick a file
+						<input type="file" name="avatar" accept="image/*" @change="FilePicked" style="display: none">
+					</label>
+				</button>
+
+				<button type="submit" :disabled="img == null">Save</button>
+			</div>
+
+			<span></span>
+		</form>
+
+		<form hx-post="/Special:password" hx-target="find span" hx-disabled-elt="find button">
+			<h1>Password</h1>
+
+			<label>
+				Current password
+				<input type="password" name="old_password">
+			</label>
+
+			<label>
+				New password
+				<input type="password" name="new_password">
+			</label>
+
+			<label>
+				Repeat new password
+				<input type="password" name="new_password2">
+			</label>
+
+			<button type="submit">Change password</button>
+
+			<span></span>
+		</form>
+	</main>
 }

@@ -35,16 +35,18 @@ import (
 	"mikegram/sqlc"
 	"mikegram/stb"
 
-	"golang.org/x/text/unicode/norm"
 	"github.com/adrium/goheif"
 	"github.com/galdor/go-thumbhash"
 	"github.com/evanoberholster/imagemeta"
 	"github.com/evanoberholster/imagemeta/meta"
 	"github.com/fsnotify/fsnotify"
+
 	_ "github.com/mattn/go-sqlite3"
+	// sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 )
 
 const megabyte = 1000 * 1000
+const green_checkmark = "&#x2705;"
 
 var db *sql.DB
 var queries *sqlc.Queries
@@ -196,19 +198,19 @@ func initDB( memory_db bool ) {
 
 	var secret [16]byte
 	mike := must1( queries.CreateUser( ctx, sqlc.CreateUserParams {
-		Username: norm.NFKC.String( "mike" ),
+		Username: unicodeNormalize( "mike" ),
 		Password: hashPassword( "gg" ),
 		Cookie: secret[:],
 	} ) )
 
 	_ = must1( queries.CreateUser( ctx, sqlc.CreateUserParams {
-		Username: norm.NFKC.String( "mum" ),
+		Username: unicodeNormalize( "mum" ),
 		Password: hashPassword( "gg" ),
 		Cookie: secret[:],
 	} ) )
 
 	_ = must1( queries.CreateUser( ctx, sqlc.CreateUserParams {
-		Username: norm.NFKC.String( "dad" ),
+		Username: unicodeNormalize( "dad" ),
 		Password: hashPassword( "gg" ),
 		Cookie: secret[:],
 	} ) )
@@ -318,6 +320,92 @@ type User struct {
 
 func getChecksum( w http.ResponseWriter, r *http.Request ) {
 	_ = try1( io.WriteString( w, checksum ) )
+}
+
+func accountSettings( w http.ResponseWriter, r *http.Request, user User ) {
+	try( baseWithSidebar( user, r.URL.Path, "Account settings", accountSettingsTemplate() ).Render( r.Context(), w ) )
+}
+
+func getAvatar( w http.ResponseWriter, r *http.Request ) {
+	sha256, err := hex.DecodeString( r.PathValue( "avatar" ) )
+	if err != nil {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+
+	avatar := queryOptional( queries.GetAvatar( r.Context(), sha256 ) )
+	if !avatar.Valid {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+
+	cacheControlImmutable( w )
+	w.Header().Set( "Content-Type", "image/jpeg" )
+	_ = try1( w.Write( avatar.V ) )
+}
+
+func setAvatar( w http.ResponseWriter, r *http.Request, user User ) {
+	try( r.ParseMultipartForm( 32 * megabyte ) )
+
+	// TODO: this is probably not the right way to do it...
+	if len( r.MultipartForm.File[ "avatar" ] ) == 0 {
+		httpError( w, http.StatusBadRequest )
+		return
+	}
+
+	f := try1( r.MultipartForm.File[ "avatar" ][ 0 ].Open() )
+	avatar := try1( io.ReadAll( f ) )
+	try( f.Close() )
+
+	// TODO: heif
+	original, err := stb.StbLoad( avatar )
+	if err != nil {
+		fmt.Printf( "%v\n", err )
+		httpError( w, http.StatusBadRequest )
+		return
+	}
+
+	// crop to square and resize to 200x200
+	min_dim := min( original.Rect.Dx(), original.Rect.Dy() )
+	crop_x := original.Rect.Dx() / 2 - min_dim / 2
+	crop_y := original.Rect.Dy() / 2 - min_dim / 2
+	resized := stb.StbResizeAndCrop( original, crop_x, crop_y, min_dim, min_dim, 200, 200 )
+
+	// reorient
+	orientation := meta.OrientationHorizontal
+	exif, err := imagemeta.Decode( bytes.NewReader( avatar ) )
+	if err == nil {
+		if exif.Orientation >= meta.OrientationHorizontal && exif.Orientation <= meta.OrientationRotate270 {
+			orientation = exif.Orientation
+		}
+	}
+	reoriented := reorient( resized, orientation )
+
+	jpeg := try1( stb.StbToJpg( reoriented, 90 ) )
+
+	{
+		sha256 := sha256.Sum256( jpeg )
+
+		tx := try1( db.Begin() )
+		defer tx.Rollback()
+		qtx := queries.WithTx( tx )
+
+		try( qtx.AddAvatar( r.Context(), sqlc.AddAvatarParams {
+			Sha256: sha256[:],
+			Avatar: jpeg,
+		} ) )
+
+		try( qtx.SetUserAvatar( r.Context(), sqlc.SetUserAvatarParams {
+			ID: user.ID,
+			Avatar: sha256[:],
+		} ) )
+
+		try( qtx.DeleteUnusedAvatars( r.Context() ) )
+
+		tx.Commit()
+	}
+
+	_ = try1( io.WriteString( w, green_checkmark ) )
 }
 
 func pathValueAsset( r *http.Request ) ( string, []byte, error ) {
@@ -475,11 +563,11 @@ func updateAlbumSettings( w http.ResponseWriter, r *http.Request, user User ) {
 	name := r.PostFormValue( "name" )
 	url := r.PostFormValue( "url" )
 	if name == "" {
-		io.WriteString( w, "Name can't be blank" )
+		_ = try1( io.WriteString( w, "Name can't be blank" ) )
 		return
 	}
 	if url == "" {
-		io.WriteString( w, "URL can't be blank" )
+		_ = try1( io.WriteString( w, "URL can't be blank" ) )
 		return
 	}
 
@@ -501,7 +589,7 @@ func checkAlbumURL( w http.ResponseWriter, r *http.Request, user User ) {
 	url := r.URL.Query().Get( "url_slug" )
 	exists := try1( queries.IsAlbumURLInUse( r.Context(), url ) )
 	if exists == 1 {
-		_ = try1( w.Write( []byte( "URL already in use" ) ) )
+		_ = try1( io.WriteString( w, "URL already in use" ) )
 	}
 }
 
@@ -1024,7 +1112,7 @@ func reorient( img *image.RGBA, orientation meta.Orientation ) *image.RGBA {
 func generateThumbnail( image *image.RGBA ) ( []byte, []byte ) {
 	const thumbnail_size = 512.0
 
-	scale := math.Min( 1, thumbnail_size / float64( min( image.Rect.Dx(), image.Rect.Dy() ) ) )
+	scale := min( 1, thumbnail_size / float64( min( image.Rect.Dx(), image.Rect.Dy() ) ) )
 	thumbnail := stb.StbResize( image, int( float64( image.Rect.Dx() ) * scale ), int( float64( image.Rect.Dy() ) * scale ) )
 	thumbnail_jpg := must1( stb.StbToJpg( thumbnail, 75 ) )
 
@@ -1336,7 +1424,7 @@ func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.Resp
 func serveString( content string ) func( http.ResponseWriter, *http.Request ) {
 	return func( w http.ResponseWriter, r *http.Request ) {
 		cacheControlImmutable( w )
-		_ = try1( w.Write( []byte( content ) ) )
+		_ = try1( io.WriteString( w, content ) )
 	}
 }
 
@@ -1465,6 +1553,7 @@ func main() {
 		fmt.Println( "Using in memory database. Nothing will be saved when you quit the server!" )
 	}
 
+	// sqlite_vec.Auto()
 	db = must1( sql.Open( "sqlite3", db_path + "?cache=shared" ) )
 	defer db.Close()
 
@@ -1500,7 +1589,7 @@ func main() {
 			}
 			password := secureRandomHexString( 4 )
 			_ = must1( queries.CreateUser( context.Background(), sqlc.CreateUserParams {
-				Username: norm.NFKC.String( os.Args[ 2 ] ),
+				Username: unicodeNormalize( os.Args[ 2 ] ),
 				Password: hashPassword( password ),
 				Cookie: secureRandomBytes( 16 ),
 			} ) )
@@ -1512,8 +1601,8 @@ func main() {
 				showHelpAndQuit()
 			}
 			password := secureRandomHexString( 4 )
-			must( queries.ResetPassword( context.Background(), sqlc.ResetPasswordParams {
-				Username: norm.NFKC.String( os.Args[ 2 ] ),
+			must( queries.ResetUserPassword( context.Background(), sqlc.ResetUserPasswordParams {
+				Username: unicodeNormalize( os.Args[ 2 ] ),
 				Password: hashPassword( password ),
 				Cookie: secureRandomBytes( 16 ),
 			} ) )
@@ -1524,14 +1613,14 @@ func main() {
 			if len( os.Args ) != 3 {
 				showHelpAndQuit()
 			}
-			must( queries.DisableUser( context.Background(), norm.NFKC.String( os.Args[ 2 ] ) ) )
+			must( queries.DisableUser( context.Background(), unicodeNormalize( os.Args[ 2 ] ) ) )
 			os.Exit( 0 )
 
 		case "enable-user":
 			if len( os.Args ) != 3 {
 				showHelpAndQuit()
 			}
-			must( queries.EnableUser( context.Background(), norm.NFKC.String( os.Args[ 2 ] ) ) )
+			must( queries.EnableUser( context.Background(), unicodeNormalize( os.Args[ 2 ] ) ) )
 			os.Exit( 0 )
 
 		default: showHelpAndQuit()
@@ -1555,6 +1644,11 @@ func main() {
 
 		{ "POST", "/Special:authenticate", authenticate },
 		{ "GET",  "/Special:logout", logout },
+
+		{ "GET",  "/Special:account", requireAuth( accountSettings ) },
+		{ "GET",  "/Special:avatar/{avatar}", getAvatar },
+		{ "POST", "/Special:avatar", requireAuth( setAvatar ) },
+		{ "POST", "/Special:password", requireAuth( setPassword ) },
 
 		{ "GET",  "/Special:asset/{asset}", requireAuth( getAsset ) },
 		{ "GET",  "/Special:thumbnail/{asset}", requireAuth( getThumbnail ) },

@@ -78,6 +78,21 @@ func StbResize( img *image.RGBA, w int, h int ) ( *image.RGBA ) {
 	}
 }
 
+func StbResizeAndCrop( img *image.RGBA, crop_x, crop_y, crop_w, crop_h, resized_w, resized_h int ) ( *image.RGBA ) {
+	input_pixels := ( *C.uchar )( unsafe.Pointer( &img.Pix[ crop_y * img.Stride + crop_x * 4 ] ) )
+	output_pixels := C.stbir_resize_uint8_srgb(
+		input_pixels, C.int( crop_w ), C.int( crop_h ), C.int( img.Stride ),
+		nil, C.int( resized_w ), C.int( resized_h ), C.int( 0 ),
+		C.STBIR_RGBA )
+	defer C.free( unsafe.Pointer( output_pixels ) )
+
+	return &image.RGBA {
+		Pix: C.GoBytes( unsafe.Pointer( output_pixels ), C.int( resized_w * resized_h * 4 ) ),
+		Stride: resized_w * 4,
+		Rect: image.Rect( 0, 0, resized_w, resized_h ),
+	}
+}
+
 //export goStbWriteCallback
 func goStbWriteCallback( context unsafe.Pointer, data unsafe.Pointer, size C.int ) {
 	builder := ( *strings.Builder )( context )

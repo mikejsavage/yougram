@@ -24,6 +24,20 @@ func (q *Queries) AddAssetToPhoto(ctx context.Context, arg AddAssetToPhotoParams
 	return err
 }
 
+const addAvatar = `-- name: AddAvatar :exec
+INSERT OR IGNORE INTO avatar ( sha256, avatar ) VALUES ( ?, ? )
+`
+
+type AddAvatarParams struct {
+	Sha256 []byte
+	Avatar []byte
+}
+
+func (q *Queries) AddAvatar(ctx context.Context, arg AddAvatarParams) error {
+	_, err := q.db.ExecContext(ctx, addAvatar, arg.Sha256, arg.Avatar)
+	return err
+}
+
 const addPhotoToAlbum = `-- name: AddPhotoToAlbum :exec
 INSERT OR IGNORE INTO album_photo ( album_id, photo_id ) VALUES ( ?, ? )
 `
@@ -62,21 +76,6 @@ func (q *Queries) AssetExists(ctx context.Context, sha256 []byte) (int64, error)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
-}
-
-const changePassword = `-- name: ChangePassword :exec
-UPDATE user SET password = ?, cookie = ? WHERE username = ?
-`
-
-type ChangePasswordParams struct {
-	Password string
-	Cookie   []byte
-	Username string
-}
-
-func (q *Queries) ChangePassword(ctx context.Context, arg ChangePasswordParams) error {
-	_, err := q.db.ExecContext(ctx, changePassword, arg.Password, arg.Cookie, arg.Username)
-	return err
 }
 
 const createAlbum = `-- name: CreateAlbum :exec
@@ -202,6 +201,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, 
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const deleteUnusedAvatars = `-- name: DeleteUnusedAvatars :exec
+DELETE FROM avatar WHERE NOT EXISTS( SELECT 1 FROM user WHERE user.avatar = avatar.sha256 )
+`
+
+func (q *Queries) DeleteUnusedAvatars(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteUnusedAvatars)
+	return err
 }
 
 const disableUser = `-- name: DisableUser :exec
@@ -598,6 +606,17 @@ func (q *Queries) GetAssetThumbnail(ctx context.Context, sha256 []byte) (GetAsse
 	return i, err
 }
 
+const getAvatar = `-- name: GetAvatar :one
+SELECT avatar FROM avatar WHERE sha256 = ?
+`
+
+func (q *Queries) GetAvatar(ctx context.Context, sha256 []byte) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, getAvatar, sha256)
+	var avatar []byte
+	err := row.Scan(&avatar)
+	return avatar, err
+}
+
 const getPhoto = `-- name: GetPhoto :one
 SELECT asset.sha256, asset.type, asset.original_filename FROM photo, asset
 WHERE photo.id = ? AND asset.sha256 = IFNULL( photo.primary_asset,
@@ -765,6 +784,17 @@ func (q *Queries) GetUserAuthDetails(ctx context.Context, username string) (GetU
 	return i, err
 }
 
+const getUserPassword = `-- name: GetUserPassword :one
+SELECT password FROM user WHERE id = ?
+`
+
+func (q *Queries) GetUserPassword(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRowContext(ctx, getUserPassword, id)
+	var password string
+	err := row.Scan(&password)
+	return password, err
+}
+
 const getUserPhotos = `-- name: GetUserPhotos :many
 SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.thumbhash
 FROM photo
@@ -802,22 +832,27 @@ func (q *Queries) GetUserPhotos(ctx context.Context, owner sql.NullInt64) ([]Get
 }
 
 const getUsers = `-- name: GetUsers :many
-SELECT username FROM user WHERE enabled = 1
+SELECT username, avatar FROM user WHERE enabled = 1 ORDER BY username
 `
 
-func (q *Queries) GetUsers(ctx context.Context) ([]string, error) {
+type GetUsersRow struct {
+	Username string
+	Avatar   []byte
+}
+
+func (q *Queries) GetUsers(ctx context.Context) ([]GetUsersRow, error) {
 	rows, err := q.db.QueryContext(ctx, getUsers)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []string
+	var items []GetUsersRow
 	for rows.Next() {
-		var username string
-		if err := rows.Scan(&username); err != nil {
+		var i GetUsersRow
+		if err := rows.Scan(&i.Username, &i.Avatar); err != nil {
 			return nil, err
 		}
-		items = append(items, username)
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -839,18 +874,18 @@ func (q *Queries) IsAlbumURLInUse(ctx context.Context, urlSlug string) (int64, e
 	return column_1, err
 }
 
-const resetPassword = `-- name: ResetPassword :exec
+const resetUserPassword = `-- name: ResetUserPassword :exec
 UPDATE user SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = ?
 `
 
-type ResetPasswordParams struct {
+type ResetUserPasswordParams struct {
 	Password string
 	Cookie   []byte
 	Username string
 }
 
-func (q *Queries) ResetPassword(ctx context.Context, arg ResetPasswordParams) error {
-	_, err := q.db.ExecContext(ctx, resetPassword, arg.Password, arg.Cookie, arg.Username)
+func (q *Queries) ResetUserPassword(ctx context.Context, arg ResetUserPasswordParams) error {
+	_, err := q.db.ExecContext(ctx, resetUserPassword, arg.Password, arg.Cookie, arg.Username)
 	return err
 }
 
@@ -887,5 +922,33 @@ func (q *Queries) SetAlbumSettings(ctx context.Context, arg SetAlbumSettingsPara
 		arg.ID,
 		arg.Owner,
 	)
+	return err
+}
+
+const setUserAvatar = `-- name: SetUserAvatar :exec
+UPDATE user SET avatar = ? WHERE id = ?
+`
+
+type SetUserAvatarParams struct {
+	Avatar []byte
+	ID     int64
+}
+
+func (q *Queries) SetUserAvatar(ctx context.Context, arg SetUserAvatarParams) error {
+	_, err := q.db.ExecContext(ctx, setUserAvatar, arg.Avatar, arg.ID)
+	return err
+}
+
+const setUserPassword = `-- name: SetUserPassword :exec
+UPDATE user SET password = ? WHERE id = ?
+`
+
+type SetUserPasswordParams struct {
+	Password string
+	ID       int64
+}
+
+func (q *Queries) SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error {
+	_, err := q.db.ExecContext(ctx, setUserPassword, arg.Password, arg.ID)
 	return err
 }
