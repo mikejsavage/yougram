@@ -330,15 +330,13 @@ templ shareButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 			<form style="width: 15rem">
 				<h2>Sharing</h2>
 				if ownership == AlbumOwnership_Owned {
-					<button style="margin-block: 0.5rem"
-						x-text="sharing ? 'Disable sharing' : 'Enable sharing'"
-						hx-post="/Special:shareAlbum"
-						hx-disabled-elt="this"
-					/><br>
+					<button x-text="sharing ? 'Disable sharing' : 'Enable sharing'"
+						hx-post="/Special:shareAlbum" hx-disabled-elt="this"
+					/>
 					<input type="hidden" name="album_id" value={ album.ID }>
 					<input type="hidden" name="share" :value="sharing ? 0 : 1">
 				}
-				<a href={ templ.URL( guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret ) }>Read-only guest link</a><br>
+				<a href={ templ.URL( guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret ) }>Read-only guest link</a>
 				<a href={ templ.URL( guest_url + "/" + album.UrlSlug + "/" + album.ReadwriteSecret ) }>Read-write guest link</a>
 			</form>
 		</div>
