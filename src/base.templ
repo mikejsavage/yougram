@@ -383,7 +383,10 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 			}
 			</style>
 
-			<b style="background: #333; color: white; padding: 0.25rem; margin: -0.25rem -0.25rem 0; text-transform: uppercase; line-height: 1">{ user.Username }gram</b>
+			<b>{ user.Username }gram</b>
+
+			<hr>
+
 			@navlink( current_url, "/Special:account", "Account settings", false )
 			<a href="/Special:logout">Log out</a>
 
