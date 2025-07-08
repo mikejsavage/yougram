@@ -705,7 +705,7 @@ func libraryTemplate(photos []Photo) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<div class=\"left\"><h1>Library</h1><span style=\"font-size: 80%\" class=\"no-mobile\"><span>25&thinspace;&ndash;&thinspace;27 Jan 2025</span> <span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<div class=\"left\"><h1>Library</h1><span style=\"font-size: 80%\" class=\"no-mobile\"><span>25&ThinSpace;&ndash;&ThinSpace;27 Jan 2025</span> <span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
