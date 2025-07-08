@@ -1539,7 +1539,7 @@ func main() {
 	mustMakeDir( "assets" )
 	mustMakeDir( "generated" )
 
-	db_path := "db.sq3"
+	db_path := "yougram.sq3"
 	private_listen_addr := "0.0.0.0:5678"
 	guest_listen_addr := "0.0.0.0:5679"
 	guest_url = "http://localhost:5679"
@@ -1564,7 +1564,7 @@ func main() {
 	if len( os.Args ) > 1 {
 		switch os.Args[ 1 ] {
 		case "serve":
-			db_path = "db.sq3"
+			db_path = "yougram.sq3"
 
 			flags := flag.NewFlagSet( "serve", flag.ExitOnError )
 			private_addr_flag := flags.String( "private-listen-addr", "", "The listen address for yougram's private interface. This should probably be behind a VPN." )

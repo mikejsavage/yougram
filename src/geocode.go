@@ -20,7 +20,7 @@ func initGeocoder() {
 
 	// sqlite can open databases from memory but none of the go sqlite libs implement it
 	// see e.g. https://github.com/mattn/go-sqlite3/pull/1188
-	f := must1( os.CreateTemp( "", "yougram-geocode-*.sq3" ) )
+	f := must1( os.CreateTemp( "", "yougram_geocode_*.sq3" ) )
 	temp_path = f.Name()
 
 	_ = must1( io.Copy( f, gz ) )
