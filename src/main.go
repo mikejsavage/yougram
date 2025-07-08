@@ -1564,8 +1564,6 @@ func main() {
 	if len( os.Args ) > 1 {
 		switch os.Args[ 1 ] {
 		case "serve":
-			db_path = "yougram.sq3"
-
 			flags := flag.NewFlagSet( "serve", flag.ExitOnError )
 			private_addr_flag := flags.String( "private-listen-addr", "", "The listen address for yougram's private interface. This should probably be behind a VPN." )
 			guest_addr_flag := flags.String( "guest-listen-addr", "", "The listen address for yougram's guest interface. This is intended to be publically accessible, an easy way to do that is Cloudflare Tunnel or Tailscale Funnel." )
