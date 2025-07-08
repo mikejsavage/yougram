@@ -1666,9 +1666,6 @@ func main() {
 		{ "PUT",  "/", requireAuth( uploadToLibrary ) },
 		{ "PUT",  "/{album}", requireAuth( uploadToAlbum ) },
 		{ "PUT",  "/Special:uploadToPhoto", requireAuth( uploadToPhoto ) },
-
-		{ "GET", "/:gg", serveString( "[ { \"a\": 4 }, { \"a\": 5 }, { \"a\": 6 } ]" ) },
-		{ "GET", "/:ajax", serveAjax },
 	} )
 
 	guest_http_server := startHttpServer( guest_listen_addr, []Route {
