@@ -1,3 +1,4 @@
+BIN_SUFFIX=-dev
 GOFLAGS=
 TAGS=fts5
 
@@ -9,10 +10,11 @@ endif
 all:
 	sqlc generate
 	templ generate -path src
-	go build -C src -o ../mikegram $(GOFLAGS)
+	go build -C src -o ../mikegram$(BIN_SUFFIX) $(GOFLAGS)
 
+release: BIN_SUFFIX =
 release: TAGS += release
 release: all
 
 clean:
-	rm mikegram
+	rm -f mikegram mikegram-dev
