@@ -549,6 +549,22 @@ templ uploadButton() {
 	</div>
 }
 
+templ selectionButtons( owned bool, is_album bool, base_urls BaseURLs ) {
+	if owned {
+		<button x-cloak x-show="selecting" @click="photos.map( ( _, i ) => selected.set( i, true ) )">Select all</button>
+		<button x-cloak x-show="selecting" @click="selected.clear(); last_selected = null">Deselect all</button>
+		<button x-cloak x-show="selecting" :disabled="selected.size == 0">Add to</button>
+
+		if is_album {
+			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Move to</button>
+			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Remove</button>
+		}
+	}
+
+	@downloadSelectedButton( base_urls )
+	@selectButton()
+}
+
 templ albumHeader( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwnership, can_upload bool, base_urls BaseURLs ) {
 	<div class="left">
 		<h1>{ album.Name }</h1>
@@ -578,17 +594,7 @@ templ albumHeader( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 		}
 
 		@downloadButton( album, ownership, base_urls )
-
-		if ownership == AlbumOwnership_Owned {
-			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Select all</button>
-			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Deselect all</button>
-			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Add to</button>
-			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Move to</button>
-			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Remove</button>
-		}
-
-		@downloadSelectedButton( base_urls )
-		@selectButton()
+		@selectionButtons( ownership == AlbumOwnership_Owned, true, base_urls )
 	</div>
 }
 
@@ -742,12 +748,7 @@ templ libraryTemplate( photos []Photo ) {
 
 		<div class="right">
 			@uploadButton()
-
-			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Select all</button>
-			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Deselect all</button>
-			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Add to</button>
-			@downloadSelectedButton( base_urls )
-			@selectButton()
+			@selectionButtons( true, false, base_urls )
 		</div>
 	}
 }
