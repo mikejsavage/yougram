@@ -1,10 +1,11 @@
 yougram
 -------
 
-yougram is a self-hosted image app.
+yougram is a self-hosted image sharing app.
 
-Please note that yougram is very early in development and parts of this readme have been written for
-an idealised future yougram that doesn't exist yet, so expect contradictions and falsehoods.
+Please note that yougram is very early in development and basically unusable. Parts of this readme
+have been written for an idealised future yougram that doesn't exist yet, so expect contradictions
+and falsehoods.
 
 
 ## Why yougram is good for you, a user
@@ -12,19 +13,23 @@ an idealised future yougram that doesn't exist yet, so expect contradictions and
 - Trivial to deploy: copy a single file to your server with zero dependencies
 - Set and forget: yougram will never make breaking changes and doesn't depend on external services
   that may disappear in the future. If you like it today you will like it a decade from now too
+  (not true yet)
 - Multi-user: your family can use it too
-- (optionally) AI powered: AI photo tagging so you can search for "cat",
-  and facial recognition so you can search for "Mike"
+- (optionally) AI powered: AI photo tagging so you can search for "cat", and facial recognition so
+  you can search for "Mike" (not true yet)
 - Guest access: share secret album links with your friends, both writeable (for group vacations) and
   read-only (for everyone else)
 - Backup friendly: yougram stores your data unmodified as files on disk, so it works well with
   standard backup solutions (restic/borg/etc)
 - No lock-in: getting your data out of yougram is an explicitly supported and documented workflow,
-  feel free to take your photos elsewhere
+  feel free to take your photos elsewhere (not really true yet)
 - Private: nothing leaves your computer
-- Compatible with the Immich app: automatically upload your phone library to yougram
+- Compatible with the Immich app: automatically upload your phone library to yougram (not true yet)
 - Snappy: I'm not a web developer so everything happens instantly
 - Scalable: yougram does not currently scale to millions of photos, but tens of thousands is ok
+- RAW support: you can upload and download RAWs and they stack with your JPEGs but that's about it
+  (also not true yet)
+- Video support: not yet
 
 
 ## Installation instructions
@@ -49,7 +54,7 @@ an idealised future yougram that doesn't exist yet, so expect contradictions and
 6. Optionally, if you want AI image classification, download the Moondream model and put it in the
    `moondream` directory.
 
-For a concrete example, the mikejsavage.co.uk HAProxy config looks like this:
+For a concrete example, my HAProxy config looks like this:
 
 ```
 frontend haproxy
@@ -114,8 +119,8 @@ Download a new binary.
 I develop on macOS and Linux. Yougram should run on Windows and other Unixes but I haven't and won't
 test them.
 
-Yougram should run on arbitrarily bad hardware. Probably don't enable the AI features on a Raspberry
-Pi.
+Yougram should run on arbitrarily bad hardware, but probably don't enable the AI features on a
+Raspberry Pi.
 
 The yougram binary is around 25MB. The optional Moondream AI model is 2GB.
 
