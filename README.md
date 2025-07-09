@@ -1,5 +1,6 @@
-yougram
--------
+# yougram
+
+![yougram](/readme_assets/screenshot.jpg?raw=true)
 
 yougram is a self-hosted image sharing app.
 
