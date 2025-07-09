@@ -1533,6 +1533,14 @@ func main() {
 
 	checksum = exeChecksum()
 
+	{
+		_, err := os.Stat( "container_volume_sentinel" )
+		if err == nil || !errors.Is( err, os.ErrNotExist ) {
+			fmt.Printf( "Start the container with a volume mounted at /data, i.e. podman run -v /a/b/c:/data ...\n" )
+			os.Exit( 1 )
+		}
+	}
+
 	initCookieAEAD()
 	initGeocoder()
 

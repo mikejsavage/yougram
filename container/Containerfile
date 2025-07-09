@@ -5,8 +5,8 @@ EXPOSE 8001
 VOLUME [ "/data" ]
 ENTRYPOINT [ "/yougram", "serve", "--private-listen-addr", "8000", "--guest-listen-addr", "8001" ]
 
-COPY docker_sucks_mkdir /
-RUN [ "/docker_sucks_mkdir" ]
+COPY prepare_container /
+RUN [ "/prepare_container" ]
 WORKDIR /data
 
 COPY yougram /
