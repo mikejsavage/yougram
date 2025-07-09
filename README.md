@@ -49,7 +49,7 @@ and falsehoods.
    expose the private interface to the internet, but running it behind a TLS terminating proxy (e.g.
    [Caddy][caddy] or [HAProxy][haproxy]) is ok. Exposing the guest interface directly to the
    internet should be fine.
-5. Run it with `yougram --private-interface 0.0.0.0:12345 --guest-interface 0.0.0.0:12346
+5. Run it with `yougram serve --private-interface 0.0.0.0:12345 --guest-interface 0.0.0.0:12346
    --guest-url https://guestgram.example.com`. Remember, yougram stores everything in the current
    working directory, so make sure you're in the right place first!
 6. Optionally, if you want AI image classification, download the Moondream model and put it in the
