@@ -23,9 +23,7 @@ an idealised future yougram that doesn't exist yet, so expect contradictions and
   feel free to take your photos elsewhere
 - Private: nothing leaves your computer
 - Compatible with the Immich app: automatically upload your phone library to yougram
-- Snappy: I have realistic expectations of how a photo management app should perform, i.e.
-  everything should run instantly, and I know nothing about web development so everything actually
-  does run instantly
+- Snappy: I'm not a web developer so everything happens instantly
 - Scalable: yougram does not currently scale to millions of photos, but tens of thousands is ok
 
 
@@ -135,11 +133,11 @@ legitimately trivial and can be shared freely.
 
 ## Why yougram is good for you, a developer
 
-yougram is easy to hack on. I know nothing about web development so the codebase is tiny and dirt
-simple. If I can make it work then so can you.
+yougram is easy to hack on. I'm not a web developer so the codebase is tiny and dirt simple. If I
+can make it work then so can you.
 
-It doesn't quite have zero dependencies, but it also doesn't have very many and it really is quite
-easy to set up a dev environment.
+It doesn't have zero dependencies, but it also doesn't have very many and it really is quite easy to
+set up a dev environment.
 
 
 ## Techie stuff
