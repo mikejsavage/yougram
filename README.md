@@ -17,7 +17,7 @@ and falsehoods.
 - Multi-user: your family can use it too
 - (optionally) AI powered: AI photo tagging so you can search for "cat", and facial recognition so
   you can search for "Mike" (not true yet)
-- Guest access: share secret album links with your friends, both writeable (for group vacations) and
+- Guest access: share secret album links with your friends, both writable (for group vacations) and
   read-only (for everyone else)
 - Backup friendly: yougram stores your data unmodified as files on disk, so it works well with
   standard backup solutions (restic/borg/etc)
