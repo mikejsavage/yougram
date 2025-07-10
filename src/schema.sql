@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS asset (
 	longitude REAL CHECK( longitude >= -180 AND longitude < 180 )
 ) STRICT;
 
+CREATE INDEX IF NOT EXISTS idx_asset__created_at ON asset( created_at );
 CREATE INDEX IF NOT EXISTS idx_asset__date_taken ON asset( date_taken );
 
 ------------
@@ -80,6 +81,8 @@ CREATE TABLE IF NOT EXISTS album (
 	readonly_secret TEXT NOT NULL,
 	readwrite_secret TEXT NOT NULL,
 
+	delete_at INTEGER,
+
 	autoassign_start_date INTEGER,
 	autoassign_end_date INTEGER,
 	autoassign_latitude REAL CHECK( IFNULL( autoassign_latitude, 0 ) BETWEEN -90 and 90 ),
@@ -114,5 +117,6 @@ LEFT OUTER JOIN photo_primary_asset ON photo_primary_asset.photo_id = IFNULL( al
 	ORDER BY lol.date_taken DESC LIMIT 1
 ) );
 
-CREATE INDEX IF NOT EXISTS idx_album_photo__album_id ON album_photo( album_id );
+-- the unique constraint makes the first index pointless, not sure if we ever need the second one
+-- CREATE INDEX IF NOT EXISTS idx_album_photo__album_id ON album_photo( album_id );
 CREATE INDEX IF NOT EXISTS idx_album_photo__photo_id ON album_photo( photo_id );

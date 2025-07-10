@@ -204,8 +204,8 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 					// the imgs are deleted and recreated when cycling between photos or you get
 					// visual glitches
 					<template x-if="fullscreen == i - 1">
-						<dialog class="fullscreen" x-init="$el.showModal()" x-htmldialog="fullscreen = null"
-							@click="fullscreen = null"
+						<dialog class="fullscreen" x-init="$el.showModal()" @close="fullscreen = null"
+							@click="$el.close()"
 							@keydown.window.left="EnterFullscreen( fullscreen - 1 )"
 							@keydown.window.right="EnterFullscreen( fullscreen + 1 )"
 						>
@@ -249,23 +249,17 @@ const (
 	AlbumOwnership_Guest
 )
 
-// TODO: dedupe this with the create album form
 templ albumSettings( album sqlc.GetAlbumByURLRow ) {
 	<div x-show="!selecting" x-data="{
-		show: false,
 		name: '',
 		url: '',
 		auto_slug: true,
+		confirm_delete: false,
 	}">
-		<button @click="show = true; $el.parentElement.querySelector( 'form' ).reset()">Album settings</button>
+		<button command="show-modal" commandfor="albumsettings" @click="confirm_delete = false; ResetDialog( $event )" @click="ResetDialog">Album settings</button>
 
-		<div class="dropdown"
-			x-cloak x-show="show"
-			@click.away="show = false"
-			@keydown.window.escape="show = false"
-		>
+		<dialog style="max-width: 25rem" id="albumsettings" @click="DialogClicked">
 			<form
-				style="display: flex; flex-direction: column; width: 25rem"
 				hx-post="/Special:albumSettings"
 				hx-target="find .error"
 				hx-swap="textContent"
@@ -282,17 +276,31 @@ templ albumSettings( album sqlc.GetAlbumByURLRow ) {
 				<div>
 					<b>URL</b>
 					<label>
-						<input type="checkbox" x-model="auto_slug" checked> Auto
+						<input type="checkbox" x-model="auto_slug"> Auto
 					</label>
 				</div>
 
 				<input type="text" name="url" x-model="url" value={ album.UrlSlug } autocomplete="off" x-effect="if( auto_slug ) { url = MakeSlug( name ); }" :readonly="auto_slug">
 
-				<button type="submit" style="width: min-content">Save</button>
+				<button type="submit">Save</button>
 
 				<div class="error"></div>
 			</form>
-		</div>
+
+			<form hx-post="/Special:deleteAlbum" hx-target="find .error" hx-disabled-elt="find button">
+				<h3>Delete album</h3>
+
+				<div>
+					Click the button below to mark { album.Name } for deletion in 30 days.
+					<a href="/Special:deleted">You can recover it from the Deleted page if you change your mind.</a>
+				</div>
+
+				<button type="button" x-show="!confirm_delete" @click="confirm_delete = true">Delete album?</button>
+				<button x-cloak x-show="confirm_delete" type="submit">Really delete album</button>
+
+				<div class="error"></div>
+			</form>
+		</dialog>
 	</div>
 }
 
@@ -348,11 +356,11 @@ templ downloadButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership, bas
 		variants: null,
 		heic_as_jpg: null,
 	}">
-		<button @click="show = true; $el.parentElement.querySelector( 'form' ).reset()">
+		<button command="show-modal" commandfor="download" @click="ResetDialog">
 			Download
 		</button>
 
-		<dialog x-cloak x-show="show" x-htmldialog="show = false">
+		<dialog id="download" @click="DialogClicked">
 			{{ action := base_urls.Download + sel( ownership != AlbumOwnership_Guest, album.UrlSlug, "" ) }}
 			<form method="GET" action={ templ.URL( action ) }>
 				<h2>Download { album.Name }</h2>
@@ -404,11 +412,11 @@ templ downloadSelectedButton( base_urls BaseURLs ) {
 			return ids.substr( 1 );
 		},
 	}">
-		<button @click="show = true; $el.parentElement.querySelector( 'form' ).reset()" :disabled="selected.size == 0">
+		<button command="show-modal" commandfor="downloadselected" @click="ResetDialog" :disabled="selected.size == 0">
 			Download
 		</button>
 
-		<dialog x-cloak x-show="show" x-htmldialog="show = false">
+		<dialog id="downloadselected" @click="DialogClicked">
 			<form method="POST" action={ templ.URL( base_urls.Download ) }
 				@submit="$el.querySelector( 'input[name=photos]' ).value = PhotosFormValue()"
 			>
@@ -666,7 +674,7 @@ templ photogridWithHeader( photos []Photo, subheader templ.Component, base_urls 
 				}
 
 				.right > div {
-					line-height: 1;
+					/* line-height: 1; */
 				}
 
 				@media (max-width: 479px) {

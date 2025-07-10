@@ -17,6 +17,7 @@ type Album struct {
 	Shared              int64
 	ReadonlySecret      string
 	ReadwriteSecret     string
+	DeleteAt            sql.NullInt64
 	AutoassignStartDate sql.NullInt64
 	AutoassignEndDate   sql.NullInt64
 	AutoassignLatitude  sql.NullFloat64

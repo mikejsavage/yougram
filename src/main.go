@@ -56,8 +56,6 @@ var db_schema string
 
 //go:embed vendor_js/alpine-3.14.9.js
 var alpinejs string
-//go:embed vendor_js/alpinejs-dialog-2.1.1.js
-var alpinejs_dialog string
 //go:embed vendor_js/htmx-2.0.4.js
 var htmxjs string
 //go:embed vendor_js/thumbhash.js
@@ -1644,7 +1642,6 @@ func main() {
 	private_http_server := startHttpServer( private_listen_addr, []Route {
 		{ "GET",  "/Special:checksum", getChecksum },
 		{ "GET",  "/Special:alpinejs-3.14.9.js", serveString( alpinejs ) },
-		{ "GET",  "/Special:alpinejs-dialog-2.1.1.js", serveString( alpinejs_dialog ) },
 		{ "GET",  "/Special:htmx-2.0.4.js", serveString( htmxjs ) },
 		{ "GET",  "/Special:thumbhash-1.0.0.js", serveString( thumbhashjs ) },
 
@@ -1679,7 +1676,6 @@ func main() {
 	guest_http_server := startHttpServer( guest_listen_addr, []Route {
 		{ "GET",  "/Special:checksum", getChecksum },
 		{ "GET",  "/Special:alpinejs-3.14.9.js", serveString( alpinejs ) },
-		{ "GET",  "/Special:alpinejs-dialog-2.1.1.js", serveString( alpinejs_dialog ) },
 		{ "GET",  "/Special:htmx-2.0.4.js", serveString( htmxjs ) },
 		{ "GET",  "/Special:thumbhash-1.0.0.js", serveString( thumbhashjs ) },
 

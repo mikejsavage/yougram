@@ -415,7 +415,7 @@ func (q *Queries) GetAlbumPhotos(ctx context.Context, albumID int64) ([]GetAlbum
 const getAlbumsForUser = `-- name: GetAlbumsForUser :many
 SELECT album.name, album.url_slug, album_key_asset.sha256 AS key_photo_sha256 FROM album
 LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
-WHERE ( album.shared OR album.owner = ? )
+WHERE ( album.shared OR album.owner = ? ) AND album.delete_at IS NULL
 ORDER BY album.name
 `
 

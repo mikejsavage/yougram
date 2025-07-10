@@ -45,17 +45,14 @@ templ sidebarAlbum( album sqlc.GetAlbumsForUserRow ) {
 
 templ createAlbumButton() {
 	<div x-data="{
-		show: false,
 		name: '',
 		url: '',
 		auto_slug: true,
 		shared: false,
 	}">
-		<button @click="show = true; $el.parentElement.querySelector( 'form' ).reset()">Create album</button>
+		<button command="show-modal" commandfor="createalbum" @click="ResetDialog">Create album</button>
 
-		<dialog style="width: 20rem"
-			x-cloak x-show="show" x-htmldialog="show = false"
-			x-data="{ error: '' }">
+		<dialog x-data="{ error: '' }" style="max-width: 20rem" id="createalbum" @click="DialogClicked">
 			<form hx-put="/Special:createAlbum" x-htmx.json="albums" x-htmx-error="error">
 				<h2>New album</h2>
 
@@ -93,7 +90,6 @@ templ base( title string ) {
 	<title>{ title }</title>
 
 	@autorefresh()
-	<script src="/Special:alpinejs-dialog-2.1.1.js" defer></script>
 	<script src="/Special:alpinejs-3.14.9.js" defer></script>
 	<script src="/Special:htmx-2.0.4.js"></script>
 	<script src="/Special:thumbhash-1.0.0.js"></script>
@@ -128,6 +124,25 @@ templ base( title string ) {
 			} );
 		} );
 	} );
+
+	function ResetDialog( ev ) {
+		ev.target.parentElement.querySelectorAll( "form" ).forEach( f => f.reset() );
+	}
+
+	function DialogClicked( ev ) {
+		// this happens if you click on buttons etc in the dialog
+		if( ev.target.tagName != "dialog" ) {
+			return;
+		}
+
+		const rect = ev.target.getBoundingClientRect();
+		const x = ev.clientX;
+		const y = ev.clientY;
+		if( x < rect.left || y < rect.top || x > rect.left + rect.width || y > rect.top + rect.height ) {
+			console.log( ev.target );
+			ev.target.close();
+		}
+	}
 	</script>
 
 	<style>
@@ -169,7 +184,7 @@ templ base( title string ) {
 		background: rgba( 0, 0, 0, 0.9 );
 	}
 
-	h1, h2  {
+	h1, h2, h3 {
 		margin: 0;
 	}
 
@@ -274,6 +289,10 @@ templ base( title string ) {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
+	}
+
+	form + form {
+		margin-top: 1rem;
 	}
 
 	form button {
