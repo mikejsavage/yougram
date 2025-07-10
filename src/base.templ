@@ -50,7 +50,7 @@ templ createAlbumButton() {
 		auto_slug: true,
 		shared: false,
 	}">
-		<button command="show-modal" commandfor="createalbum" @click="ResetDialog">Create album</button>
+		<button command="show-modal" commandfor="createalbum" @click="ResetForms">Create album</button>
 
 		<dialog x-data="{ error: '' }" style="max-width: 20rem" id="createalbum" @click="DialogClicked">
 			<form hx-put="/Special:createAlbum" x-htmx.json="albums" x-htmx-error="error">
@@ -125,7 +125,7 @@ templ base( title string ) {
 		} );
 	} );
 
-	function ResetDialog( ev ) {
+	function ResetForms( ev ) {
 		ev.target.parentElement.querySelectorAll( "form" ).forEach( f => f.reset() );
 	}
 

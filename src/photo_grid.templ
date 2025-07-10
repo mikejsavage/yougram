@@ -256,7 +256,7 @@ templ albumSettings( album sqlc.GetAlbumByURLRow ) {
 		auto_slug: true,
 		confirm_delete: false,
 	}">
-		<button command="show-modal" commandfor="albumsettings" @click="confirm_delete = false; ResetDialog( $event )" @click="ResetDialog">Album settings</button>
+		<button command="show-modal" commandfor="albumsettings" @click="confirm_delete = false; ResetForms( $event )" @click="ResetForms">Album settings</button>
 
 		<dialog style="max-width: 25rem" id="albumsettings" @click="DialogClicked">
 			<form
@@ -356,7 +356,7 @@ templ downloadButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership, bas
 		variants: null,
 		heic_as_jpg: null,
 	}">
-		<button command="show-modal" commandfor="download" @click="ResetDialog">
+		<button command="show-modal" commandfor="download" @click="ResetForms">
 			Download
 		</button>
 
@@ -412,7 +412,7 @@ templ downloadSelectedButton( base_urls BaseURLs ) {
 			return ids.substr( 1 );
 		},
 	}">
-		<button command="show-modal" commandfor="downloadselected" @click="ResetDialog" :disabled="selected.size == 0">
+		<button command="show-modal" commandfor="downloadselected" @click="ResetForms" :disabled="selected.size == 0">
 			Download
 		</button>
 
