@@ -203,6 +203,20 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, 
 	return id, err
 }
 
+const deleteAlbum = `-- name: DeleteAlbum :exec
+UPDATE album SET delete_at = ? WHERE url_slug = ?
+`
+
+type DeleteAlbumParams struct {
+	DeleteAt sql.NullInt64
+	UrlSlug  string
+}
+
+func (q *Queries) DeleteAlbum(ctx context.Context, arg DeleteAlbumParams) error {
+	_, err := q.db.ExecContext(ctx, deleteAlbum, arg.DeleteAt, arg.UrlSlug)
+	return err
+}
+
 const deleteUnusedAvatars = `-- name: DeleteUnusedAvatars :exec
 DELETE FROM avatar WHERE NOT EXISTS( SELECT 1 FROM user WHERE user.avatar = avatar.sha256 )
 `
@@ -331,7 +345,7 @@ SELECT album.id, owner, url_slug, user.username AS owner_username, album.name, s
 FROM album
 LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
 INNER JOIN user ON album.owner = user.id
-WHERE url_slug = ?
+WHERE url_slug = ? AND delete_at IS NULL
 `
 
 type GetAlbumByURLRow struct {
@@ -874,6 +888,15 @@ func (q *Queries) IsAlbumURLInUse(ctx context.Context, urlSlug string) (int64, e
 	return column_1, err
 }
 
+const purgeDeletedAlbums = `-- name: PurgeDeletedAlbums :exec
+DELETE FROM album WHERE delete_at < ?
+`
+
+func (q *Queries) PurgeDeletedAlbums(ctx context.Context, deleteAt sql.NullInt64) error {
+	_, err := q.db.ExecContext(ctx, purgeDeletedAlbums, deleteAt)
+	return err
+}
+
 const resetUserPassword = `-- name: ResetUserPassword :exec
 UPDATE user SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = ?
 `
@@ -886,6 +909,15 @@ type ResetUserPasswordParams struct {
 
 func (q *Queries) ResetUserPassword(ctx context.Context, arg ResetUserPasswordParams) error {
 	_, err := q.db.ExecContext(ctx, resetUserPassword, arg.Password, arg.Cookie, arg.Username)
+	return err
+}
+
+const restoreDeletedAlbum = `-- name: RestoreDeletedAlbum :exec
+UPDATE album SET delete_at = NULL WHERE url_slug = ?
+`
+
+func (q *Queries) RestoreDeletedAlbum(ctx context.Context, urlSlug string) error {
+	_, err := q.db.ExecContext(ctx, restoreDeletedAlbum, urlSlug)
 	return err
 }
 

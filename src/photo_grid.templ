@@ -287,7 +287,7 @@ templ albumSettings( album sqlc.GetAlbumByURLRow ) {
 				<div class="error"></div>
 			</form>
 
-			<form hx-post="/Special:deleteAlbum" hx-target="find .error" hx-disabled-elt="find button">
+			<form hx-delete hx-target="find .error" hx-disabled-elt="find button">
 				<h3>Delete album</h3>
 
 				<div>

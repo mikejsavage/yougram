@@ -171,6 +171,15 @@ INSERT INTO album (
 	autoassign_start_date, autoassign_end_date, autoassign_latitude, autoassign_longitude, autoassign_radius
 ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );
 
+-- name: DeleteAlbum :exec
+UPDATE album SET delete_at = ? WHERE url_slug = ?;
+
+-- name: PurgeDeletedAlbums :exec
+DELETE FROM album WHERE delete_at < ?;
+
+-- name: RestoreDeletedAlbum :exec
+UPDATE album SET delete_at = NULL WHERE url_slug = ?;
+
 -- name: AddPhotoToAlbum :exec
 INSERT OR IGNORE INTO album_photo ( album_id, photo_id ) VALUES ( ?, ? );
 
@@ -185,7 +194,7 @@ SELECT album.id, owner, url_slug, user.username AS owner_username, album.name, s
 FROM album
 LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
 INNER JOIN user ON album.owner = user.id
-WHERE url_slug = ?;
+WHERE url_slug = ? AND delete_at IS NULL;
 
 -- name: GetAlbumOwner :one
 SELECT owner FROM album WHERE id = ?;

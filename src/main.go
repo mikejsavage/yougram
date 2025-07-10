@@ -623,6 +623,17 @@ func shareAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	w.Header().Set( "HX-Trigger", sel( shared == 0, "album:stop_sharing", "album:start_sharing" ) )
 }
 
+func deleteAlbum( w http.ResponseWriter, r *http.Request, user User ) {
+	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+		const _30_days = 30 * 24 * time.Hour
+		try( queries.DeleteAlbum( r.Context(), sqlc.DeleteAlbumParams {
+			DeleteAt: sql.NullInt64 { time.Now().Add( _30_days ).Unix(), true },
+			UrlSlug: album.UrlSlug,
+		} ) )
+		w.Header().Set( "HX-Redirect", "/Special:deleted" )
+	} )
+}
+
 func serveAlbumZip( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumByURLRow ) {
 	query := r.URL.Query()
 	download_everything := query.Get( "variants" ) == "everything"
@@ -1671,6 +1682,8 @@ func main() {
 		{ "PUT",  "/", requireAuth( uploadToLibrary ) },
 		{ "PUT",  "/{album}", requireAuth( uploadToAlbum ) },
 		{ "PUT",  "/Special:uploadToPhoto", requireAuth( uploadToPhoto ) },
+
+		{ "DELETE", "/{album}", requireAuth( deleteAlbum ) },
 	} )
 
 	guest_http_server := startHttpServer( guest_listen_addr, []Route {
