@@ -188,7 +188,7 @@ func requireAuth( handler func( http.ResponseWriter, *http.Request, User ) ) fun
 		if !checkAuth( w, r, handler ) {
 			if r.Method == "GET" {
 				w.WriteHeader( http.StatusUnauthorized )
-				loginForm( w, r )
+				try( loginFormTemplate().Render( r.Context(), w ) )
 			} else {
 				httpError( w, http.StatusUnauthorized )
 			}

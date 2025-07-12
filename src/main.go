@@ -1368,10 +1368,6 @@ func pathPhotoHandler( w http.ResponseWriter, r *http.Request, user User, handle
 	handler( w, r, user, photo_id )
 }
 
-func loginForm( w http.ResponseWriter, r *http.Request ) {
-	try( loginFormTemplate().Render( r.Context(), w ) )
-}
-
 type ZipFile struct {
 	Sha256 []byte
 	Type string
