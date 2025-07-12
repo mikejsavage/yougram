@@ -52,7 +52,7 @@ templ createAlbumButton() {
 	}">
 		<button command="show-modal" commandfor="createalbum" @click="ResetForms">Create album</button>
 
-		<dialog x-data="{ error: '' }" style="max-width: 20rem" id="createalbum" @click="DialogClicked">
+		<dialog x-data="{ error: '' }" style="max-width: 20rem" id="createalbum" @click="DialogClicked" @yougram:album_created="$el.close()">
 			<form hx-put="/Special:createAlbum" x-htmx.json="albums" x-htmx-error="error">
 				<h2>New album</h2>
 
@@ -102,8 +102,6 @@ templ base( title string ) {
 					return;
 				ev.preventDefault();
 				Alpine.$data( el )[ expression ] = modifiers.includes( "json" ) ? JSON.parse( ev.detail.serverResponse ) : ev.detail.serverResponse;
-				console.log( Alpine.$data( el )[ expression ][ 0 ] );
-				console.log( ev.detail.serverResponse );
 			} );
 		} );
 

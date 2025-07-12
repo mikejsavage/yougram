@@ -537,6 +537,8 @@ func createAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 		ReadwriteSecret: secureRandomBase64String( 6 ),
 	} ) )
 
+	w.Header().Set( "HX-Trigger", "yougram:album_created" )
+
 	albums := try1( queries.GetAlbumsForUser( r.Context(), user.ID ) )
 	_ = try1( w.Write( must1( json.Marshal( toHTMLAlbums( albums ) ) ) ) )
 }
