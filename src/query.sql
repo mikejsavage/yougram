@@ -175,7 +175,7 @@ INSERT INTO album (
 UPDATE album SET delete_at = ? WHERE url_slug = ?;
 
 -- name: PurgeDeletedAlbums :exec
-DELETE FROM album WHERE delete_at < ?;
+DELETE FROM album WHERE delete_at IS NOT NULL AND delete_at < ?;
 
 -- name: RestoreDeletedAlbum :exec
 UPDATE album SET delete_at = NULL WHERE url_slug = ?;

@@ -889,7 +889,7 @@ func (q *Queries) IsAlbumURLInUse(ctx context.Context, urlSlug string) (int64, e
 }
 
 const purgeDeletedAlbums = `-- name: PurgeDeletedAlbums :exec
-DELETE FROM album WHERE delete_at < ?
+DELETE FROM album WHERE delete_at IS NOT NULL AND delete_at < ?
 `
 
 func (q *Queries) PurgeDeletedAlbums(ctx context.Context, deleteAt sql.NullInt64) error {

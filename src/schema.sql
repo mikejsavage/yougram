@@ -103,8 +103,8 @@ WHEN NEW.readonly_secret = NEW.readwrite_secret
 BEGIN SELECT RAISE( ABORT, "readonly_secret = readwrite_secret" ); END;
 
 CREATE TABLE IF NOT EXISTS album_photo (
-	album_id INTEGER NOT NULL REFERENCES album( id ),
-	photo_id INTEGER NOT NULL REFERENCES photo( id ),
+	album_id INTEGER NOT NULL REFERENCES album( id ) ON DELETE CASCADE,
+	photo_id INTEGER NOT NULL REFERENCES photo( id ) ON DELETE CASCADE,
 	UNIQUE( album_id, photo_id )
 ) STRICT;
 

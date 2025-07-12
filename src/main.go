@@ -634,6 +634,10 @@ func deleteAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	} )
 }
 
+func purgeDeletedAlbums( t time.Time ) {
+	must( queries.PurgeDeletedAlbums( context.Background(), sql.NullInt64 { t.Unix(), true } ) )
+}
+
 func serveAlbumZip( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumByURLRow ) {
 	query := r.URL.Query()
 	download_everything := query.Get( "variants" ) == "everything"
@@ -1649,6 +1653,13 @@ func main() {
 
 	fs_watcher := initFSWatcher()
 	defer fs_watcher.Close()
+
+	// daily tasks
+	go func() {
+		for now := range time.Tick( 24 * time.Hour ) {
+			purgeDeletedAlbums( now )
+		}
+	}()
 
 	private_http_server := startHttpServer( private_listen_addr, []Route {
 		{ "GET",  "/Special:checksum", getChecksum },
