@@ -131,7 +131,7 @@ templ base( title string ) {
 
 	function DialogClicked( ev ) {
 		// this happens if you click on buttons etc in the dialog
-		if( ev.target.tagName != "dialog" ) {
+		if( ev.target.tagName != "DIALOG" ) {
 			return;
 		}
 
@@ -139,7 +139,6 @@ templ base( title string ) {
 		const x = ev.clientX;
 		const y = ev.clientY;
 		if( x < rect.left || y < rect.top || x > rect.left + rect.width || y > rect.top + rect.height ) {
-			console.log( ev.target );
 			ev.target.close();
 		}
 	}
