@@ -1441,10 +1441,6 @@ func serveString( content string ) func( http.ResponseWriter, *http.Request ) {
 	}
 }
 
-func serveAjax( w http.ResponseWriter, r *http.Request ) {
-	http.ServeFile( w, r, "ajax.html" )
-}
-
 func makeRouteRegex( route string ) *regexp.Regexp {
 	regex := "^" + route + "$"
 	regex = strings.ReplaceAll( regex, ".", "\\." ) // escape .
