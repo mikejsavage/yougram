@@ -1,4 +1,4 @@
-// zig build-exe -O ReleaseSmall -fstrip prepare_container.zig
+// zig build-exe -O ReleaseSmall -mcpu=baseline -fstrip prepare_container.zig
 
 const std = @import( "std" );
 
