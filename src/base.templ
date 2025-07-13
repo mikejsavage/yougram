@@ -379,10 +379,10 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 					margin-block: 0.25rem;
 				}
 
-				div {
+				a.album span {
 					white-space: nowrap;
 					text-overflow: ellipsis;
-					overflow: hidden;
+					overflow-x: hidden;
 				}
 
 				.curr {
@@ -419,20 +419,29 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 			@createAlbumButton()
 			<input type="search" placeholder="Search albums" x-model="search">
 
-			<template x-for="album in albums">
-				<template x-if="album.Name.toLowerCase().includes( search.toLowerCase() )">
-					<a class="album" :href="'/' + album.UrlSlug" :class="window.location.pathname.startsWith( '/' + album.UrlSlug ) ? 'curr' : ''">
-						<template x-if="album.KeyPhotoSha256.length > 0">
-							<img :src="'/Special:thumbnail/' + album.KeyPhotoSha256" style="height: 1lh">
-						</template>
-						<template x-if="album.KeyPhotoSha256.length == 0">
-							<span class="placeholder"></span>
-						</template>
+			<div style="
+				display: flex;
+				flex-direction: column;
+				overflow-y: auto;
+				flex-grow: 1;
+				margin-right: -0.5rem;
+				padding-right: 0.5rem;
+			">
+				<template x-for="album in albums">
+					<template x-if="album.Name.toLowerCase().includes( search.toLowerCase() )">
+						<a class="album" :href="'/' + album.UrlSlug" :class="window.location.pathname.startsWith( '/' + album.UrlSlug ) ? 'curr' : ''">
+							<template x-if="album.KeyPhotoSha256.length > 0">
+								<img :src="'/Special:thumbnail/' + album.KeyPhotoSha256" style="height: 1lh">
+							</template>
+							<template x-if="album.KeyPhotoSha256.length == 0">
+								<span class="placeholder"></span>
+							</template>
 
-						<span x-text="album.Name"></span>
-					</a>
+							<span x-text="album.Name"></span>
+						</a>
+					</template>
 				</template>
-			</template>
+			</div>
 		</nav>
 
 		@body
