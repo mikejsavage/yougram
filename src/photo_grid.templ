@@ -608,7 +608,15 @@ templ guestReadWriteWarning( album sqlc.GetAlbumByURLRow, can_upload bool ) {
 }
 
 templ photogridWithHeader( photos []Photo, subheader templ.Component, base_urls BaseURLs ) {
+	<meta name="apple-mobile-web-app-title" content="yougram"></meta>
+	<meta name="apple-mobile-web-app-capable" content="yes"></meta>
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"></meta>
+
 	<style>
+	html {
+		padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+	}
+
 	/* see https://www.w3schools.com/Css/css_dropdowns.asp */
 	.dropdown {
 		position: relative;
@@ -679,9 +687,12 @@ templ photogridWithHeader( photos []Photo, subheader templ.Component, base_urls 
 
 				@media (max-width: 479px) {
 					:scope {
-						background: rgba( 0, 0, 0, 0.2 );linear-gradient( rgba( 0, 0, 0, 0.2 ) 80%, transparent );
-						box-shadow: 0 0.5rem 0.5rem rgba( 0, 0, 0, 0.2 );
+						background: linear-gradient( to top, transparent, rgba( 0, 0, 0, 0.4 ) 0.5rem );
 						border: 0;
+						margin-top: calc( -1 * env( safe-area-inset-top ) );
+						padding-top: max( 0.5rem, env( safe-area-inset-top ) );
+						padding-bottom: 1rem;
+						margin-bottom: -0.5rem;
 					}
 
 					h1 {
