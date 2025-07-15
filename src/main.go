@@ -1432,11 +1432,16 @@ func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.Resp
 	try( archive.Close() )
 }
 
-func serveString( content string ) func( http.ResponseWriter, *http.Request ) {
+func serveString( content string, content_type string ) func( http.ResponseWriter, *http.Request ) {
 	return func( w http.ResponseWriter, r *http.Request ) {
 		cacheControlImmutable( w )
+		w.Header().Set( "Content-Type", content_type )
 		_ = try1( io.WriteString( w, content ) )
 	}
+}
+
+func serveJS( content string ) func( http.ResponseWriter, *http.Request ) {
+	return serveString( content, "text/javascript; charset=utf-8" )
 }
 
 func makeRouteRegex( route string ) *regexp.Regexp {
@@ -1657,9 +1662,9 @@ func main() {
 
 	private_http_server := startHttpServer( private_listen_addr, []Route {
 		{ "GET",  "/Special:checksum", getChecksum },
-		{ "GET",  "/Special:alpinejs-3.14.9.js", serveString( alpinejs ) },
-		{ "GET",  "/Special:htmx-2.0.4.js", serveString( htmxjs ) },
-		{ "GET",  "/Special:thumbhash-1.0.0.js", serveString( thumbhashjs ) },
+		{ "GET",  "/Special:alpinejs-3.14.9.js", serveJS( alpinejs ) },
+		{ "GET",  "/Special:htmx-2.0.4.js", serveJS( htmxjs ) },
+		{ "GET",  "/Special:thumbhash-1.0.0.js", serveJS( thumbhashjs ) },
 
 		{ "POST", "/Special:authenticate", authenticate },
 		{ "GET",  "/Special:logout", logout },
@@ -1693,9 +1698,9 @@ func main() {
 
 	guest_http_server := startHttpServer( guest_listen_addr, []Route {
 		{ "GET",  "/Special:checksum", getChecksum },
-		{ "GET",  "/Special:alpinejs-3.14.9.js", serveString( alpinejs ) },
-		{ "GET",  "/Special:htmx-2.0.4.js", serveString( htmxjs ) },
-		{ "GET",  "/Special:thumbhash-1.0.0.js", serveString( thumbhashjs ) },
+		{ "GET",  "/Special:alpinejs-3.14.9.js", serveJS( alpinejs ) },
+		{ "GET",  "/Special:htmx-2.0.4.js", serveJS( htmxjs ) },
+		{ "GET",  "/Special:thumbhash-1.0.0.js", serveJS( thumbhashjs ) },
 
 		{ "GET",  "/{album}/{secret}", viewAlbumAsGuest },
 		{ "GET",  "/{album}/{secret}/asset/{asset}", getAssetAsGuest },
