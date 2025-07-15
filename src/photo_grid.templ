@@ -28,7 +28,8 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 
 			height: 0,
 			top: 0,
-			visible_range: [ 0, 0 ],
+			visible_start: 0,
+			visible_end: 0,
 
 			fullscreen: null,
 			fullscreen_thumbnail_loaded: false,
@@ -63,10 +64,8 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 				let top_row = Math.max( 0, Math.min( last_row, Math.floor( top / row_height ) ) );
 				let bottom_row = Math.min( last_row, Math.ceil( bottom / row_height ) );
 
-				this.visible_range = [
-					Math.min( this.photos.length, top_row * grid.cols ),
-					Math.min( this.photos.length, bottom_row * grid.cols ),
-				];
+				this.visible_start = Math.min( this.photos.length, top_row * grid.cols );
+				this.visible_end = Math.min( this.photos.length, bottom_row * grid.cols );
 
 				this.height = ( grid.row_height * last_row + grid.gap * Math.max( 0, last_row - 1 ) ) + "px";
 				this.top = ( grid.row_height * top_row + grid.gap * Math.max( 0, top_row - 1 ) ) + "px";
@@ -197,7 +196,7 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 		</style>
 
 		<div class="grid" :style="{ top: top }">
-			<template x-for="i in visible_range[ 1 ] - visible_range[ 0 ]">
+			<template x-for="i in visible_end - visible_start">
 				<div>
 					// NOTE(mike 20250618): if you change an img's src the browser displays the old
 					// image until the new one has loaded, so this has to go inside the for loop so
@@ -229,12 +228,12 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 					</template>
 
 					<a class="thumbnail stack"
-						:href={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", base_urls.Asset ) }
-						:class="selected.has( visible_range[ 0 ] + i - 1 ) ? 'selected' : ''"
-						@click.prevent="PhotoClicked( visible_range[ 0 ] + i - 1, $event.shiftKey )"
+						:href={ fmt.Sprintf( "'%s' + photos[ visible_start + i - 1 ].asset", base_urls.Asset ) }
+						:class="selected.has( visible_start + i - 1 ) ? 'selected' : ''"
+						@click.prevent="PhotoClicked( visible_start + i - 1, $event.shiftKey )"
 					>
-						<img x-init="MakeThumbhash( $el, photos[ visible_range[ 0 ] + i - 1 ].thumbhash )">
-						<img :src={ fmt.Sprintf( "'%s' + photos[ visible_range[ 0 ] + i - 1 ].asset", base_urls.Thumbnail ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.style.display = 'none'">
+						<img x-init="MakeThumbhash( $el, photos[ visible_start + i - 1 ].thumbhash )">
+						<img :src={ fmt.Sprintf( "'%s' + photos[ visible_start + i - 1 ].asset", base_urls.Thumbnail ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.style.display = 'none'">
 					</a>
 				</div>
 			</template>
