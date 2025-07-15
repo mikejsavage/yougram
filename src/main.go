@@ -543,6 +543,29 @@ func createAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	_ = try1( w.Write( must1( json.Marshal( toHTMLAlbums( albums ) ) ) ) )
 }
 
+func genericAlbumHandler( w http.ResponseWriter, r *http.Request, user User, owned_only bool, handler func( http.ResponseWriter, *http.Request, User, sqlc.GetAlbumByURLRow ) ) {
+	album := queryOptional( queries.GetAlbumByURL( r.Context(), r.PathValue( "album" ) ) )
+	if !album.Valid {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+
+	if album.V.Owner != user.ID && ( owned_only || album.V.Shared == 0 ) {
+		httpError( w, http.StatusForbidden )
+		return
+	}
+
+	handler( w, r, user, album.V )
+}
+
+func ownedAlbumHandler( w http.ResponseWriter, r *http.Request, user User, handler func( http.ResponseWriter, *http.Request, User, sqlc.GetAlbumByURLRow ) ) {
+	genericAlbumHandler( w, r, user, true, handler )
+}
+
+func sharedAlbumHandler( w http.ResponseWriter, r *http.Request, user User, handler func( http.ResponseWriter, *http.Request, User, sqlc.GetAlbumByURLRow ) ) {
+	genericAlbumHandler( w, r, user, false, handler )
+}
+
 func updateAlbumSettings( w http.ResponseWriter, r *http.Request, user User ) {
 	album_id, err := strconv.ParseInt( r.PostFormValue( "album_id" ), 10, 64 )
 	if err != nil {
@@ -626,7 +649,7 @@ func shareAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 }
 
 func deleteAlbum( w http.ResponseWriter, r *http.Request, user User ) {
-	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+	ownedAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
 		const _30_days = 30 * 24 * time.Hour
 		try( queries.DeleteAlbum( r.Context(), sqlc.DeleteAlbumParams {
 			DeleteAt: sql.NullInt64 { time.Now().Add( _30_days ).Unix(), true },
@@ -663,7 +686,7 @@ func serveAlbumZip( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumB
 }
 
 func downloadAlbum( w http.ResponseWriter, r *http.Request, user User ) {
-	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+	sharedAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
 		serveAlbumZip( w, r, album )
 	} )
 }
@@ -786,7 +809,7 @@ func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 }
 
 func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
-	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+	sharedAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
 		photos := []Photo { }
 		for _, photo := range try1( queries.GetAlbumPhotos( r.Context(), album.ID ) ) {
 			photos = append( photos, Photo {
@@ -923,7 +946,7 @@ func uploadToAlbumImpl( w http.ResponseWriter, r *http.Request, userID sql.NullI
 }
 
 func uploadToAlbum( w http.ResponseWriter, r *http.Request, user User ) {
-	pathAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+	sharedAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
 		uploadToAlbumImpl( w, r, sql.NullInt64 { user.ID, true }, album )
 	} )
 }
@@ -1335,21 +1358,6 @@ func addFileToAlbum( ctx context.Context, user int64, path string, album_id int6
 	return addFile( ctx, user, path, sql.Null[ int64 ] { album_id, true } )
 }
 
-func pathAlbumHandler( w http.ResponseWriter, r *http.Request, user User, handler func( http.ResponseWriter, *http.Request, User, sqlc.GetAlbumByURLRow ) ) {
-	album := queryOptional( queries.GetAlbumByURL( r.Context(), r.PathValue( "album" ) ) )
-	if !album.Valid {
-		httpError( w, http.StatusNotFound )
-		return
-	}
-
-	if album.V.Owner != user.ID && album.V.Shared == 0 {
-		httpError( w, http.StatusForbidden )
-		return
-	}
-
-	handler( w, r, user, album.V )
-}
-
 func pathPhotoHandler( w http.ResponseWriter, r *http.Request, user User, handler func( http.ResponseWriter, *http.Request, User, int64 ) ) {
 	photo_id, err := strconv.ParseInt( r.PostFormValue( "photo" ), 10, 64 )
 	if err != nil {
@@ -1682,6 +1690,7 @@ func main() {
 		{ "POST", "/Special:albumSettings", requireAuth( updateAlbumSettings ) },
 		{ "GET",  "/Special:checkAlbumURL", requireAuth( checkAlbumURL ) },
 		{ "POST", "/Special:shareAlbum", requireAuth( shareAlbum ) },
+		{ "DELETE", "/{album}", requireAuth( deleteAlbum ) },
 
 		{ "GET",  "/Special:download/{album}", requireAuth( downloadAlbum ) },
 		{ "POST", "/Special:download", requireAuth( downloadPhotos ) },
@@ -1692,8 +1701,6 @@ func main() {
 		{ "PUT",  "/", requireAuth( uploadToLibrary ) },
 		{ "PUT",  "/{album}", requireAuth( uploadToAlbum ) },
 		{ "PUT",  "/Special:uploadToPhoto", requireAuth( uploadToPhoto ) },
-
-		{ "DELETE", "/{album}", requireAuth( deleteAlbum ) },
 	} )
 
 	guest_http_server := startHttpServer( guest_listen_addr, []Route {
