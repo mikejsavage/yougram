@@ -42,8 +42,8 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 			},
 
 			GridSpec() {
-				let cols = window.getComputedStyle( document.querySelector( ".grid" ) )[ "grid-template-columns" ].split( " " );
-				let gap = window.getComputedStyle( document.querySelector( ".grid" ) )[ "gap" ];
+				let cols = window.getComputedStyle( document.querySelector( ".grid" ) ).gridTemplateColumns.split( " " );
+				let gap = window.getComputedStyle( document.querySelector( ".grid" ) ).gap;
 				return {
 					cols: cols.length,
 					row_height: parseFloat( this.StripPx( cols[ 0 ] ) ),
