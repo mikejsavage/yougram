@@ -183,6 +183,9 @@ UPDATE album SET delete_at = NULL WHERE url_slug = ?;
 -- name: AddPhotoToAlbum :exec
 INSERT OR IGNORE INTO album_photo ( album_id, photo_id ) VALUES ( ?, ? );
 
+-- name: RemovePhotoFromAlbum :exec
+DELETE FROM album_photo WHERE album_id = ? AND photo_id = ?;
+
 -- name: GetAlbumsForUser :many
 SELECT album.name, album.url_slug, album_key_asset.sha256 AS key_photo_sha256 FROM album
 LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id

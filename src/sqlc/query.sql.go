@@ -897,6 +897,20 @@ func (q *Queries) PurgeDeletedAlbums(ctx context.Context, deleteAt sql.NullInt64
 	return err
 }
 
+const removePhotoFromAlbum = `-- name: RemovePhotoFromAlbum :exec
+DELETE FROM album_photo WHERE album_id = ? AND photo_id = ?
+`
+
+type RemovePhotoFromAlbumParams struct {
+	AlbumID int64
+	PhotoID int64
+}
+
+func (q *Queries) RemovePhotoFromAlbum(ctx context.Context, arg RemovePhotoFromAlbumParams) error {
+	_, err := q.db.ExecContext(ctx, removePhotoFromAlbum, arg.AlbumID, arg.PhotoID)
+	return err
+}
+
 const resetUserPassword = `-- name: ResetUserPassword :exec
 UPDATE user SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = ?
 `

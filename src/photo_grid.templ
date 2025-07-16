@@ -53,30 +53,32 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 
 			UpdateLayout() {
 				// TODO: account for grid pos on page
-				let grid = this.GridSpec();
+				const grid = this.GridSpec();
 
-				let top = window.visualViewport.pageTop - window.visualViewport.height * 0.5;
-				let bottom = window.visualViewport.pageTop + window.visualViewport.height * 1.5;
+				const top = window.visualViewport.pageTop - window.visualViewport.height * 0.5;
+				const bottom = window.visualViewport.pageTop + window.visualViewport.height * 1.5;
 
-				let row_height = parseFloat( grid.row_height ) + parseFloat( grid.gap );
+				const row_height = parseFloat( grid.row_height ) + parseFloat( grid.gap );
 
-				let last_row = Math.ceil( this.photos.length / grid.cols );
-				let top_row = Math.max( 0, Math.min( last_row, Math.floor( top / row_height ) ) );
-				let bottom_row = Math.min( last_row, Math.ceil( bottom / row_height ) );
+				const photos = Alpine.store( "photos" );
 
-				this.visible_start = Math.min( this.photos.length, top_row * grid.cols );
-				this.visible_end = Math.min( this.photos.length, bottom_row * grid.cols );
+				const last_row = Math.ceil( photos.length / grid.cols );
+				const top_row = Math.max( 0, Math.min( last_row, Math.floor( top / row_height ) ) );
+				const bottom_row = Math.min( last_row, Math.ceil( bottom / row_height ) );
+
+				this.visible_start = Math.min( photos.length, top_row * grid.cols );
+				this.visible_end = Math.min( photos.length, bottom_row * grid.cols );
 
 				this.height = ( grid.row_height * last_row + grid.gap * Math.max( 0, last_row - 1 ) ) + "px";
 				this.top = ( grid.row_height * top_row + grid.gap * Math.max( 0, top_row - 1 ) ) + "px";
 			},
 
 			EnterFullscreen( idx ) {
-				idx = Math.max( 0, Math.min( this.photos.length - 1, idx ) );
+				idx = Math.max( 0, Math.min( photos.length - 1, idx ) );
 				if( this.fullscreen == idx )
 					return;
 
-				this.fullscreen = Math.max( 0, Math.min( this.photos.length - 1, idx ) );
+				this.fullscreen = Math.max( 0, Math.min( photos.length - 1, idx ) );
 				this.fullscreen_thumbnail_loaded = false;
 				this.fullscreen_thumbnail_failed = false;
 				this.fullscreen_asset_loaded = false;
@@ -95,15 +97,15 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 
 				if( shift && this.last_selected != null ) {
 					for( let i = Math.min( idx, this.last_selected ); i <= Math.max( idx, this.last_selected ); i++ ) {
-						this.selected.set( i, true );
+						Alpine.store( "selected" ).set( i, true );
 					}
 				}
 				else {
-					if( this.selected.has( idx ) ) {
-						this.selected.delete( idx );
+					if( Alpine.store( "selected" ).has( idx ) ) {
+						Alpine.store( "selected" ).delete( idx );
 					}
 					else {
-						this.selected.set( idx, true );
+						Alpine.store( "selected" ).set( idx, true );
 					}
 				}
 				this.last_selected = idx;
@@ -228,12 +230,12 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 					</template>
 
 					<a class="thumbnail stack"
-						:href={ fmt.Sprintf( "'%s' + photos[ visible_start + i - 1 ].asset", base_urls.Asset ) }
-						:class="selected.has( visible_start + i - 1 ) ? 'selected' : ''"
+						:href={ fmt.Sprintf( "'%s' + $store.photos[ visible_start + i - 1 ].asset", base_urls.Asset ) }
+						:class="$store.selected.has( visible_start + i - 1 ) ? 'selected' : ''"
 						@click.prevent="PhotoClicked( visible_start + i - 1, $event.shiftKey )"
 					>
-						<img x-init="MakeThumbhash( $el, photos[ visible_start + i - 1 ].thumbhash )">
-						<img :src={ fmt.Sprintf( "'%s' + photos[ visible_start + i - 1 ].asset", base_urls.Thumbnail ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.style.display = 'none'">
+						<img x-init="MakeThumbhash( $el, $store.photos[ visible_start + i - 1 ].thumbhash )">
+						<img :src={ fmt.Sprintf( "'%s' + $store.photos[ visible_start + i - 1 ].asset", base_urls.Thumbnail ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.style.display = 'none'">
 					</a>
 				</div>
 			</template>
@@ -248,7 +250,7 @@ const (
 	AlbumOwnership_Guest
 )
 
-templ albumSettings( album sqlc.GetAlbumByURLRow ) {
+templ albumSettingsButton( album sqlc.GetAlbumByURLRow ) {
 	<div x-show="!selecting" x-data="{
 		name: '',
 		url: '',
@@ -270,7 +272,7 @@ templ albumSettings( album sqlc.GetAlbumByURLRow ) {
 				<input type="hidden" name="album_id" value={ album.ID }>
 
 				<b>Name</b>
-				<input type="text" name="name" x-model="name" value={ album.Name } autocomplete="off">
+				<input type="text" name="name" x-model="name" value={ album.Name } autocomplete="off" required>
 
 				<div>
 					<b>URL</b>
@@ -279,7 +281,7 @@ templ albumSettings( album sqlc.GetAlbumByURLRow ) {
 					</label>
 				</div>
 
-				<input type="text" name="url" x-model="url" value={ album.UrlSlug } autocomplete="off" x-effect="if( auto_slug ) { url = MakeSlug( name ); }" :readonly="auto_slug">
+				<input type="text" name="url" x-model="url" value={ album.UrlSlug } autocomplete="off" x-effect="if( auto_slug ) { url = MakeSlug( name ); }" :readonly="auto_slug" required>
 
 				<button type="submit">Save</button>
 
@@ -342,7 +344,7 @@ templ shareButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 }
 
 templ selectButton() {
-	<button style="display: flex; align-items: center; gap: 0.25rem" @click="selecting = !selecting; selected = new Map(); last_selected = null">
+	<button style="display: flex; align-items: center; gap: 0.25rem" @click="selecting = !selecting; $store.selected.clear(); last_selected = null">
 		<input type="checkbox" x-model="selecting" class="no-mobile" style="pointer-events: none; margin: 0">
 		Select
 	</button>
@@ -402,16 +404,8 @@ templ downloadSelectedButton( base_urls BaseURLs ) {
 		include: null,
 		variants: null,
 		heic_as_jpg: null,
-
-		PhotosFormValue() {
-			let ids = '';
-			for( const idx of this.selected.keys() ) {
-				ids = ids + ',' + this.photos[ idx ].id.toString();
-			}
-			return ids.substr( 1 );
-		},
 	}">
-		<button command="show-modal" commandfor="downloadselected" @click="ResetForms" :disabled="selected.size == 0">
+		<button command="show-modal" commandfor="downloadselected" @click="ResetForms" :disabled="$store.selected.size == 0">
 			Download
 		</button>
 
@@ -421,7 +415,7 @@ templ downloadSelectedButton( base_urls BaseURLs ) {
 			>
 				<input type="hidden" name="photos">
 
-				<h2>Download <span x-text="selected.size"></span> selected</h2>
+				<h2>Download <span x-text="$store.selected.size"></span> selected</h2>
 
 				<div style="display: grid; grid-template-columns: auto auto; gap: 0.5rem 1rem">
 					<b>Variants</b>
@@ -547,15 +541,91 @@ templ uploadButton() {
 	</div>
 }
 
-templ selectionButtons( owned bool, is_album bool, base_urls BaseURLs ) {
-	if owned {
-		<button x-cloak x-show="selecting" @click="photos.map( ( _, i ) => selected.set( i, true ) )">Select all</button>
-		<button x-cloak x-show="selecting" @click="selected.clear(); last_selected = null">Deselect all</button>
-		<button x-cloak x-show="selecting" :disabled="selected.size == 0">Add to</button>
+templ addToAlbumButton() {
+	<style>
+	button:has(+ .dropdown:not([style*="display: none"])) {
+		/* border-bottom: 0;
+		border-bottom-left-radius: 0;
+		border-bottom-right-radius: 0; */
+		outline: 1.5px solid var( --blue );
+	}
+	</style>
 
-		if is_album {
-			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Move to</button>
-			<button x-cloak x-show="selecting" :disabled="selected.size == 0">Remove</button>
+	<div x-cloak x-show="selecting" x-data="{ show: false, search: '' }">
+		<button class="chevron" :disabled="$store.selected.size == 0" @click="show = true; search = ''">Add to</button>
+
+		<div class="dropdown" x-cloak x-show="show" @click.away="show = false" @keydown.escape.window="show = false">
+			<style>
+			@scope {
+				a {
+					display: flex;
+					gap: 0.5rem;
+					margin: -0.25rem -0.5rem;
+					padding: 0.25rem 0.5rem;
+					text-decoration: none;
+				}
+
+				a:hover {
+					background: #ddd;
+				}
+
+				img {
+					aspect-ratio: 1;
+					object-fit: cover;
+					object-position: 50% 50%;
+				}
+
+				.placeholder {
+					border: 1px solid #333;
+					width: 1lh;
+					height: 1lh;
+				}
+			}
+			</style>
+
+			<div style="display: flex; flex-direction: column; gap: 0.5rem">
+				<input type="search" placeholder="Search albums" x-model="search">
+
+				<template x-for="album in albums">
+					<template x-if="album.Name.toLowerCase().includes( search.toLowerCase() ) && !window.location.pathname.startsWith( '/' + album.UrlSlug )">
+						<a href="#" class="blank album"
+							:hx-put="'/Special:addToAlbum/' + album.UrlSlug"
+							hx-vals="js:{ photos: PhotosFormValue() }"
+						>
+							<template x-if="album.KeyPhotoSha256.length > 0">
+								<img :src="'/Special:thumbnail/' + album.KeyPhotoSha256" style="height: 1lh">
+							</template>
+							<template x-if="album.KeyPhotoSha256.length == 0">
+								<span class="placeholder"></span>
+							</template>
+
+							<span x-text="album.Name"></span>
+						</a>
+					</template>
+				</template>
+			</div>
+		</div>
+	</div>
+}
+
+templ removeFromAlbumButton( album sqlc.GetAlbumByURLRow ) {
+	<button x-cloak x-show="selecting" :disabled="$store.selected.size == 0"
+		hx-put={ templ.URL( "/Special:removeFromAlbum/" + album.UrlSlug ) }
+		hx-vals="js:{ photos: PhotosFormValue() }"
+	>
+		Remove from { album.Name }
+	</button>
+}
+
+templ selectionButtons( album *sqlc.GetAlbumByURLRow, owned bool, base_urls BaseURLs ) {
+	if owned {
+		<button x-cloak x-show="selecting" @click="$store.photos.map( ( _, i ) => $store.selected.set( i, true ) )">Select all</button>
+		<button x-cloak x-show="selecting" @click="$store.selected.clear(); last_selected = null">Deselect all</button>
+		@addToAlbumButton()
+
+		if album != nil {
+			/* <button class="chevron" x-cloak x-show="selecting" :disabled="$store.selected.size == 0">Move to</button> */
+			@removeFromAlbumButton( *album )
 		}
 	}
 
@@ -580,7 +650,7 @@ templ albumHeader( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 
 	<div class="right">
 		if ownership == AlbumOwnership_Owned {
-			@albumSettings( album )
+			@albumSettingsButton( album )
 		}
 
 		if ownership != AlbumOwnership_Guest {
@@ -592,7 +662,7 @@ templ albumHeader( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 		}
 
 		@downloadButton( album, ownership, base_urls )
-		@selectionButtons( ownership == AlbumOwnership_Owned, true, base_urls )
+		@selectionButtons( &album, ownership == AlbumOwnership_Owned, base_urls )
 	</div>
 }
 
@@ -635,12 +705,21 @@ templ photogridWithHeader( photos []Photo, subheader templ.Component, base_urls 
 	</style>
 
 	<script>
-	function MakePhotos() {
-		return {{ photos }};
+	document.addEventListener( "alpine:init", () => {
+		Alpine.store( "photos", {{ photos }} );
+		Alpine.store( "selected", new Map() );
+	} );
+
+	function PhotosFormValue() {
+		let ids = '';
+		for( const idx of Alpine.store( "selected" ).keys() ) {
+			ids = ids + ',' + Alpine.store( "photos" )[ idx ].id.toString();
+		}
+		return ids.substr( 1 );
 	}
 	</script>
 
-	<main x-data="{ photos: MakePhotos(), selecting: false, selected: new Map(), last_selected: null }">
+	<main x-data="{ selecting: false, last_selected: null }">
 		<aside>
 			<style>
 			@scope {
@@ -757,12 +836,29 @@ templ libraryTemplate( photos []Photo ) {
 
 		<div class="right">
 			@uploadButton()
-			@selectionButtons( true, false, base_urls )
+			@selectionButtons( nil, true, base_urls )
 		</div>
 	}
 }
 
 templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwnership ) {
+	<style>
+	button.blank {
+		border: 0;
+		border-radius: 0;
+		background: unset;
+	}
+
+	.chevron {
+		/* from picocss */
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='none' stroke='rgb(136, 145, 164)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: center right 0.3rem;
+		background-size: 1lh;
+		padding-right: calc( 0.4rem + 1lh );
+	}
+	</style>
+
 	{{ base_urls := getStandardBaseURLs() }}
 	@photogridWithHeader( photos, nil, base_urls ) {
 		@albumHeader( album, photos, ownership, true, base_urls )

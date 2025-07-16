@@ -566,6 +566,21 @@ func sharedAlbumHandler( w http.ResponseWriter, r *http.Request, user User, hand
 	genericAlbumHandler( w, r, user, false, handler )
 }
 
+func deleteAlbum( w http.ResponseWriter, r *http.Request, user User ) {
+	ownedAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+		const _30_days = 30 * 24 * time.Hour
+		try( queries.DeleteAlbum( r.Context(), sqlc.DeleteAlbumParams {
+			DeleteAt: sql.NullInt64 { time.Now().Add( _30_days ).Unix(), true },
+			UrlSlug: album.UrlSlug,
+		} ) )
+		w.Header().Set( "HX-Redirect", "/Special:deleted" )
+	} )
+}
+
+func purgeDeletedAlbums( t time.Time ) {
+	must( queries.PurgeDeletedAlbums( context.Background(), sql.NullInt64 { t.Unix(), true } ) )
+}
+
 func updateAlbumSettings( w http.ResponseWriter, r *http.Request, user User ) {
 	album_id, err := strconv.ParseInt( r.PostFormValue( "album_id" ), 10, 64 )
 	if err != nil {
@@ -648,19 +663,67 @@ func shareAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	w.Header().Set( "HX-Trigger", sel( shared == 0, "album:stop_sharing", "album:start_sharing" ) )
 }
 
-func deleteAlbum( w http.ResponseWriter, r *http.Request, user User ) {
-	ownedAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
-		const _30_days = 30 * 24 * time.Hour
-		try( queries.DeleteAlbum( r.Context(), sqlc.DeleteAlbumParams {
-			DeleteAt: sql.NullInt64 { time.Now().Add( _30_days ).Unix(), true },
-			UrlSlug: album.UrlSlug,
-		} ) )
-		w.Header().Set( "HX-Redirect", "/Special:deleted" )
+func parsePhotoIDs( str string ) ( []int64, error ) {
+	split := strings.Split( str, "," )
+	ids := make( []int64, len( split ) )
+
+	for i, id := range split {
+		var err error
+		ids[ i ], err = strconv.ParseInt( id, 10, 64 )
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return ids, nil
+}
+
+func addToAlbum( w http.ResponseWriter, r *http.Request, user User ) {
+	sharedAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+		ids, err := parsePhotoIDs( r.FormValue( "photos" ) )
+		if err != nil {
+			httpError( w, http.StatusBadRequest )
+			return
+		}
+
+		tx := try1( db.Begin() )
+		defer tx.Rollback()
+		qtx := queries.WithTx( tx )
+
+		for _, id := range ids {
+			try( qtx.AddPhotoToAlbum( r.Context(), sqlc.AddPhotoToAlbumParams {
+				PhotoID: id,
+				AlbumID: album.ID,
+			} ) )
+		}
+
+		tx.Commit()
 	} )
 }
 
-func purgeDeletedAlbums( t time.Time ) {
-	must( queries.PurgeDeletedAlbums( context.Background(), sql.NullInt64 { t.Unix(), true } ) )
+func removeFromAlbum( w http.ResponseWriter, r *http.Request, user User ) {
+	// TODO: also let people remove their photos from albums shared with them
+	// TODO: what happens when albums get unshared?
+	ownedAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+		ids, err := parsePhotoIDs( r.FormValue( "photos" ) )
+		if err != nil {
+			httpError( w, http.StatusBadRequest )
+			return
+		}
+
+		tx := try1( db.Begin() )
+		defer tx.Rollback()
+		qtx := queries.WithTx( tx )
+
+		for _, id := range ids {
+			try( qtx.RemovePhotoFromAlbum( r.Context(), sqlc.RemovePhotoFromAlbumParams {
+				PhotoID: id,
+				AlbumID: album.ID,
+			} ) )
+		}
+
+		tx.Commit()
+	} )
 }
 
 func serveAlbumZip( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumByURLRow ) {
@@ -695,16 +758,10 @@ func downloadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
 	download_everything := r.FormValue( "variants" ) == "everything"
 	download_raws := r.FormValue( "variants" ) != "key_only"
 
-	str_ids := strings.Split( r.FormValue( "photos" ), "," )
-	ids := make( []int64, len( str_ids ) )
-
-	for i, id := range str_ids {
-		var err error
-		ids[ i ], err = strconv.ParseInt( id, 10, 64 )
-		if err != nil {
-			httpError( w, http.StatusBadRequest )
-			return
-		}
+	ids, err := parsePhotoIDs( r.FormValue( "photos" ) )
+	if err != nil {
+		httpError( w, http.StatusBadRequest )
+		return
 	}
 
 	var files []ZipFile
@@ -1691,6 +1748,9 @@ func main() {
 		{ "GET",  "/Special:checkAlbumURL", requireAuth( checkAlbumURL ) },
 		{ "POST", "/Special:shareAlbum", requireAuth( shareAlbum ) },
 		{ "DELETE", "/{album}", requireAuth( deleteAlbum ) },
+
+		{ "PUT",  "/Special:addToAlbum/{album}", requireAuth( addToAlbum ) },
+		{ "PUT",  "/Special:removeFromAlbum/{album}", requireAuth( removeFromAlbum ) },
 
 		{ "GET",  "/Special:download/{album}", requireAuth( downloadAlbum ) },
 		{ "POST", "/Special:download", requireAuth( downloadPhotos ) },
