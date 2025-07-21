@@ -1094,13 +1094,8 @@ func getThumbnailAsGuest( w http.ResponseWriter, r *http.Request ) {
 
 func guestAlbumHandler( w http.ResponseWriter, r *http.Request, handler func( http.ResponseWriter, *http.Request, sqlc.GetAlbumByURLRow, bool ) ) {
 	album := queryOptional( queries.GetAlbumByURL( r.Context(), r.PathValue( "album" ) ) )
-	if !album.Valid {
-		httpError( w, http.StatusNotFound )
-		return
-	}
-
 	secret := r.PathValue( "secret" )
-	if secret != album.V.ReadonlySecret && secret != album.V.ReadwriteSecret {
+	if !album.Valid || ( secret != album.V.ReadonlySecret && secret != album.V.ReadwriteSecret ) {
 		httpError( w, http.StatusForbidden )
 		return
 	}
@@ -1523,7 +1518,7 @@ type Route struct {
 	Handler func( http.ResponseWriter, *http.Request )
 }
 
-func startHttpServer( addr string, routes []Route ) *http.Server {
+func startHttpServer( addr string, _404_to_403 bool, routes []Route ) *http.Server {
 	regexes := make( []*regexp.Regexp, len( routes ) )
 	for i, route := range routes {
 		regexes[ i ] = makeRouteRegex( route.Route )
@@ -1563,7 +1558,7 @@ func startHttpServer( addr string, routes []Route ) *http.Server {
 		if is405 {
 			httpError( w, http.StatusMethodNotAllowed )
 		} else {
-			httpError( w, http.StatusNotFound )
+			httpError( w, sel( _404_to_403, http.StatusForbidden, http.StatusNotFound ) )
 		}
 	} )
 
@@ -1725,7 +1720,7 @@ func main() {
 		}
 	}()
 
-	private_http_server := startHttpServer( private_listen_addr, []Route {
+	private_http_server := startHttpServer( private_listen_addr, false, []Route {
 		{ "GET",  "/Special:checksum", getChecksum },
 		{ "GET",  "/Special:alpinejs-3.14.9.js", serveJS( alpinejs ) },
 		{ "GET",  "/Special:htmx-2.0.4.js", serveJS( htmxjs ) },
@@ -1763,7 +1758,7 @@ func main() {
 		{ "PUT",  "/Special:uploadToPhoto", requireAuth( uploadToPhoto ) },
 	} )
 
-	guest_http_server := startHttpServer( guest_listen_addr, []Route {
+	guest_http_server := startHttpServer( guest_listen_addr, true, []Route {
 		{ "GET",  "/Special:checksum", getChecksum },
 		{ "GET",  "/Special:alpinejs-3.14.9.js", serveJS( alpinejs ) },
 		{ "GET",  "/Special:htmx-2.0.4.js", serveJS( htmxjs ) },
