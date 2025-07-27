@@ -1577,13 +1577,6 @@ func startHttpServer( addr string, _404_to_403 bool, routes []Route ) *http.Serv
 	return http_server
 }
 
-func mustMakeDir( path string ) {
-	err := os.Mkdir( path, 0755 )
-	if err != nil && !errors.Is( err, os.ErrExist ) {
-		log.Fatalf( "Can't make %s dir: %v", path, err )
-	}
-}
-
 func showHelpAndQuit() {
 	fmt.Printf(
 `Usage: %s <command>
@@ -1616,8 +1609,8 @@ func main() {
 	initCookieAEAD()
 	initGeocoder()
 
-	mustMakeDir( "assets" )
-	mustMakeDir( "generated" )
+	must( os.MkdirAll( "assets", 0o755 ) )
+	must( os.MkdirAll( "generated", 0o755 ) )
 
 	db_path := "yougram.sq3"
 	private_listen_addr := "0.0.0.0:5678"
