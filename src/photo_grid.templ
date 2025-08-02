@@ -74,6 +74,8 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 			},
 
 			EnterFullscreen( idx ) {
+				const photos = Alpine.store( "photos" );
+
 				idx = Math.max( 0, Math.min( photos.length - 1, idx ) );
 				if( this.fullscreen == idx )
 					return;
@@ -211,12 +213,12 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 							@keydown.window.right="EnterFullscreen( fullscreen + 1 )"
 						>
 							<div class="stack">
-								<img x-init="MakeThumbhash( $el, photos[ fullscreen ].thumbhash )" :style="Visible( !fullscreen_thumbnail_loaded && !fullscreen_asset_loaded )">
-								<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", base_urls.Thumbnail ) }
+								<img x-init="MakeThumbhash( $el, $store.photos[ fullscreen ].thumbhash )" :style="Visible( !fullscreen_thumbnail_loaded && !fullscreen_asset_loaded )">
+								<img :src={ fmt.Sprintf( "'%s' + $store.photos[ fullscreen ].asset", base_urls.Thumbnail ) }
 									@load="fullscreen_thumbnail_loaded = true"
 									@error="fullscreen_thumbnail_failed = true"
 									:style="Visible( !fullscreen_thumbnail_failed && !fullscreen_asset_loaded )">
-								<img :src={ fmt.Sprintf( "'%s' + photos[ fullscreen ].asset", base_urls.Asset ) }
+								<img :src={ fmt.Sprintf( "'%s' + $store.photos[ fullscreen ].asset", base_urls.Asset ) }
 									@load="fullscreen_asset_loaded = true"
 									@error="fullscreen_asset_failed = true"
 									:style="Visible( !fullscreen_asset_failed )">
