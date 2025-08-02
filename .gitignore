@@ -4,6 +4,7 @@
 /generated
 /mikegram
 /mikegram-dev
+*.avif
 *.jpg
 *.jpeg
 *.png

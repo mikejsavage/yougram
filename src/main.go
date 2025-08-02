@@ -35,6 +35,14 @@ import (
 	"mikegram/sqlc"
 	"mikegram/stb"
 
+	/*
+	 * this library compiles avif c libs to wasm and runs them in an
+	 * interpreter. obviously this is insane and adds like 5MB of bin size
+	 * because the compiler can't strip dead code but avif libraries are all
+	 * linux shitware and it's the only reasonable way to use them
+	 */
+	"github.com/gen2brain/avif"
+
 	"github.com/adrium/goheif"
 	"github.com/galdor/go-thumbhash"
 	"github.com/evanoberholster/imagemeta"
@@ -237,6 +245,7 @@ func initDB( memory_db bool ) {
 
 	must( addFileToAlbum( ctx, mike, "DSCN0025.jpg", 2 ) )
 	must( addFileToAlbum( ctx, mike, "DSCF2994.jpeg", 1 ) )
+	must( addFileToAlbum( ctx, mike, "hato.profile0.8bpc.yuv420.avif", 1 ) )
 	must( addFile( ctx, mike, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } ) )
 	must( addFile( ctx, mike, "IMG_2330.HEIC", sql.Null[ int64 ] { } ) )
 
@@ -342,6 +351,34 @@ func getAvatar( w http.ResponseWriter, r *http.Request ) {
 	_ = try1( w.Write( avatar.V ) )
 }
 
+func decodeImage( data []byte, extension string ) ( *image.RGBA, error ) {
+	extension = strings.ToLower( extension )
+
+	if extension == ".avif" {
+		nrgba, err := avif.Decode( bytes.NewReader( data ) )
+		if err != nil {
+			return nil, err
+		}
+
+		decoded := image.NewRGBA( nrgba.Bounds() )
+		draw.Draw( decoded, decoded.Bounds(), nrgba, nrgba.Bounds().Min, draw.Src )
+		return decoded, nil
+	}
+
+	if extension == ".heic" {
+		ycbcr, err := goheif.Decode( bytes.NewReader( data ) )
+		if err != nil {
+			return nil, err
+		}
+
+		decoded := image.NewRGBA( ycbcr.Bounds() )
+		draw.Draw( decoded, decoded.Bounds(), ycbcr, ycbcr.Bounds().Min, draw.Src )
+		return decoded, nil
+	}
+
+	return stb.StbLoad( data )
+}
+
 func setAvatar( w http.ResponseWriter, r *http.Request, user User ) {
 	try( r.ParseMultipartForm( 32 * megabyte ) )
 
@@ -351,12 +388,12 @@ func setAvatar( w http.ResponseWriter, r *http.Request, user User ) {
 		return
 	}
 
-	f := try1( r.MultipartForm.File[ "avatar" ][ 0 ].Open() )
-	avatar := try1( io.ReadAll( f ) )
+	avatar := r.MultipartForm.File[ "avatar" ][ 0 ]
+	f := try1( avatar.Open() )
+	data := try1( io.ReadAll( f ) )
 	try( f.Close() )
 
-	// TODO: heif
-	original, err := stb.StbLoad( avatar )
+	original, err := decodeImage( data, filepath.Ext( avatar.Filename ) )
 	if err != nil {
 		fmt.Printf( "%v\n", err )
 		httpError( w, http.StatusBadRequest )
@@ -371,7 +408,7 @@ func setAvatar( w http.ResponseWriter, r *http.Request, user User ) {
 
 	// reorient
 	orientation := meta.OrientationHorizontal
-	exif, err := imagemeta.Decode( bytes.NewReader( avatar ) )
+	exif, err := imagemeta.Decode( bytes.NewReader( data ) )
 	if err == nil {
 		if exif.Orientation >= meta.OrientationHorizontal && exif.Orientation <= meta.OrientationRotate270 {
 			orientation = exif.Orientation
@@ -1268,26 +1305,11 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 
 	before := time.Now()
 
+	extension := strings.ToLower( filepath.Ext( filename ) )
 	is_heic := strings.ToLower( filepath.Ext( filename ) ) == ".heic"
 	ext := sel( is_heic, ".heic", ".jpg" )
 
-	var decoded *image.RGBA
-	if is_heic {
-		ycbcr, err := goheif.Decode( bytes.NewReader( data ) )
-		fmt.Printf( "\tdecoded HEIC %dms\n", time.Now().Sub( before ).Milliseconds() )
-		if err != nil {
-			return AddedAsset { }, err
-		}
-
-		decoded = image.NewRGBA( ycbcr.Bounds() )
-		draw.Draw( decoded, decoded.Bounds(), ycbcr, ycbcr.Bounds().Min, draw.Src )
-		fmt.Printf( "\tyCbCr -> RGBA %dms\n", time.Now().Sub( before ).Milliseconds() )
-	} else {
-		decoded, err = stb.StbLoad( data )
-		if err != nil {
-			return AddedAsset { }, err
-		}
-	}
+	decoded, err := decodeImage( data, extension )
 
 	fmt.Printf( "\torientation %d\n", orientation )
 

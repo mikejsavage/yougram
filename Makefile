@@ -1,6 +1,6 @@
 BIN_SUFFIX=-dev
 GOFLAGS=
-TAGS=fts5
+TAGS=fts5 nodynamic
 
 ifeq ($(shell uname -s),Linux)
 	TAGS += sqlite_omit_load_extension osusergo netgo
