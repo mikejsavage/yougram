@@ -81,7 +81,7 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 				if( this.fullscreen == idx )
 					return;
 
-				this.fullscreen = Math.max( 0, Math.min( photos.length - 1, idx ) );
+				this.fullscreen = idx;
 				this.fullscreen_thumbnail_loaded = false;
 				this.fullscreen_thumbnail_failed = false;
 				this.fullscreen_asset_loaded = false;
