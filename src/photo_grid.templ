@@ -2,6 +2,7 @@ package main
 
 import "encoding/hex"
 import "fmt"
+import "time"
 import "mikegram/sqlc"
 
 type BaseURLs struct {
@@ -635,6 +636,10 @@ templ selectionButtons( album *sqlc.GetAlbumByURLRow, owned bool, base_urls Base
 	@selectButton()
 }
 
+func showNullableDate( date interface{} ) string {
+	return time.Unix( date.(int64), 0 ).Format( "Jan 2006" )
+}
+
 templ albumHeader( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwnership, can_upload bool, base_urls BaseURLs ) {
 	<div class="left">
 		<h1>{ album.Name }</h1>
@@ -643,7 +648,9 @@ templ albumHeader( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 				<span>{ album.OwnerUsername }'s album</span>
 			}
 
-			<span>Oct 2023 &ndash; Jan 2025</span>
+			if album.OldestPhoto != nil && album.NewestPhoto != nil {
+				<span>{ showNullableDate( album.OldestPhoto ) } &ndash; { showNullableDate( album.NewestPhoto ) }</span>
+			}
 			<span>{ len( photos ) } { sel( len( photos ) == 1, "photo", "photos" ) }</span>
 		</span>
 	</div>

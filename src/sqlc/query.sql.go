@@ -341,11 +341,19 @@ func (q *Queries) GetAlbumAutoassignRules(ctx context.Context) ([]GetAlbumAutoas
 }
 
 const getAlbumByURL = `-- name: GetAlbumByURL :one
-SELECT album.id, owner, url_slug, user.username AS owner_username, album.name, shared, readonly_secret, readwrite_secret, album_key_asset.sha256 AS key_photo_sha256
+SELECT
+	album.id, album.owner, url_slug, user.username AS owner_username,
+	album.name, shared, readonly_secret, readwrite_secret,
+	album_key_asset.sha256 AS key_photo_sha256,
+	MIN( photo_primary_asset.date_taken ) AS oldest_photo,
+	MAX( photo_primary_asset.date_taken ) AS newest_photo
 FROM album
 LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
 INNER JOIN user ON album.owner = user.id
-WHERE url_slug = ? AND delete_at IS NULL
+INNER JOIN album_photo ON album_photo.album_id = album.id
+INNER JOIN photo ON album_photo.photo_id = photo.id
+INNER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
+WHERE url_slug = ? AND album.delete_at IS NULL
 `
 
 type GetAlbumByURLRow struct {
@@ -358,6 +366,8 @@ type GetAlbumByURLRow struct {
 	ReadonlySecret  string
 	ReadwriteSecret string
 	KeyPhotoSha256  []byte
+	OldestPhoto     interface{}
+	NewestPhoto     interface{}
 }
 
 func (q *Queries) GetAlbumByURL(ctx context.Context, urlSlug string) (GetAlbumByURLRow, error) {
@@ -373,6 +383,8 @@ func (q *Queries) GetAlbumByURL(ctx context.Context, urlSlug string) (GetAlbumBy
 		&i.ReadonlySecret,
 		&i.ReadwriteSecret,
 		&i.KeyPhotoSha256,
+		&i.OldestPhoto,
+		&i.NewestPhoto,
 	)
 	return i, err
 }
@@ -393,7 +405,7 @@ SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.thumbhash
 FROM photo
 INNER JOIN album_photo ON album_photo.photo_id = photo.id
 INNER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
-WHERE album_photo.album_id = ? AND album_photo.photo_id = photo.id
+WHERE album_photo.album_id = ?
 ORDER BY photo_primary_asset.date_taken ASC
 `
 
