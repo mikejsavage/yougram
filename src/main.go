@@ -49,6 +49,8 @@ import (
 	"github.com/evanoberholster/imagemeta/meta"
 	"github.com/fsnotify/fsnotify"
 
+	"golang.org/x/image/webp"
+
 	_ "github.com/mattn/go-sqlite3"
 	// sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 )
@@ -246,6 +248,7 @@ func initDB( memory_db bool ) {
 	must( addFileToAlbum( ctx, mike, "DSCN0025.jpg", 2 ) )
 	must( addFileToAlbum( ctx, mike, "DSCF2994.jpeg", 1 ) )
 	must( addFileToAlbum( ctx, mike, "hato.profile0.8bpc.yuv420.avif", 1 ) )
+	must( addFileToAlbum( ctx, mike, "4_webp_ll.webp", 1 ) )
 	must( addFile( ctx, mike, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } ) )
 	must( addFile( ctx, mike, "IMG_2330.HEIC", sql.Null[ int64 ] { } ) )
 
@@ -351,29 +354,29 @@ func getAvatar( w http.ResponseWriter, r *http.Request ) {
 	_ = try1( w.Write( avatar.V ) )
 }
 
+func imageToRGBA( img image.Image, err error ) ( *image.RGBA, error ) {
+	if err != nil {
+		return nil, err
+	}
+
+	rgba := image.NewRGBA( img.Bounds() )
+	draw.Draw( rgba, rgba.Bounds(), img, img.Bounds().Min, draw.Src )
+	return rgba, nil
+}
+
 func decodeImage( data []byte, extension string ) ( *image.RGBA, error ) {
 	extension = strings.ToLower( extension )
 
 	if extension == ".avif" {
-		nrgba, err := avif.Decode( bytes.NewReader( data ) )
-		if err != nil {
-			return nil, err
-		}
-
-		decoded := image.NewRGBA( nrgba.Bounds() )
-		draw.Draw( decoded, decoded.Bounds(), nrgba, nrgba.Bounds().Min, draw.Src )
-		return decoded, nil
+		return imageToRGBA( avif.Decode( bytes.NewReader( data ) ) )
 	}
 
 	if extension == ".heic" {
-		ycbcr, err := goheif.Decode( bytes.NewReader( data ) )
-		if err != nil {
-			return nil, err
-		}
+		return imageToRGBA( goheif.Decode( bytes.NewReader( data ) ) )
+	}
 
-		decoded := image.NewRGBA( ycbcr.Bounds() )
-		draw.Draw( decoded, decoded.Bounds(), ycbcr, ycbcr.Bounds().Min, draw.Src )
-		return decoded, nil
+	if extension == ".webp" {
+		return imageToRGBA( webp.Decode( bytes.NewReader( data ) ) )
 	}
 
 	return stb.StbLoad( data )
