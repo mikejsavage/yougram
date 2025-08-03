@@ -222,7 +222,7 @@ func initDB( memory_db bool ) {
 	} ) )
 
 	must( queries.CreateAlbum( ctx, sqlc.CreateAlbumParams {
-		Owner: 1,
+		Owner: mike,
 		Name: "France 2024",
 		UrlSlug: "france-2024",
 		Shared: 1,
@@ -230,7 +230,7 @@ func initDB( memory_db bool ) {
 		ReadwriteSecret: "bbbbbbbb",
 	} ) )
 	must( queries.CreateAlbum( ctx, sqlc.CreateAlbumParams {
-		Owner: 1,
+		Owner: mike,
 		Name: "Helsinki 2024",
 		UrlSlug: "helsinki-2024",
 		Shared: 0,
