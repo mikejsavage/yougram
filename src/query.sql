@@ -202,9 +202,9 @@ SELECT
 FROM album
 LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
 INNER JOIN user ON album.owner = user.id
-INNER JOIN album_photo ON album_photo.album_id = album.id
-INNER JOIN photo ON album_photo.photo_id = photo.id
-INNER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
+LEFT OUTER JOIN album_photo ON album_photo.album_id = album.id
+LEFT OUTER JOIN photo ON album_photo.photo_id = photo.id
+LEFT OUTER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
 WHERE url_slug = ? AND album.delete_at IS NULL;
 
 -- name: GetAlbumOwner :one
