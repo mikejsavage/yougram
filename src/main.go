@@ -1781,6 +1781,7 @@ func main() {
 		{ "GET",  "/Special:alpinejs-3.14.9.js", serveJS( alpinejs ) },
 		{ "GET",  "/Special:htmx-2.0.4.js", serveJS( htmxjs ) },
 		{ "GET",  "/Special:thumbhash-1.0.0.js", serveJS( thumbhashjs ) },
+		{ "GET",  "/robots.txt", serveString( "User-agent: *\nDisallow: /", "text/plain" ) },
 
 		{ "GET",  "/{album}/{secret}", viewAlbumAsGuest },
 		{ "GET",  "/{album}/{secret}/asset/{asset}", getAssetAsGuest },
