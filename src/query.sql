@@ -196,7 +196,17 @@ ORDER BY album.name;
 SELECT
 	album.id, album.owner, url_slug, user.username AS owner_username,
 	album.name, shared, readonly_secret, readwrite_secret,
-	album_key_asset.sha256 AS key_photo_sha256,
+	album_key_asset.sha256 AS key_photo_sha256
+FROM album
+LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
+INNER JOIN user ON album.owner = user.id
+LEFT OUTER JOIN album_photo ON album_photo.album_id = album.id
+LEFT OUTER JOIN photo ON album_photo.photo_id = photo.id
+LEFT OUTER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
+WHERE url_slug = ? AND album.delete_at IS NULL;
+
+-- name: GetAlbumDateRange :one
+SELECT
 	MIN( photo_primary_asset.date_taken ) AS oldest_photo,
 	MAX( photo_primary_asset.date_taken ) AS newest_photo
 FROM album
@@ -205,7 +215,7 @@ INNER JOIN user ON album.owner = user.id
 LEFT OUTER JOIN album_photo ON album_photo.album_id = album.id
 LEFT OUTER JOIN photo ON album_photo.photo_id = photo.id
 LEFT OUTER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
-WHERE url_slug = ? AND album.delete_at IS NULL;
+WHERE album.id = ? AND album.delete_at IS NULL;
 
 -- name: GetAlbumOwner :one
 SELECT owner FROM album WHERE id = ?;

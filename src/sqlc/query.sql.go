@@ -344,9 +344,7 @@ const getAlbumByURL = `-- name: GetAlbumByURL :one
 SELECT
 	album.id, album.owner, url_slug, user.username AS owner_username,
 	album.name, shared, readonly_secret, readwrite_secret,
-	album_key_asset.sha256 AS key_photo_sha256,
-	MIN( photo_primary_asset.date_taken ) AS oldest_photo,
-	MAX( photo_primary_asset.date_taken ) AS newest_photo
+	album_key_asset.sha256 AS key_photo_sha256
 FROM album
 LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
 INNER JOIN user ON album.owner = user.id
@@ -366,8 +364,6 @@ type GetAlbumByURLRow struct {
 	ReadonlySecret  string
 	ReadwriteSecret string
 	KeyPhotoSha256  []byte
-	OldestPhoto     interface{}
-	NewestPhoto     interface{}
 }
 
 func (q *Queries) GetAlbumByURL(ctx context.Context, urlSlug string) (GetAlbumByURLRow, error) {
@@ -383,9 +379,32 @@ func (q *Queries) GetAlbumByURL(ctx context.Context, urlSlug string) (GetAlbumBy
 		&i.ReadonlySecret,
 		&i.ReadwriteSecret,
 		&i.KeyPhotoSha256,
-		&i.OldestPhoto,
-		&i.NewestPhoto,
 	)
+	return i, err
+}
+
+const getAlbumDateRange = `-- name: GetAlbumDateRange :one
+SELECT
+	MIN( photo_primary_asset.date_taken ) AS oldest_photo,
+	MAX( photo_primary_asset.date_taken ) AS newest_photo
+FROM album
+LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
+INNER JOIN user ON album.owner = user.id
+LEFT OUTER JOIN album_photo ON album_photo.album_id = album.id
+LEFT OUTER JOIN photo ON album_photo.photo_id = photo.id
+LEFT OUTER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
+WHERE album.id = ? AND album.delete_at IS NULL
+`
+
+type GetAlbumDateRangeRow struct {
+	OldestPhoto interface{}
+	NewestPhoto interface{}
+}
+
+func (q *Queries) GetAlbumDateRange(ctx context.Context, id int64) (GetAlbumDateRangeRow, error) {
+	row := q.db.QueryRowContext(ctx, getAlbumDateRange, id)
+	var i GetAlbumDateRangeRow
+	err := row.Scan(&i.OldestPhoto, &i.NewestPhoto)
 	return i, err
 }
 
