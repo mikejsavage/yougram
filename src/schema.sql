@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS asset (
 	sha256 BLOB PRIMARY KEY CHECK( length( sha256 ) = 32 ),
 	created_at INTEGER NOT NULL,
 	original_filename TEXT NOT NULL,
-	type TEXT NOT NULL CHECK( type = "jpg" OR type = "heic" OR type = "raw" ),
+	type TEXT NOT NULL CHECK( type = 'jpg' OR type = 'heic' OR type = 'raw' ),
 	thumbnail BLOB NOT NULL,
 	thumbhash BLOB NOT NULL,
 	description TEXT,
@@ -58,7 +58,7 @@ AS SELECT photo.id AS photo_id, asset.* FROM photo
 INNER JOIN asset ON asset.sha256 = IFNULL( photo.primary_asset, (
 		SELECT id FROM asset AS lol
 		INNER JOIN photo_asset ON photo_asset.asset_id = lol.sha256
-		WHERE photo_asset.photo_id = photo.id AND lol.type != "raw"
+		WHERE photo_asset.photo_id = photo.id AND lol.type != 'raw'
 		ORDER BY lol.created_at DESC LIMIT 1
 ) );
 
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS album (
 CREATE TRIGGER IF NOT EXISTS ensure_album_secrets_are_different
 AFTER INSERT ON album FOR EACH ROW
 WHEN NEW.readonly_secret = NEW.readwrite_secret
-BEGIN SELECT RAISE( ABORT, "readonly_secret = readwrite_secret" ); END;
+BEGIN SELECT RAISE( ABORT, 'readonly_secret = readwrite_secret' ); END;
 
 CREATE TABLE IF NOT EXISTS album_photo (
 	album_id INTEGER NOT NULL REFERENCES album( id ) ON DELETE CASCADE,
