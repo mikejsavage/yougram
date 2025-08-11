@@ -738,6 +738,8 @@ func addToAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 		}
 
 		tx.Commit()
+
+		_ = try1( io.WriteString( w, green_checkmark ) )
 	} )
 }
 

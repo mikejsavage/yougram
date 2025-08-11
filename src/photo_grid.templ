@@ -554,22 +554,33 @@ templ addToAlbumButton() {
 	}
 	</style>
 
+	<script>
+	function ClearStatuses( button ) {
+		for( let e of button.parentNode.querySelectorAll( ".status" ) ) {
+			e.innerText = "";
+		}
+	}
+	</script>
+
 	<div x-cloak x-show="selecting" x-data="{ show: false, search: '' }">
-		<button class="chevron" :disabled="$store.selected.size == 0" @click="show = true; search = ''">Add to</button>
+		<button class="chevron" :disabled="$store.selected.size == 0" @click="show = true; search = ''; ClearStatuses( $el )">Add to</button>
 
 		<div class="dropdown" x-cloak x-show="show" @click.away="show = false" @keydown.escape.window="show = false">
 			<style>
 			@scope {
-				a {
+				button {
+					border: 0;
+					border-radius: 0;
+					background: unset;
 					display: flex;
 					gap: 0.5rem;
+					align-items: center;
+					font-size: 100%;
 					margin: -0.25rem -0.5rem;
 					padding: 0.25rem 0.5rem;
-					text-decoration: none;
-				}
-
-				a:hover {
-					background: #ddd;
+					text-align: left;
+					font-size: 1rem;
+					line-height: 1.5;
 				}
 
 				img {
@@ -591,9 +602,11 @@ templ addToAlbumButton() {
 
 				<template x-for="album in albums">
 					<template x-if="album.Name.toLowerCase().includes( search.toLowerCase() ) && !window.location.pathname.startsWith( '/' + album.UrlSlug )">
-						<a href="#" class="blank album"
+						<button
 							:hx-put="'/Special:addToAlbum/' + album.UrlSlug"
 							hx-vals="js:{ photos: PhotosFormValue() }"
+							hx-disabled-elt="this"
+							hx-target="find .status"
 						>
 							<template x-if="album.KeyPhotoSha256.length > 0">
 								<img :src="'/Special:thumbnail/' + album.KeyPhotoSha256" style="height: 1lh">
@@ -603,7 +616,9 @@ templ addToAlbumButton() {
 							</template>
 
 							<span x-text="album.Name"></span>
-						</a>
+
+							<span class="status"></span>
+						</button>
 					</template>
 				</template>
 			</div>
@@ -853,12 +868,6 @@ templ libraryTemplate( photos []Photo ) {
 
 templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwnership ) {
 	<style>
-	button.blank {
-		border: 0;
-		border-radius: 0;
-		background: unset;
-	}
-
 	.chevron {
 		/* from picocss */
 		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='none' stroke='rgb(136, 145, 164)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
