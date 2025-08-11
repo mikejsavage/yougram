@@ -555,17 +555,17 @@ templ addToAlbumButton() {
 	</style>
 
 	<script>
-	function ClearStatuses( button ) {
-		for( let e of button.parentNode.querySelectorAll( ".status" ) ) {
+	function ClearStatuses( dropdown ) {
+		for( let e of dropdown.querySelectorAll( ".status" ) ) {
 			e.innerText = "";
 		}
 	}
 	</script>
 
 	<div x-cloak x-show="selecting" x-data="{ show: false, search: '' }">
-		<button class="chevron" :disabled="$store.selected.size == 0" @click="show = true; search = ''; ClearStatuses( $el )">Add to</button>
+		<button class="chevron" :disabled="$store.selected.size == 0" @click="show = true; search = ''; ClearStatuses( $refs.dropdown )">Add to</button>
 
-		<div class="dropdown" x-cloak x-show="show" @click.away="show = false" @keydown.escape.window="show = false">
+		<div class="dropdown" x-cloak x-show="show" x-ref="dropdown" @click.away="show = false" @keydown.escape.window="show = false">
 			<style>
 			@scope {
 				button {
