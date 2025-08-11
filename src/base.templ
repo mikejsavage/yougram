@@ -243,14 +243,13 @@ templ base( title string ) {
 	button:active { background-color: #f5f5f5; }
 
 	@keyframes spinning {
-		0%   { left: 0; }
-		25%  { left: 0.1rem; }
-		75%  { left: -0.1rem; }
-		100% { left: 0; }
+		0%   { transform: translateX( 0 ); }
+		25%  { transform: translateX( 0.1rem ); }
+		75%  { transform: translateX( -0.1rem ); }
+		100% { transform: translateX( 0 ); }
 	}
 
 	button:disabled {
-		position: relative;
 		animation: spinning 0.15s infinite;
 	}
 
