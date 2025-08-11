@@ -249,7 +249,7 @@ templ base( title string ) {
 		100% { transform: translateX( 0 ); }
 	}
 
-	button:disabled {
+	.htmx-request button:disabled, button:disabled.htmx-request {
 		animation: spinning 0.15s infinite;
 	}
 
