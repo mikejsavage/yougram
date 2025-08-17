@@ -1315,6 +1315,9 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 	ext := sel( is_heic, ".heic", ".jpg" )
 
 	decoded, err := decodeImage( data, extension )
+	if err != nil {
+		return AddedAsset { }, err
+	}
 
 	fmt.Printf( "\torientation %d\n", orientation )
 
@@ -1338,10 +1341,10 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 	// 	}
 	// }
 
-	fmt.Printf( "\tEXIF decoded %dms\n", time.Now().Sub( before ).Milliseconds() )
+	fmt.Printf( "\tEXIF decoded %dms\n", time.Since( before ).Milliseconds() )
 
 	reoriented := reorient( decoded, orientation )
-	fmt.Printf( "\treoriented %dms\n", time.Now().Sub( before ).Milliseconds() )
+	fmt.Printf( "\treoriented %dms\n", time.Since( before ).Milliseconds() )
 
 	hex_sha256 := hex.EncodeToString( sha256[:] )
 	err = saveAsset( data, hex_sha256 + ext )
@@ -1350,13 +1353,13 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 	}
 	if is_heic {
 		jpeg := must1( stb.StbToJpg( reoriented, 95 ) )
-		fmt.Printf( "\theic -> jpeg %dms %d -> %d\n", time.Now().Sub( before ).Milliseconds(), len( data ), len( jpeg ) )
+		fmt.Printf( "\theic -> jpeg %dms %d -> %d\n", time.Since( before ).Milliseconds(), len( data ), len( jpeg ) )
 		err = saveGenerated( jpeg, hex_sha256 + ".heic.jpg" )
 		if err != nil {
 			return AddedAsset { }, err
 		}
 	}
-	fmt.Printf( "\tsave assets %dms\n", time.Now().Sub( before ).Milliseconds() )
+	fmt.Printf( "\tsave assets %dms\n", time.Since( before ).Milliseconds() )
 
 	thumbnail, thumbhash := generateThumbnail( reoriented )
 
@@ -1372,7 +1375,7 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 		Longitude: longitude,
 	} )
 
-	fmt.Printf( "\tdone %dms\n", time.Now().Sub( before ).Milliseconds() )
+	fmt.Printf( "\tdone %dms\n", time.Since( before ).Milliseconds() )
 
 	return AddedAsset { sha256, date, latitude, longitude }, err
 }
@@ -1390,6 +1393,9 @@ func addFile( ctx context.Context, user int64, path string, album_id sql.Null[ i
 		AssetID: asset.Sha256[:],
 		Owner: sql.NullInt64 { user, true },
 	} )
+	if err != nil {
+		return err
+	}
 
 	if len( photos ) == 0 {
 		tx, err := db.Begin()
