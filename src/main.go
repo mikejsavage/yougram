@@ -139,11 +139,6 @@ func exec( ctx context.Context, query string, args ...interface{} ) {
 	}
 }
 
-func query( ctx context.Context, query string, args ...interface{} ) error {
-	_, err := db.ExecContext( ctx, query, args... )
-	return err
-}
-
 func queryOne[ T1 any ]( ctx context.Context, query string, args ...interface{} ) T1 {
 	row := db.QueryRowContext( ctx, query, args... )
 	var res T1
