@@ -5,7 +5,8 @@
 /mikegram
 /mikegram-dev
 *.avif
-*.jpg
-*.jpeg
-*.png
 *.heic
+*.jpeg
+*.jpg
+*.png
+*.webp
