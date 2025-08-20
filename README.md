@@ -103,7 +103,7 @@ Eventually your yougram directory will look like this:
 
 ```
 yougram/
-    db.sq3 <- contains all the album metadata etc, backing up SQLite databases requires special care so...
+    yougram.sq3 <- contains all the album metadata etc, backing up SQLite databases requires special care so...
     assets/ <- contains all your photos, only back up this folder!
         metadata_backup.json: ...yougram also saves all its metadata here, in a backup friendly format
     generated/ <- contains thumbnails and HEIC -> JPG conversions and the like, this can be entirely regenerated from your assets so you don't need to keep it safe

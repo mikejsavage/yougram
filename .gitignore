@@ -1,7 +1,7 @@
 /assets
-/cookie_encryption_key.bin
-/db.sq3*
 /generated
+/cookie_encryption_key.bin
+/yougram.sq3*
 /mikegram
 /mikegram-dev
 *.avif
