@@ -1,9 +1,11 @@
+/mikegram
+/mikegram-dev
+
 /assets
 /generated
 /cookie_encryption_key.bin
 /yougram.sq3*
-/mikegram
-/mikegram-dev
+
 *.avif
 *.heic
 *.jpeg
