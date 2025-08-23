@@ -630,6 +630,8 @@ templ removeFromAlbumButton( album sqlc.GetAlbumByURLRow ) {
 	<button x-cloak x-show="selecting" :disabled="$store.selected.size == 0"
 		hx-put={ templ.URL( "/Special:removeFromAlbum/" + album.UrlSlug ) }
 		hx-vals="js:{ photos: PhotosFormValue() }"
+		hx-disabled-elt="this"
+		hx-swap="none"
 	>
 		Remove from { album.Name }
 	</button>
