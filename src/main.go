@@ -150,6 +150,10 @@ func just[ T any ]( x T ) sql.Null[ T ] {
 	return sql.Null[ T ] { x, true }
 }
 
+func justI64( x int64 ) sql.NullInt64 {
+	return sql.NullInt64 { x, true }
+}
+
 func queryOptional[ T any ]( row T, err error ) sql.Null[ T ] {
 	if err != nil {
 		if errors.Is( err, sql.ErrNoRows ) {
@@ -233,8 +237,8 @@ func initDB( memory_db bool ) {
 		Shared: 0,
 		ReadonlySecret: "aaaaaaaa",
 		ReadwriteSecret: "bbbbbbbb",
-		AutoassignStartDate: sql.NullInt64 { time.Date( 2024, time.January, 1, 0, 0, 0, 0, time.UTC ).Unix(), true },
-		AutoassignEndDate: sql.NullInt64 { time.Date( 2024, time.December, 31, 0, 0, 0, 0, time.UTC ).Unix(), true },
+		AutoassignStartDate: justI64( time.Date( 2024, time.January, 1, 0, 0, 0, 0, time.UTC ).Unix() ),
+		AutoassignEndDate: justI64( time.Date( 2024, time.December, 31, 0, 0, 0, 0, time.UTC ).Unix() ),
 		AutoassignLatitude: sql.NullFloat64 { 60.1699, true },
 		AutoassignLongitude: sql.NullFloat64 { 24.9384, true },
 		AutoassignRadius: sql.NullFloat64 { 50, true },
@@ -254,7 +258,7 @@ func initDB( memory_db bool ) {
 	qtx := queries.WithTx( tx )
 	for i := 0; i < 7500; i++ {
 		photo_id := must1( qtx.CreatePhoto( ctx, sqlc.CreatePhotoParams {
-			Owner: sql.NullInt64 { mike, true },
+			Owner: justI64( mike ),
 			CreatedAt: time.Now().Unix(),
 			PrimaryAsset: seagull,
 		} ) )
@@ -494,7 +498,7 @@ func getAsset( w http.ResponseWriter, r *http.Request, user User ) {
 
 	metadata := queryOptional( queries.GetAssetMetadata( r.Context(), sqlc.GetAssetMetadataParams {
 		AssetID: sha256[:],
-		Owner: sql.NullInt64 { user.ID, true },
+		Owner: justI64( user.ID ),
 		Owner_2: user.ID,
 		Sha256: sha256[:],
 	} ) )
@@ -605,7 +609,7 @@ func deleteAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	ownedAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
 		const _30_days = 30 * 24 * time.Hour
 		try( queries.DeleteAlbum( r.Context(), sqlc.DeleteAlbumParams {
-			DeleteAt: sql.NullInt64 { time.Now().Add( _30_days ).Unix(), true },
+			DeleteAt: justI64( time.Now().Add( _30_days ).Unix() ),
 			UrlSlug: album.UrlSlug,
 		} ) )
 		w.Header().Set( "HX-Redirect", "/Special:deleted" )
@@ -613,7 +617,7 @@ func deleteAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 }
 
 func purgeDeletedAlbums( t time.Time ) {
-	must( queries.PurgeDeletedAlbums( context.Background(), sql.NullInt64 { t.Unix(), true } ) )
+	must( queries.PurgeDeletedAlbums( context.Background(), justI64( t.Unix() ) ) )
 }
 
 func updateAlbumSettings( w http.ResponseWriter, r *http.Request, user User ) {
@@ -804,7 +808,7 @@ func downloadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
 	var files []ZipFile
 	for _, id := range ids {
 		rows := try1( queries.GetPhotoAssets( r.Context(), sqlc.GetPhotoAssetsParams {
-			Owner: sql.NullInt64 { user.ID, true },
+			Owner: justI64( user.ID ),
 			ID: id,
 			IncludeEverything: download_everything,
 			IncludeRaws: download_raws,
@@ -890,7 +894,7 @@ type Photo struct {
 
 func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 	photos := []Photo { }
-	for _, photo := range must1( queries.GetUserPhotos( r.Context(), sql.NullInt64 { user.ID, true } ) ) {
+	for _, photo := range must1( queries.GetUserPhotos( r.Context(), justI64( user.ID ) ) ) {
 		photos = append( photos, Photo {
 			ID: photo.ID,
 			Asset: hex.EncodeToString( photo.Sha256 ),
@@ -938,7 +942,7 @@ func uploadToLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 	for _, asset := range assets {
 		photos := try1( queries.GetAssetPhotos( r.Context(), sqlc.GetAssetPhotosParams {
 			AssetID: asset.Sha256[:],
-			Owner: sql.NullInt64 { user.ID, true },
+			Owner: justI64( user.ID ),
 		} ) )
 
 		if len( photos ) == 0 {
@@ -960,7 +964,7 @@ func uploadToLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 
 	if !photo_id.Valid {
 		photo_id = just( try1( qtx.CreatePhoto( r.Context(), sqlc.CreatePhotoParams {
-			Owner: sql.NullInt64 { user.ID, true },
+			Owner: justI64( user.ID ),
 			CreatedAt: time.Now().Unix(),
 			PrimaryAsset: assets[ 0 ].Sha256[:],
 		} ) ) )
@@ -1041,7 +1045,7 @@ func uploadToAlbumImpl( w http.ResponseWriter, r *http.Request, userID sql.NullI
 
 func uploadToAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	sharedAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
-		uploadToAlbumImpl( w, r, sql.NullInt64 { user.ID, true }, album )
+		uploadToAlbumImpl( w, r, justI64( user.ID ), album )
 	} )
 }
 
@@ -1289,7 +1293,7 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 		}
 
 		if !exif.CreateDate().IsZero() {
-			date = sql.NullInt64 { exif.CreateDate().Unix(), true }
+			date = justI64( exif.CreateDate().Unix() )
 		}
 
 		if exif.GPS.Latitude() != 0 || exif.GPS.Longitude() != 0 || exif.GPS.Altitude() != 0 {
@@ -1386,7 +1390,7 @@ func addFile( ctx context.Context, user int64, path string, album_id sql.Null[ i
 
 	photos, err := queries.GetAssetPhotos( ctx, sqlc.GetAssetPhotosParams {
 		AssetID: asset.Sha256[:],
-		Owner: sql.NullInt64 { user, true },
+		Owner: justI64( user ),
 	} )
 	if err != nil {
 		return err
@@ -1402,7 +1406,7 @@ func addFile( ctx context.Context, user int64, path string, album_id sql.Null[ i
 		qtx := queries.WithTx( tx )
 
 		photo_id, err := qtx.CreatePhoto( ctx, sqlc.CreatePhotoParams {
-			Owner: sql.NullInt64 { user, true },
+			Owner: justI64( user ),
 			CreatedAt: time.Now().Unix(),
 			PrimaryAsset: asset.Sha256[:],
 		} )
