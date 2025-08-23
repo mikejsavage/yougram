@@ -1634,9 +1634,6 @@ func main() {
 		}
 	}
 
-	initCookieAEAD()
-	initGeocoder()
-
 	must( os.MkdirAll( "assets", 0o755 ) )
 	must( os.MkdirAll( "generated", 0o755 ) )
 
@@ -1644,14 +1641,19 @@ func main() {
 	private_listen_addr := "0.0.0.0:5678"
 	guest_listen_addr := "0.0.0.0:5679"
 	guest_url = "http://localhost:5679"
+	no_args := len( os.Args ) == 1
 
-	if len( os.Args ) == 1 {
+	initCookieAEAD( no_args )
+	initGeocoder()
+
+	if no_args {
 		if IsReleaseBuild {
 			showHelpAndQuit()
 		}
 
 		db_path = "file::memory:"
 		fmt.Println( "Using in memory database. Nothing will be saved when you quit the server!" )
+		fmt.Printf( "curl --header \"Cookie: auth=%s\" localhost:5678/\n", encodeAuthCookie( "mike", make( []byte, 16 ) ) )
 	}
 
 	// sqlite_vec.Auto()

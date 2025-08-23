@@ -57,8 +57,11 @@ func initCookieEncryptionKey() []byte {
 	return key
 }
 
-func initCookieAEAD() {
-	cookie_encryption_key := initCookieEncryptionKey()
+func initCookieAEAD( memory_db bool ) {
+	cookie_encryption_key := make( []byte, chacha20poly1305.KeySize )
+	if !memory_db {
+		cookie_encryption_key = initCookieEncryptionKey()
+	}
 	cookie_aead = try1( chacha20poly1305.NewX( cookie_encryption_key ) )
 }
 
