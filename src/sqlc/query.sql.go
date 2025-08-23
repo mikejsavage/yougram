@@ -928,6 +928,29 @@ func (q *Queries) PurgeDeletedAlbums(ctx context.Context, deleteAt sql.NullInt64
 	return err
 }
 
+const removeMyPhotoFromAlbum = `-- name: RemoveMyPhotoFromAlbum :one
+DELETE FROM album_photo
+WHERE ROWID IN (
+	SELECT album_photo.ROWID FROM album_photo
+	INNER JOIN photo ON photo_id = photo.id
+	WHERE album_photo.album_id = ? AND album_photo.photo_id = ? AND photo.owner = ?
+)
+RETURNING 1
+`
+
+type RemoveMyPhotoFromAlbumParams struct {
+	AlbumID int64
+	PhotoID int64
+	Owner   sql.NullInt64
+}
+
+func (q *Queries) RemoveMyPhotoFromAlbum(ctx context.Context, arg RemoveMyPhotoFromAlbumParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, removeMyPhotoFromAlbum, arg.AlbumID, arg.PhotoID, arg.Owner)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const removePhotoFromAlbum = `-- name: RemovePhotoFromAlbum :exec
 DELETE FROM album_photo WHERE album_id = ? AND photo_id = ?
 `

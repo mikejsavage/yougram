@@ -532,6 +532,10 @@ func getThumbnail( w http.ResponseWriter, r *http.Request, user User ) {
 	serveThumbnail( w, asset.V.Thumbnail, asset.V.OriginalFilename )
 }
 
+func serveJson[ T any ]( w http.ResponseWriter, x T ) {
+	_ = try1( w.Write( must1( json.Marshal( x ) ) ) )
+}
+
 func geocodeRoute( w http.ResponseWriter, r *http.Request, user User ) {
 	query := r.URL.Query().Get( "q" )
 	if query == "" {
@@ -540,8 +544,7 @@ func geocodeRoute( w http.ResponseWriter, r *http.Request, user User ) {
 	}
 
 	w.Header().Set( "Content-Type", "application/json" )
-	_ = try1( w.Write( must1( json.Marshal( geocode( query ) ) ) ) )
-
+	serveJson( w, geocode( query ) )
 }
 
 type HTMLAlbum struct {
@@ -745,7 +748,7 @@ func addToAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 func removeFromAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	// TODO: also let people remove their photos from albums shared with them
 	// TODO: what happens when albums get unshared?
-	ownedAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
+	sharedAlbumHandler( w, r, user, func( w http.ResponseWriter, r *http.Request, user User, album sqlc.GetAlbumByURLRow ) {
 		ids, err := parsePhotoIDs( r.FormValue( "photos" ) )
 		if err != nil {
 			httpError( w, http.StatusBadRequest )
@@ -756,11 +759,30 @@ func removeFromAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 		defer tx.Rollback()
 		qtx := queries.WithTx( tx )
 
-		for _, id := range ids {
-			try( qtx.RemovePhotoFromAlbum( r.Context(), sqlc.RemovePhotoFromAlbumParams {
-				PhotoID: id,
-				AlbumID: album.ID,
-			} ) )
+		if album.Owner == user.ID {
+			for _, id := range ids {
+				try( qtx.RemovePhotoFromAlbum( r.Context(), sqlc.RemovePhotoFromAlbumParams {
+					PhotoID: id,
+					AlbumID: album.ID,
+				} ) )
+			}
+
+			serveJson( w, ids )
+		} else {
+			removed := make( []int64, 0, len( ids ) )
+			for _, id := range ids {
+				was_removed := queryOptional( qtx.RemoveMyPhotoFromAlbum( r.Context(), sqlc.RemoveMyPhotoFromAlbumParams {
+					PhotoID: id,
+					AlbumID: album.ID,
+					Owner: justI64( user.ID ),
+				} ) )
+
+				if was_removed.Valid {
+					removed = append( removed, id )
+				}
+			}
+
+			serveJson( w, removed )
 		}
 
 		tx.Commit()
