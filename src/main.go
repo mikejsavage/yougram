@@ -766,26 +766,19 @@ func removeFromAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 					AlbumID: album.ID,
 				} ) )
 			}
-
-			serveJson( w, ids )
 		} else {
-			removed := make( []int64, 0, len( ids ) )
 			for _, id := range ids {
-				was_removed := queryOptional( qtx.RemoveMyPhotoFromAlbum( r.Context(), sqlc.RemoveMyPhotoFromAlbumParams {
+				try( qtx.RemoveMyPhotoFromAlbum( r.Context(), sqlc.RemoveMyPhotoFromAlbumParams {
 					PhotoID: id,
 					AlbumID: album.ID,
 					Owner: justI64( user.ID ),
 				} ) )
-
-				if was_removed.Valid {
-					removed = append( removed, id )
-				}
 			}
-
-			serveJson( w, removed )
 		}
 
 		tx.Commit()
+
+		w.Header().Set( "HX-Refresh", "true" )
 	} )
 }
 

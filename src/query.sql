@@ -186,14 +186,12 @@ INSERT OR IGNORE INTO album_photo ( album_id, photo_id ) VALUES ( ?, ? );
 -- name: RemovePhotoFromAlbum :exec
 DELETE FROM album_photo WHERE album_id = ? AND photo_id = ?;
 
--- name: RemoveMyPhotoFromAlbum :one
+-- name: RemoveMyPhotoFromAlbum :exec
 DELETE FROM album_photo
-WHERE ROWID IN (
-	SELECT album_photo.ROWID FROM album_photo
-	INNER JOIN photo ON photo_id = photo.id
-	WHERE album_photo.album_id = ? AND album_photo.photo_id = ? AND photo.owner = ?
-)
-RETURNING 1;
+WHERE photo_id = ? AND album_id = ? AND EXISTS (
+	SELECT NULL FROM photo
+	WHERE id = photo_id AND owner = ?
+);
 
 -- name: GetAlbumsForUser :many
 SELECT album.name, album.url_slug, album_key_asset.sha256 AS key_photo_sha256 FROM album
