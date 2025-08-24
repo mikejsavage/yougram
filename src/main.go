@@ -533,6 +533,7 @@ func getThumbnail( w http.ResponseWriter, r *http.Request, user User ) {
 }
 
 func serveJson[ T any ]( w http.ResponseWriter, x T ) {
+	w.Header().Set( "Content-Type", "application/json" )
 	_ = try1( w.Write( must1( json.Marshal( x ) ) ) )
 }
 
@@ -543,7 +544,6 @@ func geocodeRoute( w http.ResponseWriter, r *http.Request, user User ) {
 		return
 	}
 
-	w.Header().Set( "Content-Type", "application/json" )
 	serveJson( w, geocode( query ) )
 }
 
