@@ -2,7 +2,7 @@ package main
 
 import (
 	"crypto/cipher"
-	"crypto/rand"
+	crypto_rand "crypto/rand"
 	"crypto/subtle"
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/chacha20poly1305"
@@ -25,7 +25,7 @@ var cookie_aead cipher.AEAD
 func secureRandomBytes( n int ) []byte {
 	if n > 32 { panic( "n > 32" ) }
 	var bytes [32]byte
-	_ = must1( rand.Read( bytes[ :n ] ) )
+	_ = must1( crypto_rand.Read( bytes[ :n ] ) )
 	return bytes[ :n ]
 }
 
