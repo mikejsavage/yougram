@@ -611,10 +611,17 @@ templ addToAlbumButton() {
 			e.innerText = "";
 		}
 	}
+
+	function SubmitIfOneResult( dropdown ) {
+		let albums = dropdown.querySelectorAll( "button" );
+		if( albums.length == 1 ) {
+			albums[ 0 ].click();
+		}
+	}
 	</script>
 
 	<div x-cloak x-show="selecting" x-data="{ show: false, search: '' }">
-		<button class="chevron" :disabled="$store.selected.size == 0" @click="show = true; search = ''; ClearStatuses( $refs.dropdown )">Add to</button>
+		<button class="chevron" :disabled="$store.selected.size == 0" @click="show = true; search = ''; ClearStatuses( $refs.dropdown ); $nextTick( () => $refs.search.focus() )">Add to</button>
 
 		<div class="dropdown" x-cloak x-show="show" x-ref="dropdown" @click.away="show = false" @keydown.escape.window="show = false">
 			<style>
@@ -649,7 +656,7 @@ templ addToAlbumButton() {
 			</style>
 
 			<div style="display: flex; flex-direction: column; gap: 0.5rem">
-				<input type="search" placeholder="Search albums" x-model="search">
+				<input type="search" placeholder="Search albums" x-model="search" x-ref="search" @keypress.enter="SubmitIfOneResult( $refs.dropdown )">
 
 				<template x-for="album in albums">
 					<template x-if="album.Name.toLowerCase().includes( search.toLowerCase() ) && !window.location.pathname.startsWith( '/' + album.UrlSlug )">

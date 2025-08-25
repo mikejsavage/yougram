@@ -513,7 +513,7 @@ func addToAlbumButton() templ.Component {
 			templ_7745c5c3_Var26 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<style>\n\tbutton:has(+ .dropdown:not([style*=\"display: none\"])) {\n\t\t/* border-bottom: 0;\n\t\tborder-bottom-left-radius: 0;\n\t\tborder-bottom-right-radius: 0; */\n\t\toutline: 1.5px solid var( --blue );\n\t}\n\t</style><script>\n\tfunction ClearStatuses( dropdown ) {\n\t\tfor( let e of dropdown.querySelectorAll( \".status\" ) ) {\n\t\t\te.innerText = \"\";\n\t\t}\n\t}\n\t</script><div x-cloak x-show=\"selecting\" x-data=\"{ show: false, search: &#39;&#39; }\"><button class=\"chevron\" :disabled=\"$store.selected.size == 0\" @click=\"show = true; search = &#39;&#39;; ClearStatuses( $refs.dropdown )\">Add to</button><div class=\"dropdown\" x-cloak x-show=\"show\" x-ref=\"dropdown\" @click.away=\"show = false\" @keydown.escape.window=\"show = false\"><style>\n\t\t\t@scope {\n\t\t\t\tbutton {\n\t\t\t\t\tborder: 0;\n\t\t\t\t\tborder-radius: 0;\n\t\t\t\t\tbackground: unset;\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tgap: 0.5rem;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tfont-size: 100%;\n\t\t\t\t\tmargin: -0.25rem -0.5rem;\n\t\t\t\t\tpadding: 0.25rem 0.5rem;\n\t\t\t\t\ttext-align: left;\n\t\t\t\t\tfont-size: 1rem;\n\t\t\t\t\tline-height: 1.5;\n\t\t\t\t}\n\n\t\t\t\timg {\n\t\t\t\t\taspect-ratio: 1;\n\t\t\t\t\tobject-fit: cover;\n\t\t\t\t\tobject-position: 50% 50%;\n\t\t\t\t}\n\n\t\t\t\t.placeholder {\n\t\t\t\t\tborder: 1px solid #333;\n\t\t\t\t\twidth: 1lh;\n\t\t\t\t\theight: 1lh;\n\t\t\t\t}\n\t\t\t}\n\t\t\t</style><div style=\"display: flex; flex-direction: column; gap: 0.5rem\"><input type=\"search\" placeholder=\"Search albums\" x-model=\"search\"><template x-for=\"album in albums\"><template x-if=\"album.Name.toLowerCase().includes( search.toLowerCase() ) &amp;&amp; !window.location.pathname.startsWith( &#39;/&#39; + album.UrlSlug )\"><button :hx-put=\"&#39;/Special:addToAlbum/&#39; + album.UrlSlug\" hx-vals=\"js:{ photos: PhotosFormValue() }\" hx-disabled-elt=\"this\" hx-target=\"find .status\"><template x-if=\"album.KeyPhotoSha256.length &gt; 0\"><img :src=\"&#39;/Special:thumbnail/&#39; + album.KeyPhotoSha256\" style=\"height: 1lh\"></template><template x-if=\"album.KeyPhotoSha256.length == 0\"><span class=\"placeholder\"></span></template><span x-text=\"album.Name\"></span> <span class=\"status\"></span></button></template></template></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<style>\n\tbutton:has(+ .dropdown:not([style*=\"display: none\"])) {\n\t\t/* border-bottom: 0;\n\t\tborder-bottom-left-radius: 0;\n\t\tborder-bottom-right-radius: 0; */\n\t\toutline: 1.5px solid var( --blue );\n\t}\n\t</style><script>\n\tfunction ClearStatuses( dropdown ) {\n\t\tfor( let e of dropdown.querySelectorAll( \".status\" ) ) {\n\t\t\te.innerText = \"\";\n\t\t}\n\t}\n\n\tfunction SubmitIfOneResult( dropdown ) {\n\t\tlet albums = dropdown.querySelectorAll( \"button\" );\n\t\tif( albums.length == 1 ) {\n\t\t\talbums[ 0 ].click();\n\t\t}\n\t}\n\t</script><div x-cloak x-show=\"selecting\" x-data=\"{ show: false, search: &#39;&#39; }\"><button class=\"chevron\" :disabled=\"$store.selected.size == 0\" @click=\"show = true; search = &#39;&#39;; ClearStatuses( $refs.dropdown ); $nextTick( () =&gt; $refs.search.focus() )\">Add to</button><div class=\"dropdown\" x-cloak x-show=\"show\" x-ref=\"dropdown\" @click.away=\"show = false\" @keydown.escape.window=\"show = false\"><style>\n\t\t\t@scope {\n\t\t\t\tbutton {\n\t\t\t\t\tborder: 0;\n\t\t\t\t\tborder-radius: 0;\n\t\t\t\t\tbackground: unset;\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tgap: 0.5rem;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tfont-size: 100%;\n\t\t\t\t\tmargin: -0.25rem -0.5rem;\n\t\t\t\t\tpadding: 0.25rem 0.5rem;\n\t\t\t\t\ttext-align: left;\n\t\t\t\t\tfont-size: 1rem;\n\t\t\t\t\tline-height: 1.5;\n\t\t\t\t}\n\n\t\t\t\timg {\n\t\t\t\t\taspect-ratio: 1;\n\t\t\t\t\tobject-fit: cover;\n\t\t\t\t\tobject-position: 50% 50%;\n\t\t\t\t}\n\n\t\t\t\t.placeholder {\n\t\t\t\t\tborder: 1px solid #333;\n\t\t\t\t\twidth: 1lh;\n\t\t\t\t\theight: 1lh;\n\t\t\t\t}\n\t\t\t}\n\t\t\t</style><div style=\"display: flex; flex-direction: column; gap: 0.5rem\"><input type=\"search\" placeholder=\"Search albums\" x-model=\"search\" x-ref=\"search\" @keypress.enter=\"SubmitIfOneResult( $refs.dropdown )\"><template x-for=\"album in albums\"><template x-if=\"album.Name.toLowerCase().includes( search.toLowerCase() ) &amp;&amp; !window.location.pathname.startsWith( &#39;/&#39; + album.UrlSlug )\"><button :hx-put=\"&#39;/Special:addToAlbum/&#39; + album.UrlSlug\" hx-vals=\"js:{ photos: PhotosFormValue() }\" hx-disabled-elt=\"this\" hx-target=\"find .status\"><template x-if=\"album.KeyPhotoSha256.length &gt; 0\"><img :src=\"&#39;/Special:thumbnail/&#39; + album.KeyPhotoSha256\" style=\"height: 1lh\"></template><template x-if=\"album.KeyPhotoSha256.length == 0\"><span class=\"placeholder\"></span></template><span x-text=\"album.Name\"></span> <span class=\"status\"></span></button></template></template></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -549,7 +549,7 @@ func removeFromAlbumButton(album sqlc.GetAlbumByURLRow) templ.Component {
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(templ.URL("/Special:removeFromAlbum/" + album.UrlSlug))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 682, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 689, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
@@ -562,7 +562,7 @@ func removeFromAlbumButton(album sqlc.GetAlbumByURLRow) templ.Component {
 		var templ_7745c5c3_Var29 string
 		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 687, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 694, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 		if templ_7745c5c3_Err != nil {
@@ -665,7 +665,7 @@ func albumHeader(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwn
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 713, Col: 18}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 720, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -683,7 +683,7 @@ func albumHeader(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwn
 			var templ_7745c5c3_Var33 string
 			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(album.OwnerUsername)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 716, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 723, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
@@ -703,7 +703,7 @@ func albumHeader(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwn
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(showNullableDate(date_range.OldestPhoto))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 721, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 728, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 			if templ_7745c5c3_Err != nil {
@@ -716,7 +716,7 @@ func albumHeader(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwn
 			var templ_7745c5c3_Var35 string
 			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(showNullableDate(date_range.NewestPhoto))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 721, Col: 109}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 728, Col: 109}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 			if templ_7745c5c3_Err != nil {
@@ -734,7 +734,7 @@ func albumHeader(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwn
 		var templ_7745c5c3_Var36 string
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(len(photos))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 723, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 730, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {
@@ -747,7 +747,7 @@ func albumHeader(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwn
 		var templ_7745c5c3_Var37 string
 		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(sel(len(photos) == 1, "photo", "photos"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 723, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 730, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 		if templ_7745c5c3_Err != nil {
@@ -858,7 +858,7 @@ func photogridWithHeader(photos []Photo, subheader templ.Component, base_urls Ba
 		}
 		templ_7745c5c3_Var41, templ_7745c5c3_Err := templruntime.ScriptContentOutsideStringLiteral(photos)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 787, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 794, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41)
 		if templ_7745c5c3_Err != nil {
@@ -956,7 +956,7 @@ func libraryTemplate(photos []Photo) templ.Component {
 			var templ_7745c5c3_Var44 string
 			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(len(photos))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 909, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 916, Col: 25}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 			if templ_7745c5c3_Err != nil {
@@ -969,7 +969,7 @@ func libraryTemplate(photos []Photo) templ.Component {
 			var templ_7745c5c3_Var45 string
 			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(sel(len(photos) == 1, "photo", "photos"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 909, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 916, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 			if templ_7745c5c3_Err != nil {
@@ -1081,7 +1081,7 @@ func guestAlbumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, can_upload 
 		var templ_7745c5c3_Var49 string
 		templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 941, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 948, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 		if templ_7745c5c3_Err != nil {
@@ -1094,7 +1094,7 @@ func guestAlbumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, can_upload 
 		var templ_7745c5c3_Var50 string
 		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s/%s/%s/thumbnail/%s", guest_url, album.UrlSlug, album.ReadonlySecret, hex.EncodeToString(album.KeyPhotoSha256)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 942, Col: 167}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 949, Col: 167}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 		if templ_7745c5c3_Err != nil {
