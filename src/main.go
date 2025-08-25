@@ -658,7 +658,7 @@ func updateAlbumSettings( w http.ResponseWriter, r *http.Request, user User ) {
 		Owner: user.ID,
 	} )
 	if err != nil {
-		io.WriteString( w, err.Error() )
+		_ = try1( io.WriteString( w, err.Error() ) )
 		return
 	}
 
