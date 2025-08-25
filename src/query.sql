@@ -136,6 +136,12 @@ WHERE photo.id = ? AND asset.sha256 = IFNULL( photo.primary_asset,
 -- name: GetPhotoOwner :one
 SELECT owner FROM photo WHERE id = ?;
 
+-- name: GetPhotoOwnerName :one
+SELECT user.username
+FROM photo
+INNER JOIN user ON photo.owner = user.id
+WHERE photo.id = ?;
+
 -- name: GetPhotoAssets :many
 SELECT asset.sha256 AS asset, asset.type, photo.owner = ? AS owned
 FROM asset
@@ -158,6 +164,26 @@ WHERE photo.id = ? AND (
 	( @include_everything OR photo.primary_asset = asset.sha256 )
 	OR ( @include_raws AND asset.type = "raw" )
 );
+
+-- name: GetPhotoVariants :many
+SELECT
+	sha256,
+	original_filename,
+	type,
+	thumbhash,
+	description,
+	date_taken,
+	latitude,
+	longitude
+FROM asset
+INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
+WHERE photo_asset.photo_id = ?;
+
+-- name: GetPhotoAlbums :many
+SELECT name, url_slug FROM album
+INNER JOIN album_photo ON album_photo.album_id = album.id
+WHERE album_photo.photo_id = ?
+ORDER BY album.name;
 
 
 ------------

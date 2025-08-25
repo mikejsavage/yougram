@@ -684,6 +684,41 @@ func (q *Queries) GetPhoto(ctx context.Context, id int64) (GetPhotoRow, error) {
 	return i, err
 }
 
+const getPhotoAlbums = `-- name: GetPhotoAlbums :many
+SELECT name, url_slug FROM album
+INNER JOIN album_photo ON album_photo.album_id = album.id
+WHERE album_photo.photo_id = ?
+ORDER BY album.name
+`
+
+type GetPhotoAlbumsRow struct {
+	Name    string
+	UrlSlug string
+}
+
+func (q *Queries) GetPhotoAlbums(ctx context.Context, photoID int64) ([]GetPhotoAlbumsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPhotoAlbums, photoID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPhotoAlbumsRow
+	for rows.Next() {
+		var i GetPhotoAlbumsRow
+		if err := rows.Scan(&i.Name, &i.UrlSlug); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPhotoAssets = `-- name: GetPhotoAssets :many
 SELECT asset.sha256 AS asset, asset.type, photo.owner = ? AS owned
 FROM asset
@@ -802,6 +837,78 @@ func (q *Queries) GetPhotoOwner(ctx context.Context, id int64) (sql.NullInt64, e
 	var owner sql.NullInt64
 	err := row.Scan(&owner)
 	return owner, err
+}
+
+const getPhotoOwnerName = `-- name: GetPhotoOwnerName :one
+SELECT user.username
+FROM photo
+INNER JOIN user ON photo.owner = user.id
+WHERE photo.id = ?
+`
+
+func (q *Queries) GetPhotoOwnerName(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRowContext(ctx, getPhotoOwnerName, id)
+	var username string
+	err := row.Scan(&username)
+	return username, err
+}
+
+const getPhotoVariants = `-- name: GetPhotoVariants :many
+SELECT
+	sha256,
+	original_filename,
+	type,
+	thumbhash,
+	description,
+	date_taken,
+	latitude,
+	longitude
+FROM asset
+INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
+WHERE photo_asset.photo_id = ?
+`
+
+type GetPhotoVariantsRow struct {
+	Sha256           []byte
+	OriginalFilename string
+	Type             string
+	Thumbhash        []byte
+	Description      sql.NullString
+	DateTaken        sql.NullInt64
+	Latitude         sql.NullFloat64
+	Longitude        sql.NullFloat64
+}
+
+func (q *Queries) GetPhotoVariants(ctx context.Context, photoID int64) ([]GetPhotoVariantsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPhotoVariants, photoID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPhotoVariantsRow
+	for rows.Next() {
+		var i GetPhotoVariantsRow
+		if err := rows.Scan(
+			&i.Sha256,
+			&i.OriginalFilename,
+			&i.Type,
+			&i.Thumbhash,
+			&i.Description,
+			&i.DateTaken,
+			&i.Latitude,
+			&i.Longitude,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getUserAuthDetails = `-- name: GetUserAuthDetails :one

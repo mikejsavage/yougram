@@ -537,6 +537,66 @@ func serveJson[ T any ]( w http.ResponseWriter, x T ) {
 	_ = try1( w.Write( must1( json.Marshal( x ) ) ) )
 }
 
+type JsonVariant struct {
+	Sha256 string
+	Type string
+	OriginalFilename string
+	Thumbhash string
+	Description *string `json:"description,omitempty"`
+	DateTaken *int64 `json:"date_taken,omitempty"`
+	Latitude *float64 `json:"latitude,omitempty"`
+	Longitude *float64 `json:"longitude,omitempty"`
+}
+
+func variantsToJson( rows []sqlc.GetPhotoVariantsRow ) []JsonVariant {
+	variants := make( []JsonVariant, len( rows ) )
+
+	for i, row := range rows {
+		variants[ i ] = JsonVariant {
+			Sha256: hex.EncodeToString( row.Sha256 ),
+			Type: row.Type,
+			OriginalFilename: row.OriginalFilename,
+			Thumbhash: base64.StdEncoding.EncodeToString( row.Thumbhash ),
+			Description: sel( row.Description.Valid, &row.Description.String, nil ),
+			DateTaken: sel( row.DateTaken.Valid, &row.DateTaken.Int64, nil ),
+			Latitude: sel( row.Latitude.Valid, &row.Latitude.Float64, nil ),
+			Longitude: sel( row.Longitude.Valid, &row.Longitude.Float64, nil ),
+		}
+	}
+
+	return variants
+}
+
+func getPhotoMetadata( w http.ResponseWriter, r *http.Request, user User ) {
+	photo_id, err := strconv.ParseInt( r.PathValue( "photo" ), 10, 64 )
+	if err != nil {
+		httpError( w, http.StatusBadRequest )
+		return
+	}
+
+	// TODO: auth
+	owner := queryOptional( queries.GetPhotoOwnerName( r.Context(), photo_id ) )
+	if !owner.Valid {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+
+	variants := try1( queries.GetPhotoVariants( r.Context(), photo_id ) )
+	albums := try1( queries.GetPhotoAlbums( r.Context(), photo_id ) )
+
+	body := struct {
+		Owner string
+		Variants []JsonVariant
+		Albums []sqlc.GetPhotoAlbumsRow
+	} {
+		Owner: owner.V,
+		Variants: variantsToJson( variants ),
+		Albums: albums,
+	}
+
+	serveJson( w, body )
+}
+
 func geocodeRoute( w http.ResponseWriter, r *http.Request, user User ) {
 	query := r.URL.Query().Get( "q" )
 	if query == "" {
@@ -1778,6 +1838,7 @@ func main() {
 
 		{ "GET",  "/Special:asset/{asset}", requireAuth( getAsset ) },
 		{ "GET",  "/Special:thumbnail/{asset}", requireAuth( getThumbnail ) },
+		{ "GET",  "/Special:photoMetadata/{photo}", requireAuth( getPhotoMetadata ) },
 		{ "GET",  "/Special:geocode", requireAuthNoLoginForm( geocodeRoute ) },
 
 		{ "PUT",  "/Special:createAlbum", requireAuth( createAlbum ) },
