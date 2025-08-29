@@ -219,11 +219,10 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 
 			.stack {
 				display: grid;
-			}
-
-			.stack img {
-				grid-row: 1;
-				grid-column: 1;
+				& > * {
+					grid-row: 1;
+					grid-column: 1;
+				}
 			}
 
 			.thumbnail > img {
@@ -253,15 +252,17 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 				display: flex;
 				justify-content: center;
 				align-items: center;
-			}
 
-			.fullscreen img {
-				width: 100vw;
-				max-height: 100vh;
-				object-fit: contain;
+				& img {
+					width: 100vw;
+					max-height: 100vh;
+					object-fit: contain;
+				}
 			}
 
 			.settings {
+				display: flex;
+				gap: 0.5rem;
 				color: white;
 				opacity: 0.2;
 				position: fixed;
@@ -269,11 +270,11 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 				right: 2vh;
 				transition: opacity 250ms linear;
 				transition-delay: 1s;
-			}
 
-			.settings:hover {
-				opacity: 1;
-				transition: none;
+				&:hover {
+					opacity: 1;
+					transition: none;
+				}
 			}
 		}
 		</style>
@@ -826,13 +827,13 @@ templ photogridWithHeader( photos []Photo, subheader templ.Component, base_urls 
 					display: flex;
 					flex-direction: column;
 					flex-shrink: 0;
-				}
 
-				.left > span {
-					display: flex;
-					flex-direction: row;
-					align-items: center;
-					gap: 1rem;
+					& > span {
+						display: flex;
+						flex-direction: row;
+						align-items: center;
+						gap: 1rem;
+					}
 				}
 
 				.right {
