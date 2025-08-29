@@ -41,29 +41,29 @@ templ fullscreen( base_urls BaseURLs ) {
 		>
 			<template x-if="variant == null">
 				<div class="stack" x-init="Reset()">
-					<img x-init="MakeThumbhash( $el, $store.photos[ fullscreen ].thumbhash )" :style="Visible( !thumbnail_loaded && !asset_loaded )">
+					<img x-init="MakeThumbhash( $el, $store.photos[ fullscreen ].thumbhash )" x-show="!thumbnail_loaded && !asset_loaded">
 					<img :src={ fmt.Sprintf( "'%s' + $store.photos[ fullscreen ].asset", base_urls.Thumbnail ) }
 						 @load="thumbnail_loaded = true"
 						 @error="thumbnail_failed = true"
-						 :style="Visible( !thumbnail_failed && !asset_loaded )">
+						 x-show="!thumbnail_failed && !asset_loaded">
 					<img :src={ fmt.Sprintf( "'%s' + $store.photos[ fullscreen ].asset", base_urls.Asset ) }
 						 @load="asset_loaded = true"
 						 @error="asset_failed = true"
-						 :style="Visible( !asset_failed )">
+						 x-show="!asset_failed">
 				</div>
 			</template>
 
 			<template x-if="variant != null">
 				<div class="stack" x-init="Reset()">
-					<img x-init="MakeThumbhash( $el, metadata.Variants[ variant ].Thumbhash )" :style="Visible( !thumbnail_loaded && !asset_loaded )">
+					<img x-init="MakeThumbhash( $el, metadata.Variants[ variant ].Thumbhash )" x-show="!thumbnail_loaded && !asset_loaded">
 					<img :src={ fmt.Sprintf( "'%s' + metadata.Variants[ variant ].Sha256", base_urls.Thumbnail ) }
 						 @load="thumbnail_loaded = true"
 						 @error="thumbnail_failed = true"
-						 :style="Visible( !thumbnail_failed && !asset_loaded )">
+						 x-show="!thumbnail_failed && !asset_loaded">
 					<img :src={ fmt.Sprintf( "'%s' + metadata.Variants[ variant ].Sha256", base_urls.Asset ) }
 						 @load="asset_loaded = true"
 						 @error="asset_failed = true"
-						 :style="Visible( !asset_failed )">
+						 x-show="!asset_failed">
 				</div>
 			</template>
 
@@ -160,10 +160,6 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 					return;
 
 				this.fullscreen = idx;
-			},
-
-			Visible( p ) {
-				return p ? { } : { display: "none" };
 			},
 
 			PhotoClicked( idx, shift ) {
