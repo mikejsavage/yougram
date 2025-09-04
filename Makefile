@@ -10,7 +10,7 @@ endif
 all:
 	sqlc generate
 	templ generate -path src
-	go build -C src -o ../mikegram$(BIN_SUFFIX) $(GOFLAGS)
+	env GO_CFLAGS=-O2 go build -C src -o ../mikegram$(BIN_SUFFIX) $(GOFLAGS)
 
 release: BIN_SUFFIX =
 release: TAGS += release
