@@ -127,7 +127,7 @@ func loginFormTemplate() templ.Component {
 	})
 }
 
-func accountSettingsTemplate() templ.Component {
+func changePasswordForm(reset bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -148,7 +148,108 @@ func accountSettingsTemplate() templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<main style=\"padding: 0.5rem; max-width: 20rem\"><script>\n\t\tfunction MakeAvatarForm() {\n\t\t\treturn {\n\t\t\t\timg: null,\n\t\t\t\tasync FilePicked( e ) {\n\t\t\t\t\tif( e.target.files.length == 0 ) {\n\t\t\t\t\t\tthis.img = null;\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\n\t\t\t\t\tlet reader = new FileReader();\n\t\t\t\t\treader.onload = e => this.img = e.target.result;\n\t\t\t\t\treader.readAsDataURL( e.target.files[ 0 ] );\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t\t</script><form x-data=\"MakeAvatarForm()\" hx-post=\"/Special:avatar\" hx-encoding=\"multipart/form-data\" hx-target=\"find span\" hx-disabled-elt=\"find button\"><h1>Avatar</h1><div style=\"display: flex; align-items: center; gap: 1rem\"><img class=\"avatar\" :src=\"img\" x-show=\"img != null\" x-cloak style=\"width: 2lh\"><div x-show=\"img == null\" style=\"width: 2lh; height: 2lh; border: 2px solid #333; border-radius: 50%;\"></div><button type=\"button\"><label>Pick a file <input type=\"file\" name=\"avatar\" accept=\"image/*\" @change=\"FilePicked\" style=\"display: none\"></label></button> <button type=\"submit\" :disabled=\"img == null\">Save</button></div><span></span></form><form hx-post=\"/Special:password\" hx-target=\"find span\" hx-disabled-elt=\"find button\"><h1>Password</h1><label>Current password <input type=\"password\" name=\"old_password\"></label> <label>New password <input type=\"password\" name=\"new_password\"></label> <label>Repeat new password <input type=\"password\" name=\"new_password2\"></label> <button type=\"submit\">Change password</button> <span></span></form></main>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<form hx-post=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var7 string
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(sel(reset, "/Special:resetPassword", "/Special:password"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 175, Col: 71}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" hx-target=\"find span\" hx-disabled-elt=\"find button\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if !reset {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<h1>Password</h1><label>Current password <input type=\"password\" name=\"old_password\"></label> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<label>New password <input type=\"password\" name=\"new_password\"></label> <label>Repeat new password <input type=\"password\" name=\"new_password2\"></label> <button type=\"submit\">Change password</button> <span class=\"error\"></span></form>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func accountSettingsTemplate() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var8 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var8 == nil {
+			templ_7745c5c3_Var8 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<main style=\"padding: 0.5rem; max-width: 20rem\"><script>\n\t\tfunction MakeAvatarForm() {\n\t\t\treturn {\n\t\t\t\timg: null,\n\t\t\t\tasync FilePicked( e ) {\n\t\t\t\t\tif( e.target.files.length == 0 ) {\n\t\t\t\t\t\tthis.img = null;\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\n\t\t\t\t\tlet reader = new FileReader();\n\t\t\t\t\treader.onload = e => this.img = e.target.result;\n\t\t\t\t\treader.readAsDataURL( e.target.files[ 0 ] );\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t\t</script><form x-data=\"MakeAvatarForm()\" hx-post=\"/Special:avatar\" hx-encoding=\"multipart/form-data\" hx-target=\"find span\" hx-disabled-elt=\"find button\"><h1>Avatar</h1><div style=\"display: flex; align-items: center; gap: 1rem\"><img class=\"avatar\" :src=\"img\" x-show=\"img != null\" x-cloak style=\"width: 2lh\"><div x-show=\"img == null\" style=\"width: 2lh; height: 2lh; border: 2px solid #333; border-radius: 50%;\"></div><button type=\"button\"><label>Pick a file <input type=\"file\" name=\"avatar\" accept=\"image/*\" @change=\"FilePicked\" style=\"display: none\"></label></button> <button type=\"submit\" :disabled=\"img == null\">Save</button></div><span class=\"error\"></span></form>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = changePasswordForm(false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</main>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func resetPasswordFormTemplate() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var9 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var9 == nil {
+			templ_7745c5c3_Var9 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>yougram</title>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = autorefresh().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<script src=\"/Special:htmx-2.0.4.js\"></script><style>\n\t* {\n\t\tbox-sizing: border-box;\n\t}\n\n\thtml {\n\t\theight: 100%;\n\t}\n\n\tbody {\n\t\tdisplay: flex;\n\t\tfont-family: sans-serif;\n\t\tline-height: 1.5;\n\t\talign-items: center;\n\t\tjustify-content: center;\n\t\theight: 100%;\n\t\twidth: 100%;\n\t\tmargin: 0;\n\t}\n\n\th1 {\n\t\tmargin: 0;\n\t}\n\n\tform {\n\t\tdisplay: flex;\n\t\tflex-direction: column;\n\t\tgap: 0.5rem;\n\t\tmax-width: 20rem;\n\t}\n\n\tinput[type=password] {\n\t\tborder: 1px solid #767676;\n\t\tborder-radius: 3px;\n\t\tfont-size: 100%;\n\t\tpadding: 0.5rem;\n\t\twidth: 100%;\n\n\t\t&:focus {\n\t\t\tborder-color: #333;\n\t\t\toutline: 1.5px solid var( --blue );\n\t\t}\n\n\t\t&:is(:disabled, :read-only) {\n\t\t\tbackground: #fafafa;\n\t\t\tcolor: #545454;\n\t\t}\n\t}\n\t</style>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = changePasswordForm(true).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

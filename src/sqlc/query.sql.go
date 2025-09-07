@@ -1155,3 +1155,19 @@ func (q *Queries) SetUserPassword(ctx context.Context, arg SetUserPasswordParams
 	_, err := q.db.ExecContext(ctx, setUserPassword, arg.Password, arg.ID)
 	return err
 }
+
+const setUserPasswordIfMustReset = `-- name: SetUserPasswordIfMustReset :one
+UPDATE user SET password = ?, needs_to_reset_password = 0 WHERE id = ? AND needs_to_reset_password = 1 RETURNING 1
+`
+
+type SetUserPasswordIfMustResetParams struct {
+	Password string
+	ID       int64
+}
+
+func (q *Queries) SetUserPasswordIfMustReset(ctx context.Context, arg SetUserPasswordIfMustResetParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, setUserPasswordIfMustReset, arg.Password, arg.ID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}

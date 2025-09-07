@@ -1835,6 +1835,7 @@ func main() {
 		{ "GET",  "/Special:avatar/{avatar}", getAvatar },
 		{ "POST", "/Special:avatar", requireAuth( setAvatar ) },
 		{ "POST", "/Special:password", requireAuth( setPassword ) },
+		{ "POST", "/Special:resetPassword", resetPassword },
 
 		{ "GET",  "/Special:asset/{asset}", requireAuth( getAsset ) },
 		{ "GET",  "/Special:thumbnail/{asset}", requireAuth( getThumbnail ) },

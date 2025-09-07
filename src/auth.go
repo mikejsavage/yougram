@@ -157,12 +157,20 @@ func setAuthCookie( w http.ResponseWriter, r *http.Request, value string ) {
 	http.SetCookie( w, &cookie )
 }
 
-func checkAuth( w http.ResponseWriter, r *http.Request, handler func( http.ResponseWriter, *http.Request, User ) ) bool {
+type AuthResult int
+const (
+	AuthResult_Fail AuthResult = iota
+	AuthResult_Ok
+	AuthResult_NeedsPasswordReset
+)
+
+func checkAuth( w http.ResponseWriter, r *http.Request ) ( AuthResult, User ) {
 	authed := false
 	cookie, err_cookie := r.Cookie( "auth" )
 
 	var user User
 	var secret []byte
+	needs_to_reset_password := false
 	if err_cookie == nil {
 		var username string
 		username, secret = decodeAuthCookie( cookie.Value )
@@ -171,6 +179,7 @@ func checkAuth( w http.ResponseWriter, r *http.Request, handler func( http.Respo
 			subtle.WithDataIndependentTiming( func() {
 				if subtle.ConstantTimeCompare( secret, row.V.Cookie ) == 1 {
 					authed = true
+					needs_to_reset_password = row.V.NeedsToResetPassword != 0
 					user = User { row.V.ID, username }
 				}
 			} )
@@ -178,30 +187,43 @@ func checkAuth( w http.ResponseWriter, r *http.Request, handler func( http.Respo
 	}
 
 	if !authed {
-		return false
+		return AuthResult_Fail, User { }
 	}
 
 	setAuthCookie( w, r, encodeAuthCookie( user.Username, secret ) )
-	handler( w, r, user )
-	return true
+
+	return sel( needs_to_reset_password, AuthResult_NeedsPasswordReset, AuthResult_Ok ), user
 }
 
 func requireAuth( handler func( http.ResponseWriter, *http.Request, User ) ) func( http.ResponseWriter, *http.Request ) {
 	return func( w http.ResponseWriter, r *http.Request ) {
-		if !checkAuth( w, r, handler ) {
+		result, user := checkAuth( w, r )
+		switch result {
+		case AuthResult_Fail:
 			if r.Method == "GET" {
 				w.WriteHeader( http.StatusUnauthorized )
 				try( loginFormTemplate().Render( r.Context(), w ) )
 			} else {
 				httpError( w, http.StatusUnauthorized )
 			}
+		case AuthResult_NeedsPasswordReset:
+			if r.Method == "GET" {
+				try( resetPasswordFormTemplate().Render( r.Context(), w ) )
+			} else {
+				httpError( w, http.StatusUnauthorized )
+			}
+		case AuthResult_Ok:
+			handler( w, r, user )
 		}
 	}
 }
 
 func requireAuthNoLoginForm( handler func( http.ResponseWriter, *http.Request, User ) ) func( http.ResponseWriter, *http.Request ) {
 	return func( w http.ResponseWriter, r *http.Request ) {
-		if !checkAuth( w, r, handler ) {
+		result, user := checkAuth( w, r )
+		if result == AuthResult_Ok {
+			handler( w, r, user )
+		} else {
 			httpError( w, http.StatusUnauthorized )
 		}
 	}
@@ -257,5 +279,31 @@ func setPassword( w http.ResponseWriter, r *http.Request, user User ) {
 	} ) )
 
 	_ = try1( io.WriteString( w, green_checkmark ) )
-	// w.Header().Set( "HX-Refresh", "true" )
+}
+
+func resetPassword( w http.ResponseWriter, r *http.Request ) {
+	result, user := checkAuth( w, r )
+	if result == AuthResult_Fail {
+		httpError( w, http.StatusUnauthorized )
+		return
+	}
+
+	new_password := unicodeNormalize( r.PostFormValue( "new_password" ) )
+	new_password2 := unicodeNormalize( r.PostFormValue( "new_password2" ) )
+
+	if new_password != new_password2 {
+		_ = try1( io.WriteString( w, "New passwords don't match" ) )
+		return
+	}
+
+	ok := queryOptional( queries.SetUserPasswordIfMustReset( r.Context(), sqlc.SetUserPasswordIfMustResetParams {
+		ID: user.ID,
+		Password: hashPassword( new_password ),
+	} ) )
+	if !ok.Valid {
+		httpError( w, http.StatusForbidden )
+		return
+	}
+
+	w.Header().Set( "HX-Refresh", "true" )
 }

@@ -12,6 +12,9 @@ SELECT password FROM user WHERE id = ?;
 -- name: SetUserPassword :exec
 UPDATE user SET password = ? WHERE id = ?;
 
+-- name: SetUserPasswordIfMustReset :one
+UPDATE user SET password = ?, needs_to_reset_password = 0 WHERE id = ? AND needs_to_reset_password = 1 RETURNING 1;
+
 -- name: ResetUserPassword :exec
 UPDATE user SET password = ?, needs_to_reset_password = 1, cookie = ? WHERE username = ?;
 
