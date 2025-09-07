@@ -210,6 +210,11 @@ func initDB( memory_db bool ) {
 		Cookie: secret[:],
 	} ) )
 
+	must1( queries.SetUserPasswordIfMustReset( ctx, sqlc.SetUserPasswordIfMustResetParams {
+		ID: mike,
+		Password: hashPassword( "gg" ),
+	} ) )
+
 	_ = must1( queries.CreateUser( ctx, sqlc.CreateUserParams {
 		Username: unicodeNormalize( "mum" ),
 		Password: hashPassword( "gg" ),
