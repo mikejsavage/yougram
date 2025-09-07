@@ -202,6 +202,18 @@ templ changePasswordForm( reset bool ) {
 
 templ accountSettingsTemplate() {
 	<main style="padding: 0.5rem; max-width: 20rem">
+		<style>
+		@scope {
+			img {
+				aspect-ratio: 1;
+				object-fit: cover;
+				object-position: 50% 50%;
+				vertical-align: middle;
+				border-radius: 50%;
+			}
+		}
+		</style>
+
 		<script>
 		function MakeAvatarForm() {
 			return {
@@ -219,6 +231,7 @@ templ accountSettingsTemplate() {
 			}
 		}
 		</script>
+
 		<form x-data="MakeAvatarForm()"
 			hx-post="/Special:avatar" hx-encoding="multipart/form-data"
 			hx-target="find span" hx-disabled-elt="find button"
