@@ -74,10 +74,9 @@ templ createAlbumButton() {
 					<input type="checkbox" x-model="shared"> Shared
 				</label>
 
-				<div>
-					<button type="submit" style="width: min-content">Save</button>
-					<span class="error" x-text="error"></span>
-				</div>
+				<button type="submit" style="width: min-content">Save</button>
+
+				<span class="error hideempty" x-text="error"></span>
 			</form>
 		</dialog>
 	</div>
@@ -105,7 +104,7 @@ templ base( title string ) {
 			} );
 		} );
 
-		Alpine.directive( "htmx-err", function( el, { expression, modifiers }, { Alpine } ) {
+		Alpine.directive( "htmx-error", function( el, { expression, modifiers }, { Alpine } ) {
 			el.addEventListener( "htmx:beforeRequest", function( ev ) {
 				Alpine.$data( el )[ expression ] = "";
 			} );
