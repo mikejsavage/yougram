@@ -119,7 +119,7 @@ func loginFormTemplate() templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</div><input type=\"password\" id=\"password\" name=\"password\" placeholder=\"Password\" required><div id=\"error\"></div></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</div><input type=\"password\" id=\"password\" name=\"password\" placeholder=\"Password\" autocomplete=\"current-password\" required><div id=\"error\"></div></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -166,12 +166,12 @@ func changePasswordForm(reset bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if !reset {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<h1>Password</h1><label>Current password <input type=\"password\" name=\"old_password\"></label> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<h1>Password</h1><label>Current password <input type=\"password\" name=\"old_password\" autocomplete=\"current-password\"></label> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<label>New password <input type=\"password\" name=\"new_password\"></label> <label>Repeat new password <input type=\"password\" name=\"new_password2\"></label> <button type=\"submit\">Change password</button> <span class=\"error\"></span></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<label>New password <input type=\"password\" name=\"new_password\" autocomplete=\"new-password\"></label> <label>Repeat new password <input type=\"password\" name=\"new_password2\" autocomplete=\"new-password\"></label> <button type=\"submit\">Change password</button> <span class=\"error\"></span></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

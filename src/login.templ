@@ -165,7 +165,7 @@ templ loginFormTemplate() {
 			}
 		</div>
 
-		<input type="password" id="password" name="password" placeholder="Password" required>
+		<input type="password" id="password" name="password" placeholder="Password" autocomplete="current-password" required>
 		<div id="error"></div>
 	</form>
 }
@@ -180,18 +180,18 @@ templ changePasswordForm( reset bool ) {
 
 			<label>
 				Current password
-				<input type="password" name="old_password">
+				<input type="password" name="old_password" autocomplete="current-password">
 			</label>
 		}
 
 		<label>
 			New password
-			<input type="password" name="new_password">
+			<input type="password" name="new_password" autocomplete="new-password">
 		</label>
 
 		<label>
 			Repeat new password
-			<input type="password" name="new_password2">
+			<input type="password" name="new_password2" autocomplete="new-password">
 		</label>
 
 		<button type="submit">Change password</button>
