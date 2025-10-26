@@ -32,6 +32,7 @@ import (
 	"syscall"
 	"time"
 
+	"mikegram/moondream"
 	"mikegram/sqlc"
 	"mikegram/stb"
 
@@ -1820,6 +1821,14 @@ func main() {
 	fs_watcher := initFSWatcher()
 	defer fs_watcher.Close()
 
+	fmt.Printf( "AI photo tagging init..." )
+	moondream_ok := moondream.Init()
+	if !moondream_ok {
+		fmt.Println( " failed. You need moondream.bin and moondream.json from XXX if you want AI photo tagging" )
+	} else {
+		fmt.Println( " ok" )
+	}
+
 	// daily tasks
 	go func() {
 		for now := range time.Tick( 24 * time.Hour ) {
@@ -1897,4 +1906,8 @@ func main() {
 	must( guest_http_server.Shutdown( ctx ) )
 
 	shutdownGeocoder()
+
+	if moondream_ok {
+		moondream.Shutdown()
+	}
 }
