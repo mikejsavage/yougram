@@ -1,10 +1,10 @@
 BIN_SUFFIX=-dev
-GOFLAGS=
 TAGS=fts5 nodynamic
+GOFLAGS=-tags "$(TAGS)"
 
 ifeq ($(shell uname -s),Linux)
 	TAGS += sqlite_omit_load_extension osusergo netgo
-	GOFLAGS += -ldflags="-extldflags=-static" -tags "$(TAGS)" -gcflags "-N -l"
+	GOFLAGS = -ldflags="-extldflags=-static" -tags "$(TAGS)" -gcflags "-N -l"
 endif
 
 all:
