@@ -1821,10 +1821,10 @@ func main() {
 	fs_watcher := initFSWatcher()
 	defer fs_watcher.Close()
 
-	fmt.Printf( "AI photo tagging init..." )
+	fmt.Printf( "Init AI photo tagging..." )
 	moondream_ok := moondream.Init()
 	if !moondream_ok {
-		fmt.Println( " failed. You need moondream.bin and moondream.json from XXX if you want AI photo tagging" )
+		fmt.Println( " failed, download moondream.bin and moondream.json from XXX if you want it" )
 	} else {
 		fmt.Println( " ok" )
 	}

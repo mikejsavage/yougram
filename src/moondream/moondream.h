@@ -1,4 +1,4 @@
-#include <stdbool.h>
+#include <stdint.h>
 
 int32_t moondream_init( const char * model_dir );
 void moondream_shutdown();
