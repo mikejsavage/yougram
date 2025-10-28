@@ -1729,7 +1729,6 @@ func main() {
 	no_args := len( os.Args ) == 1
 
 	initCookieAEAD( no_args )
-	initGeocoder()
 
 	if no_args {
 		if IsReleaseBuild {
@@ -1821,13 +1820,9 @@ func main() {
 	fs_watcher := initFSWatcher()
 	defer fs_watcher.Close()
 
-	fmt.Printf( "Init AI photo tagging..." )
-	moondream_ok := moondream.Init()
-	if !moondream_ok {
-		fmt.Println( " failed, download moondream.bin and moondream.json from XXX if you want it" )
-	} else {
-		fmt.Println( " ok" )
-	}
+	moondream.Init()
+	initBackgroundTaskRunner()
+	initGeocoder()
 
 	// daily tasks
 	go func() {
@@ -1906,8 +1901,6 @@ func main() {
 	must( guest_http_server.Shutdown( ctx ) )
 
 	shutdownGeocoder()
-
-	if moondream_ok {
-		moondream.Shutdown()
-	}
+	shutdownBackgroundTaskRunner()
+	moondream.Shutdown()
 }

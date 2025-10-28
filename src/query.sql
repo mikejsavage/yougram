@@ -282,3 +282,18 @@ UPDATE album SET shared = ? WHERE id = ? AND owner = ?;
 
 -- name: IsAlbumURLInUse :one
 SELECT EXISTS ( SELECT 1 FROM album WHERE url_slug = ? );
+
+
+----------------
+-- AI TAGGING --
+----------------
+
+-- name: SetAssetAIDescription :exec
+INSERT OR REPLACE INTO ai_description ( asset_id, generator, description ) VALUES ( ?, ?, ? );
+
+-- name: GetAnAssetThatNeedsANewAIDescription :one
+SELECT sha256, thumbnail FROM asset
+LEFT JOIN ai_description ON sha256 = asset_id
+WHERE generator IS NULL OR generator != ?
+ORDER BY generator ASC NULLS FIRST
+LIMIT 1;

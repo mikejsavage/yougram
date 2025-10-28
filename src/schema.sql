@@ -120,3 +120,16 @@ LEFT OUTER JOIN photo_primary_asset ON photo_primary_asset.photo_id = IFNULL( al
 -- the unique constraint makes the first index pointless, not sure if we ever need the second one
 -- CREATE INDEX IF NOT EXISTS idx_album_photo__album_id ON album_photo( album_id );
 CREATE INDEX IF NOT EXISTS idx_album_photo__photo_id ON album_photo( photo_id );
+
+----------------
+-- AI TAGGING --
+----------------
+CREATE TABLE IF NOT EXISTS ai_description (
+	asset_id BLOB PRIMARY KEY REFERENCES asset( sha256 ),
+	generator INTEGER NOT NULL,
+	description TEXT NOT NULL
+) STRICT;
+
+CREATE VIRTUAL TABLE IF NOT EXISTS ai_description_fts USING fts5( description, content=ai_description, content_rowid=description );
+
+CREATE INDEX IF NOT EXISTS ai_description__generator ON ai_description( generator );

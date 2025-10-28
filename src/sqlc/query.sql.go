@@ -493,6 +493,26 @@ func (q *Queries) GetAlbumsForUser(ctx context.Context, owner int64) ([]GetAlbum
 	return items, nil
 }
 
+const getAnAssetThatNeedsANewAIDescription = `-- name: GetAnAssetThatNeedsANewAIDescription :one
+SELECT sha256, thumbnail FROM asset
+LEFT JOIN ai_description ON sha256 = asset_id
+WHERE generator IS NULL OR generator != ?
+ORDER BY generator ASC NULLS FIRST
+LIMIT 1
+`
+
+type GetAnAssetThatNeedsANewAIDescriptionRow struct {
+	Sha256    []byte
+	Thumbnail []byte
+}
+
+func (q *Queries) GetAnAssetThatNeedsANewAIDescription(ctx context.Context, generator int64) (GetAnAssetThatNeedsANewAIDescriptionRow, error) {
+	row := q.db.QueryRowContext(ctx, getAnAssetThatNeedsANewAIDescription, generator)
+	var i GetAnAssetThatNeedsANewAIDescriptionRow
+	err := row.Scan(&i.Sha256, &i.Thumbnail)
+	return i, err
+}
+
 const getAssetGuestMetadata = `-- name: GetAssetGuestMetadata :one
 SELECT type, original_filename, EXISTS(
 	SELECT 1 FROM photo_asset
@@ -1125,6 +1145,25 @@ func (q *Queries) SetAlbumSettings(ctx context.Context, arg SetAlbumSettingsPara
 		arg.ID,
 		arg.Owner,
 	)
+	return err
+}
+
+const setAssetAIDescription = `-- name: SetAssetAIDescription :exec
+
+INSERT OR REPLACE INTO ai_description ( asset_id, generator, description ) VALUES ( ?, ?, ? )
+`
+
+type SetAssetAIDescriptionParams struct {
+	AssetID     []byte
+	Generator   int64
+	Description string
+}
+
+// --------------
+// AI TAGGING --
+// --------------
+func (q *Queries) SetAssetAIDescription(ctx context.Context, arg SetAssetAIDescriptionParams) error {
+	_, err := q.db.ExecContext(ctx, setAssetAIDescription, arg.AssetID, arg.Generator, arg.Description)
 	return err
 }
 

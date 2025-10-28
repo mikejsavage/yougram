@@ -8,6 +8,16 @@ import (
 	"database/sql"
 )
 
+type AiDescription struct {
+	AssetID     []byte
+	Generator   int64
+	Description string
+}
+
+type AiDescriptionFt struct {
+	Description string
+}
+
 type Album struct {
 	ID                  int64
 	Owner               int64
