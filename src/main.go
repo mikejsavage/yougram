@@ -1712,7 +1712,7 @@ func main() {
 	checksum = exeChecksum()
 
 	{
-		_, err := os.Stat( "container_volume_sentinel" )
+		_, err := os.Stat( "you_did_not_bind_a_data_volume" ) // see also container/prepare_container.zig
 		if err == nil || !errors.Is( err, os.ErrNotExist ) {
 			fmt.Printf( "Start the container with a volume mounted at /data, i.e. podman run -v /a/b/c:/data ...\n" )
 			os.Exit( 1 )
