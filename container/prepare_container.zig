@@ -11,8 +11,8 @@ fn MakeDir( path: []const u8 ) !void {
 
 pub fn main() !void {
 	try MakeDir( "/data" );
-        var sentinel = try std.fs.createFileAbsolute( "/data/container_volume_sentinel", .{} );
-        sentinel.close();
+	var sentinel = try std.fs.createFileAbsolute( "/data/container_volume_sentinel", .{} );
+	sentinel.close();
 	try MakeDir( "/tmp" );
 	try std.fs.deleteFileAbsolute( std.mem.span( std.os.argv[ 0 ] ) );
 }
