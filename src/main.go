@@ -250,12 +250,15 @@ func initDB( memory_db bool ) {
 		AutoassignRadius: sql.NullFloat64 { 50, true },
 	} ) )
 
-	must( addFileToAlbum( ctx, mike, "DSCN0025.jpg", 2 ) )
-	must( addFileToAlbum( ctx, mike, "DSCF2994.jpeg", 1 ) )
-	must( addFileToAlbum( ctx, mike, "hato.profile0.8bpc.yuv420.avif", 1 ) )
-	must( addFileToAlbum( ctx, mike, "4_webp_ll.webp", 1 ) )
-	must( addFile( ctx, mike, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } ) )
-	must( addFile( ctx, mike, "IMG_2330.HEIC", sql.Null[ int64 ] { } ) )
+	addFileToAlbum( ctx, mike, "DSCN0025.jpg", 2 )
+	err := addFileToAlbum( ctx, mike, "DSCF2994.jpeg", 1 )
+	if err != nil {
+		return
+	}
+	addFileToAlbum( ctx, mike, "hato.profile0.8bpc.yuv420.avif", 1 )
+	addFileToAlbum( ctx, mike, "4_webp_ll.webp", 1 )
+	addFile( ctx, mike, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } )
+	addFile( ctx, mike, "IMG_2330.HEIC", sql.Null[ int64 ] { } )
 
 	seagull := must1( hex.DecodeString( "cc85f99cd694c63840ff359e13610390f85c4ea0b315fc2b033e5839e7591949" ) )
 	tx := must1( db.Begin() )
@@ -1461,9 +1464,18 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 }
 
 func addFile( ctx context.Context, user int64, path string, album_id sql.Null[ int64 ] ) error {
-	f := must1( os.Open( path ) )
+	f, err := os.Open( path )
+	if err != nil {
+		fmt.Printf( "Can't open %s: %v\n", path, err )
+		return err
+	}
 	defer f.Close()
-	img := must1( io.ReadAll( f ) )
+
+	img, err := io.ReadAll( f )
+	if err != nil {
+		return err
+	}
+
 	asset, err := addAsset( ctx, img, path )
 	if err != nil {
 		return err
