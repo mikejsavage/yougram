@@ -177,11 +177,11 @@ func initDB( memory_db bool ) {
 
 		if id != 0 && version != 0 {
 			if id != application_id {
-				log.Fatal( "This doesn't look like a mikegram DB" )
+				log.Fatal( "This doesn't look like a yougram DB" )
 			}
 
 			if version < schema_version {
-				log.Fatal( "You are using an older mikegram than the DB" )
+				log.Fatal( "You are using an older yougram than the DB" )
 			}
 			if version > schema_version {
 				log.Fatal( "Guess we gotta migrate lol" )
