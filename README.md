@@ -4,9 +4,11 @@
 
 yougram is a self-hosted image sharing app.
 
+[ffscope]: https://bugzilla.mozilla.org/show_bug.cgi?id=1830512
+
 Please note that yougram is very early in development and basically unusable. Parts of this readme
 have been written for an idealised future yougram that doesn't exist yet, so expect contradictions
-and falsehoods.
+and falsehoods. [It also won't work in Firefox until they implement @scope.][ffscope]
 
 
 ## Why yougram is good for you, a user
