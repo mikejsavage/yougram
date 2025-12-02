@@ -76,12 +76,13 @@ templ fullscreen( base_urls BaseURLs ) {
 							<span><span x-text="metadata.latitude"></span>, <span x-text="metadata.longitude"></span></span>
 						</template>
 
-						<template x-for="(v, i) in metadata.Variants">
-							<button @click="variant = i">
-								<span x-text="v.Type.toUpperCase()"></span>
-								<span x-text="v.OriginalFilename"></span>
-								<span class="hideempty" x-text="v.Description ?? ''"></span>
-							</button>
+						<template x-if="metadata.Variants.length > 1">
+							<select x-model="variant">
+								<template x-for="(v, i) in metadata.Variants">
+									<option @click="variant = i" :value="i" :selected="variant == i" x-text="( v.OriginalFilename ?? v.Description ) + ' (' + v.Type.toUpperCase() + ')'">
+									</option>
+								</template>
+							</select>
 						</template>
 					</span>
 				</template>

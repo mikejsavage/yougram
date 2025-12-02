@@ -249,6 +249,14 @@ func initDB( memory_db bool ) {
 		AutoassignLongitude: sql.NullFloat64 { 24.9384, true },
 		AutoassignRadius: sql.NullFloat64 { 50, true },
 	} ) )
+	must( queries.CreateAlbum( ctx, sqlc.CreateAlbumParams {
+		Owner: mike,
+		Name: "Variant test album",
+		UrlSlug: "variant-test",
+		Shared: 0,
+		ReadonlySecret: "aaaaaaaa",
+		ReadwriteSecret: "bbbbbbbb",
+	} ) )
 
 	addFileToAlbum( ctx, mike, "DSCN0025.jpg", 2 )
 	err := addFileToAlbum( ctx, mike, "DSCF2994.jpeg", 1 )
@@ -259,6 +267,14 @@ func initDB( memory_db bool ) {
 	addFileToAlbum( ctx, mike, "4_webp_ll.webp", 1 )
 	addFile( ctx, mike, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } )
 	addFile( ctx, mike, "IMG_2330.HEIC", sql.Null[ int64 ] { } )
+
+	addFileToAlbum( ctx, mike, "1.jpg", 3 )
+	addFileToAlbum( ctx, mike, "2.jpg", 3 )
+
+	must( queries.AddAssetToPhoto( ctx, sqlc.AddAssetToPhotoParams {
+		AssetID: must1( hex.DecodeString( "e375d229437ec6008e6d25fff3a52acde37a4b250447a1c23d6b17c33372fdb4" ) ),
+		PhotoID: 7,
+	} ) )
 
 	seagull := must1( hex.DecodeString( "cc85f99cd694c63840ff359e13610390f85c4ea0b315fc2b033e5839e7591949" ) )
 	tx := must1( db.Begin() )
