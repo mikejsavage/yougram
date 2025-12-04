@@ -388,8 +388,8 @@ templ shareButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership ) {
 					<input type="hidden" name="album_id" value={ album.ID }>
 					<input type="hidden" name="share" :value="sharing ? 0 : 1">
 				}
-				<a href={ templ.URL( guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret ) }>Read-only guest link</a>
-				<a href={ templ.URL( guest_url + "/" + album.UrlSlug + "/" + album.ReadwriteSecret ) }>Read-write guest link</a>
+				<a href={ templ.URL( guest_url + "/" + album.OwnerUsername + "/" + album.UrlSlug + "/" + album.ReadonlySecret ) }>Read-only guest link</a>
+				<a href={ templ.URL( guest_url + "/" + album.OwnerUsername + "/" + album.UrlSlug + "/" + album.ReadwriteSecret ) }>Read-write guest link</a>
 			</form>
 		</div>
 	</div>
@@ -414,7 +414,7 @@ templ downloadButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership, bas
 		</button>
 
 		<dialog id="download" @click="DialogClicked">
-			{{ action := base_urls.Download + sel( ownership != AlbumOwnership_Guest, album.UrlSlug, "" ) }}
+			{{ action := base_urls.Download + sel( ownership != AlbumOwnership_Guest, album.OwnerUsername + "/" + album.UrlSlug, "" ) }}
 			<form method="GET" action={ templ.URL( action ) }>
 				<h2>Download { album.Name }</h2>
 
@@ -657,9 +657,9 @@ templ addToAlbumButton() {
 				<input type="search" placeholder="Search albums" x-model="search" x-ref="search" @keypress.enter="SubmitIfOneResult( $refs.dropdown )">
 
 				<template x-for="album in albums">
-					<template x-if="album.Name.toLowerCase().includes( search.toLowerCase() ) && !window.location.pathname.startsWith( '/' + album.UrlSlug )">
+					<template x-if="album.Name.toLowerCase().includes( search.toLowerCase() ) && !window.location.pathname.startsWith( '/' + album.Owner + '/' + album.UrlSlug )">
 						<button
-							:hx-put="'/Special:addToAlbum/' + album.UrlSlug"
+							:hx-put="'/Special:addToAlbum/' + album.Owner + '/' + album.UrlSlug"
 							hx-vals="js:{ photos: PhotosFormValue() }"
 							hx-disabled-elt="this"
 							hx-target="find .status"
@@ -684,7 +684,7 @@ templ addToAlbumButton() {
 
 templ removeFromAlbumButton( album sqlc.GetAlbumByURLRow ) {
 	<button x-cloak x-show="selecting" :disabled="$store.selected.size == 0"
-		hx-put={ templ.URL( "/Special:removeFromAlbum/" + album.UrlSlug ) }
+		hx-put={ templ.URL( "/Special:removeFromAlbum/" + album.OwnerUsername + "/" + album.UrlSlug ) }
 		hx-vals="js:{ photos: PhotosFormValue() }"
 		hx-disabled-elt="this"
 		hx-swap="none"
@@ -753,7 +753,7 @@ templ guestReadWriteWarning( album sqlc.GetAlbumByURLRow, can_upload bool ) {
 	if can_upload {
 		<div style="font-weight: bold; padding: 0.5rem 0.5rem 0">
 			This page lets you add and remove photos so don't share it with randoms, give them
-			<a href={ templ.URL( guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret ) }>this read only link</a>
+			<a href={ templ.URL( guest_url + "/" + album.OwnerUsername + "/" + album.UrlSlug + "/" + album.ReadonlySecret ) }>this read only link</a>
 			instead!!
 		</div>
 	}
@@ -891,12 +891,12 @@ func getStandardBaseURLs() BaseURLs {
 	return BaseURLs {
 		Asset: "/Special:asset/",
 		Thumbnail: "/Special:thumbnail/",
-		Download: "/Special:download",
+		Download: "/Special:download/",
 	}
 }
 
 func makeGuestBaseURLs( album sqlc.GetAlbumByURLRow, can_upload bool ) BaseURLs {
-	base := fmt.Sprintf( "/%s/%s", album.UrlSlug, sel( can_upload, album.ReadwriteSecret, album.ReadonlySecret ) )
+	base := fmt.Sprintf( "/%s/%s/%s", album.OwnerUsername, album.UrlSlug, sel( can_upload, album.ReadwriteSecret, album.ReadonlySecret ) )
 	return BaseURLs {
 		Asset: base + "/asset/",
 		Thumbnail: base + "/thumbnail/",
@@ -944,7 +944,7 @@ templ albumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, ownership Albu
 
 templ guestAlbumTemplate( album sqlc.GetAlbumByURLRow, photos []Photo, can_upload bool ) {
 	<meta property="og:title" content={ album.Name }>
-	<meta property="og:image" content={ fmt.Sprintf( "%s/%s/%s/thumbnail/%s", guest_url, album.UrlSlug, album.ReadonlySecret, hex.EncodeToString( album.KeyPhotoSha256 ) ) }>
+	<meta property="og:image" content={ fmt.Sprintf( "%s/%s/%s/%s/thumbnail/%s", guest_url, album.OwnerUsername, album.UrlSlug, album.ReadonlySecret, hex.EncodeToString( album.KeyPhotoSha256 ) ) }>
 
 	{{ base_urls := makeGuestBaseURLs( album, can_upload ) }}
 	{{ subheader := guestReadWriteWarning( album, can_upload ) }}

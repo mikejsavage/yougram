@@ -73,8 +73,7 @@ CREATE TABLE IF NOT EXISTS album (
 	id INTEGER PRIMARY KEY,
 	owner INTEGER NOT NULL REFERENCES user( id ),
 	name TEXT NOT NULL UNIQUE CHECK( name <> '' ),
-	-- TODO: this forces a unique slug across all users which is really awkward
-	url_slug TEXT NOT NULL UNIQUE CHECK( url_slug <> '' ),
+	url_slug TEXT NOT NULL CHECK( url_slug <> '' ),
 	key_photo INTEGER REFERENCES photo( id ) ON DELETE SET NULL,
 
 	shared INTEGER NOT NULL CHECK( shared = 0 OR shared = 1 ),
@@ -94,7 +93,9 @@ CREATE TABLE IF NOT EXISTS album (
 		AND ( autoassign_latitude IS NULL ) = ( autoassign_longitude IS NULL ) -- require all or no pos fields
 		AND ( autoassign_longitude IS NULL ) = ( autoassign_radius IS NULL )
 	),
-	FOREIGN KEY( id, key_photo ) REFERENCES album_photo( album_id, photo_id )
+
+	FOREIGN KEY( id, key_photo ) REFERENCES album_photo( album_id, photo_id ),
+	UNIQUE( owner, url_slug )
 ) STRICT;
 
 CREATE TRIGGER IF NOT EXISTS ensure_album_secrets_are_different

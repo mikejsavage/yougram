@@ -437,7 +437,7 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 				</style>
 				<template x-for="album in albums">
 					<template x-if="album.Name.toLowerCase().includes( search.toLowerCase() )">
-						<a :href="'/' + album.UrlSlug" :class="window.location.pathname.startsWith( '/' + album.UrlSlug ) ? 'curr' : ''">
+						<a :href="'/' + album.Owner + '/' + album.UrlSlug" :class="window.location.pathname.startsWith( '/' + album.Owner + '/' + album.UrlSlug ) ? 'curr' : ''">
 							<template x-if="album.KeyPhotoSha256.length > 0">
 								<img :src="'/Special:thumbnail/' + album.KeyPhotoSha256" style="height: 1lh">
 							</template>

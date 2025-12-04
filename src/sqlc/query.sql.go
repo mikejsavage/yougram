@@ -351,8 +351,13 @@ INNER JOIN user ON album.owner = user.id
 LEFT OUTER JOIN album_photo ON album_photo.album_id = album.id
 LEFT OUTER JOIN photo ON album_photo.photo_id = photo.id
 LEFT OUTER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
-WHERE url_slug = ? AND album.delete_at IS NULL
+WHERE url_slug = ? AND user.username = ? AND album.delete_at IS NULL
 `
+
+type GetAlbumByURLParams struct {
+	UrlSlug string
+	Owner   string
+}
 
 type GetAlbumByURLRow struct {
 	ID              int64
@@ -366,8 +371,8 @@ type GetAlbumByURLRow struct {
 	KeyPhotoSha256  []byte
 }
 
-func (q *Queries) GetAlbumByURL(ctx context.Context, urlSlug string) (GetAlbumByURLRow, error) {
-	row := q.db.QueryRowContext(ctx, getAlbumByURL, urlSlug)
+func (q *Queries) GetAlbumByURL(ctx context.Context, arg GetAlbumByURLParams) (GetAlbumByURLRow, error) {
+	row := q.db.QueryRowContext(ctx, getAlbumByURL, arg.UrlSlug, arg.Owner)
 	var i GetAlbumByURLRow
 	err := row.Scan(
 		&i.ID,
@@ -458,8 +463,9 @@ func (q *Queries) GetAlbumPhotos(ctx context.Context, albumID int64) ([]GetAlbum
 }
 
 const getAlbumsForUser = `-- name: GetAlbumsForUser :many
-SELECT album.name, album.url_slug, album_key_asset.sha256 AS key_photo_sha256 FROM album
+SELECT album.name, album.url_slug, user.username as owner, album_key_asset.sha256 AS key_photo_sha256 FROM album
 LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
+INNER JOIN user ON album.owner = user.id
 WHERE ( album.shared OR album.owner = ? ) AND album.delete_at IS NULL
 ORDER BY album.name
 `
@@ -467,6 +473,7 @@ ORDER BY album.name
 type GetAlbumsForUserRow struct {
 	Name           string
 	UrlSlug        string
+	Owner          string
 	KeyPhotoSha256 []byte
 }
 
@@ -479,7 +486,12 @@ func (q *Queries) GetAlbumsForUser(ctx context.Context, owner int64) ([]GetAlbum
 	var items []GetAlbumsForUserRow
 	for rows.Next() {
 		var i GetAlbumsForUserRow
-		if err := rows.Scan(&i.Name, &i.UrlSlug, &i.KeyPhotoSha256); err != nil {
+		if err := rows.Scan(
+			&i.Name,
+			&i.UrlSlug,
+			&i.Owner,
+			&i.KeyPhotoSha256,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1036,11 +1048,16 @@ func (q *Queries) GetUsers(ctx context.Context) ([]GetUsersRow, error) {
 }
 
 const isAlbumURLInUse = `-- name: IsAlbumURLInUse :one
-SELECT EXISTS ( SELECT 1 FROM album WHERE url_slug = ? )
+SELECT EXISTS ( SELECT 1 FROM album WHERE url_slug = ? AND owner = ? )
 `
 
-func (q *Queries) IsAlbumURLInUse(ctx context.Context, urlSlug string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, isAlbumURLInUse, urlSlug)
+type IsAlbumURLInUseParams struct {
+	UrlSlug string
+	Owner   int64
+}
+
+func (q *Queries) IsAlbumURLInUse(ctx context.Context, arg IsAlbumURLInUseParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, isAlbumURLInUse, arg.UrlSlug, arg.Owner)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err

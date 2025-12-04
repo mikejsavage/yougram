@@ -318,7 +318,7 @@ func shareButton(album sqlc.GetAlbumByURLRow, ownership AlbumOwnership) templ.Co
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var17 templ.SafeURL = templ.URL(guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret)
+		var templ_7745c5c3_Var17 templ.SafeURL = templ.URL(guest_url + "/" + album.OwnerUsername + "/" + album.UrlSlug + "/" + album.ReadonlySecret)
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var17)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -327,7 +327,7 @@ func shareButton(album sqlc.GetAlbumByURLRow, ownership AlbumOwnership) templ.Co
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var18 templ.SafeURL = templ.URL(guest_url + "/" + album.UrlSlug + "/" + album.ReadwriteSecret)
+		var templ_7745c5c3_Var18 templ.SafeURL = templ.URL(guest_url + "/" + album.OwnerUsername + "/" + album.UrlSlug + "/" + album.ReadwriteSecret)
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var18)))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -394,7 +394,7 @@ func downloadButton(album sqlc.GetAlbumByURLRow, ownership AlbumOwnership, base_
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		action := base_urls.Download + sel(ownership != AlbumOwnership_Guest, album.UrlSlug, "")
+		action := base_urls.Download + sel(ownership != AlbumOwnership_Guest, album.OwnerUsername+"/"+album.UrlSlug, "")
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<form method=\"GET\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -513,7 +513,7 @@ func addToAlbumButton() templ.Component {
 			templ_7745c5c3_Var26 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<style>\n\tbutton:has(+ .dropdown:not([style*=\"display: none\"])) {\n\t\t/* border-bottom: 0;\n\t\tborder-bottom-left-radius: 0;\n\t\tborder-bottom-right-radius: 0; */\n\t\toutline: 1.5px solid var( --blue );\n\t}\n\t</style><script>\n\tfunction ClearStatuses( dropdown ) {\n\t\tfor( let e of dropdown.querySelectorAll( \".status\" ) ) {\n\t\t\te.innerText = \"\";\n\t\t}\n\t}\n\n\tfunction SubmitIfOneResult( dropdown ) {\n\t\tlet albums = dropdown.querySelectorAll( \"button\" );\n\t\tif( albums.length == 1 ) {\n\t\t\talbums[ 0 ].click();\n\t\t}\n\t}\n\t</script><div x-cloak x-show=\"selecting\" x-data=\"{ show: false, search: &#39;&#39; }\"><button class=\"chevron\" :disabled=\"$store.selected.size == 0\" @click=\"show = true; search = &#39;&#39;; ClearStatuses( $refs.dropdown ); $nextTick( () =&gt; $refs.search.focus() )\">Add to</button><div class=\"dropdown\" x-cloak x-show=\"show\" x-ref=\"dropdown\" @click.away=\"show = false\" @keydown.escape.window=\"show = false\"><style>\n\t\t\t@scope {\n\t\t\t\tbutton {\n\t\t\t\t\tborder: 0;\n\t\t\t\t\tborder-radius: 0;\n\t\t\t\t\tbackground: unset;\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tgap: 0.5rem;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tfont-size: 100%;\n\t\t\t\t\tmargin: -0.25rem -0.5rem;\n\t\t\t\t\tpadding: 0.25rem 0.5rem;\n\t\t\t\t\ttext-align: left;\n\t\t\t\t\tfont-size: 1rem;\n\t\t\t\t\tline-height: 1.5;\n\t\t\t\t}\n\n\t\t\t\timg {\n\t\t\t\t\taspect-ratio: 1;\n\t\t\t\t\tobject-fit: cover;\n\t\t\t\t\tobject-position: 50% 50%;\n\t\t\t\t}\n\n\t\t\t\t.placeholder {\n\t\t\t\t\tborder: 1px solid #333;\n\t\t\t\t\twidth: 1lh;\n\t\t\t\t\theight: 1lh;\n\t\t\t\t}\n\t\t\t}\n\t\t\t</style><div style=\"display: flex; flex-direction: column; gap: 0.5rem\"><input type=\"search\" placeholder=\"Search albums\" x-model=\"search\" x-ref=\"search\" @keypress.enter=\"SubmitIfOneResult( $refs.dropdown )\"><template x-for=\"album in albums\"><template x-if=\"album.Name.toLowerCase().includes( search.toLowerCase() ) &amp;&amp; !window.location.pathname.startsWith( &#39;/&#39; + album.UrlSlug )\"><button :hx-put=\"&#39;/Special:addToAlbum/&#39; + album.UrlSlug\" hx-vals=\"js:{ photos: PhotosFormValue() }\" hx-disabled-elt=\"this\" hx-target=\"find .status\"><template x-if=\"album.KeyPhotoSha256.length &gt; 0\"><img :src=\"&#39;/Special:thumbnail/&#39; + album.KeyPhotoSha256\" style=\"height: 1lh\"></template><template x-if=\"album.KeyPhotoSha256.length == 0\"><span class=\"placeholder\"></span></template><span x-text=\"album.Name\"></span> <span class=\"status\"></span></button></template></template></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<style>\n\tbutton:has(+ .dropdown:not([style*=\"display: none\"])) {\n\t\t/* border-bottom: 0;\n\t\tborder-bottom-left-radius: 0;\n\t\tborder-bottom-right-radius: 0; */\n\t\toutline: 1.5px solid var( --blue );\n\t}\n\t</style><script>\n\tfunction ClearStatuses( dropdown ) {\n\t\tfor( let e of dropdown.querySelectorAll( \".status\" ) ) {\n\t\t\te.innerText = \"\";\n\t\t}\n\t}\n\n\tfunction SubmitIfOneResult( dropdown ) {\n\t\tlet albums = dropdown.querySelectorAll( \"button\" );\n\t\tif( albums.length == 1 ) {\n\t\t\talbums[ 0 ].click();\n\t\t}\n\t}\n\t</script><div x-cloak x-show=\"selecting\" x-data=\"{ show: false, search: &#39;&#39; }\"><button class=\"chevron\" :disabled=\"$store.selected.size == 0\" @click=\"show = true; search = &#39;&#39;; ClearStatuses( $refs.dropdown ); $nextTick( () =&gt; $refs.search.focus() )\">Add to</button><div class=\"dropdown\" x-cloak x-show=\"show\" x-ref=\"dropdown\" @click.away=\"show = false\" @keydown.escape.window=\"show = false\"><style>\n\t\t\t@scope {\n\t\t\t\tbutton {\n\t\t\t\t\tborder: 0;\n\t\t\t\t\tborder-radius: 0;\n\t\t\t\t\tbackground: unset;\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tgap: 0.5rem;\n\t\t\t\t\talign-items: center;\n\t\t\t\t\tfont-size: 100%;\n\t\t\t\t\tmargin: -0.25rem -0.5rem;\n\t\t\t\t\tpadding: 0.25rem 0.5rem;\n\t\t\t\t\ttext-align: left;\n\t\t\t\t\tfont-size: 1rem;\n\t\t\t\t\tline-height: 1.5;\n\t\t\t\t}\n\n\t\t\t\timg {\n\t\t\t\t\taspect-ratio: 1;\n\t\t\t\t\tobject-fit: cover;\n\t\t\t\t\tobject-position: 50% 50%;\n\t\t\t\t}\n\n\t\t\t\t.placeholder {\n\t\t\t\t\tborder: 1px solid #333;\n\t\t\t\t\twidth: 1lh;\n\t\t\t\t\theight: 1lh;\n\t\t\t\t}\n\t\t\t}\n\t\t\t</style><div style=\"display: flex; flex-direction: column; gap: 0.5rem\"><input type=\"search\" placeholder=\"Search albums\" x-model=\"search\" x-ref=\"search\" @keypress.enter=\"SubmitIfOneResult( $refs.dropdown )\"><template x-for=\"album in albums\"><template x-if=\"album.Name.toLowerCase().includes( search.toLowerCase() ) &amp;&amp; !window.location.pathname.startsWith( &#39;/&#39; + album.Owner + &#39;/&#39; + album.UrlSlug )\"><button :hx-put=\"&#39;/Special:addToAlbum/&#39; + album.Owner + &#39;/&#39; + album.UrlSlug\" hx-vals=\"js:{ photos: PhotosFormValue() }\" hx-disabled-elt=\"this\" hx-target=\"find .status\"><template x-if=\"album.KeyPhotoSha256.length &gt; 0\"><img :src=\"&#39;/Special:thumbnail/&#39; + album.KeyPhotoSha256\" style=\"height: 1lh\"></template><template x-if=\"album.KeyPhotoSha256.length == 0\"><span class=\"placeholder\"></span></template><span x-text=\"album.Name\"></span> <span class=\"status\"></span></button></template></template></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -547,9 +547,9 @@ func removeFromAlbumButton(album sqlc.GetAlbumByURLRow) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var28 string
-		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(templ.URL("/Special:removeFromAlbum/" + album.UrlSlug))
+		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(templ.URL("/Special:removeFromAlbum/" + album.OwnerUsername + "/" + album.UrlSlug))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 687, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 687, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
@@ -817,7 +817,7 @@ func guestReadWriteWarning(album sqlc.GetAlbumByURLRow, can_upload bool) templ.C
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var39 templ.SafeURL = templ.URL(guest_url + "/" + album.UrlSlug + "/" + album.ReadonlySecret)
+			var templ_7745c5c3_Var39 templ.SafeURL = templ.URL(guest_url + "/" + album.OwnerUsername + "/" + album.UrlSlug + "/" + album.ReadonlySecret)
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var39)))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -902,12 +902,12 @@ func getStandardBaseURLs() BaseURLs {
 	return BaseURLs{
 		Asset:     "/Special:asset/",
 		Thumbnail: "/Special:thumbnail/",
-		Download:  "/Special:download",
+		Download:  "/Special:download/",
 	}
 }
 
 func makeGuestBaseURLs(album sqlc.GetAlbumByURLRow, can_upload bool) BaseURLs {
-	base := fmt.Sprintf("/%s/%s", album.UrlSlug, sel(can_upload, album.ReadwriteSecret, album.ReadonlySecret))
+	base := fmt.Sprintf("/%s/%s/%s", album.OwnerUsername, album.UrlSlug, sel(can_upload, album.ReadwriteSecret, album.ReadonlySecret))
 	return BaseURLs{
 		Asset:     base + "/asset/",
 		Thumbnail: base + "/thumbnail/",
@@ -1092,9 +1092,9 @@ func guestAlbumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, can_upload 
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var50 string
-		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s/%s/%s/thumbnail/%s", guest_url, album.UrlSlug, album.ReadonlySecret, hex.EncodeToString(album.KeyPhotoSha256)))
+		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s/%s/%s/%s/thumbnail/%s", guest_url, album.OwnerUsername, album.UrlSlug, album.ReadonlySecret, hex.EncodeToString(album.KeyPhotoSha256)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 947, Col: 167}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 947, Col: 191}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 		if templ_7745c5c3_Err != nil {

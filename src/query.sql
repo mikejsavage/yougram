@@ -223,8 +223,9 @@ WHERE photo_id = ? AND album_id = ? AND EXISTS (
 );
 
 -- name: GetAlbumsForUser :many
-SELECT album.name, album.url_slug, album_key_asset.sha256 AS key_photo_sha256 FROM album
+SELECT album.name, album.url_slug, user.username as owner, album_key_asset.sha256 AS key_photo_sha256 FROM album
 LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
+INNER JOIN user ON album.owner = user.id
 WHERE ( album.shared OR album.owner = ? ) AND album.delete_at IS NULL
 ORDER BY album.name;
 
@@ -239,7 +240,7 @@ INNER JOIN user ON album.owner = user.id
 LEFT OUTER JOIN album_photo ON album_photo.album_id = album.id
 LEFT OUTER JOIN photo ON album_photo.photo_id = photo.id
 LEFT OUTER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
-WHERE url_slug = ? AND album.delete_at IS NULL;
+WHERE url_slug = ? AND user.username = @owner AND album.delete_at IS NULL;
 
 -- name: GetAlbumDateRange :one
 SELECT
@@ -281,7 +282,7 @@ UPDATE album SET name = ?, url_slug = ? WHERE id = ? AND owner = ?;
 UPDATE album SET shared = ? WHERE id = ? AND owner = ?;
 
 -- name: IsAlbumURLInUse :one
-SELECT EXISTS ( SELECT 1 FROM album WHERE url_slug = ? );
+SELECT EXISTS ( SELECT 1 FROM album WHERE url_slug = ? AND owner = ? );
 
 
 ----------------

@@ -635,6 +635,7 @@ func geocodeRoute( w http.ResponseWriter, r *http.Request, user User ) {
 type HTMLAlbum struct {
 	Name string
 	UrlSlug string
+	Owner string
 	KeyPhotoSha256 string
 }
 
@@ -644,6 +645,7 @@ func toHTMLAlbums( albums []sqlc.GetAlbumsForUserRow ) []HTMLAlbum {
 		html_albums[ i ] = HTMLAlbum {
 			Name: album.Name,
 			UrlSlug: album.UrlSlug,
+			Owner: album.Owner,
 			KeyPhotoSha256: hex.EncodeToString( album.KeyPhotoSha256 ),
 		}
 	}
@@ -671,7 +673,10 @@ func createAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 }
 
 func genericAlbumHandler( w http.ResponseWriter, r *http.Request, user User, owned_only bool, handler func( http.ResponseWriter, *http.Request, User, sqlc.GetAlbumByURLRow ) ) {
-	album := queryOptional( queries.GetAlbumByURL( r.Context(), r.PathValue( "album" ) ) )
+	album := queryOptional( queries.GetAlbumByURL( r.Context(), sqlc.GetAlbumByURLParams {
+		UrlSlug: r.PathValue( "album" ),
+		Owner: r.PathValue( "owner" ),
+	} ) )
 	if !album.Valid {
 		httpError( w, http.StatusNotFound )
 		return
@@ -747,12 +752,15 @@ func updateAlbumSettings( w http.ResponseWriter, r *http.Request, user User ) {
 		return
 	}
 
-	w.Header().Set( "HX-Redirect", "/" + r.PostFormValue( "url" ) )
+	w.Header().Set( "HX-Redirect", "/" + user.Username + "/" + r.PostFormValue( "url" ) )
 }
 
 func checkAlbumURL( w http.ResponseWriter, r *http.Request, user User ) {
 	url := r.URL.Query().Get( "url_slug" )
-	exists := try1( queries.IsAlbumURLInUse( r.Context(), url ) )
+	exists := try1( queries.IsAlbumURLInUse( r.Context(), sqlc.IsAlbumURLInUseParams {
+		UrlSlug: url,
+		Owner: user.ID,
+	} ) )
 	if exists == 1 {
 		_ = try1( io.WriteString( w, "URL already in use" ) )
 	}
@@ -1234,7 +1242,10 @@ func getThumbnailAsGuest( w http.ResponseWriter, r *http.Request ) {
 }
 
 func guestAlbumHandler( w http.ResponseWriter, r *http.Request, handler func( http.ResponseWriter, *http.Request, sqlc.GetAlbumByURLRow, bool ) ) {
-	album := queryOptional( queries.GetAlbumByURL( r.Context(), r.PathValue( "album" ) ) )
+	album := queryOptional( queries.GetAlbumByURL( r.Context(), sqlc.GetAlbumByURLParams {
+		UrlSlug: r.PathValue( "album" ),
+		Owner: r.PathValue( "owner" ),
+	} ) )
 	secret := r.PathValue( "secret" )
 	if !album.Valid || ( secret != album.V.ReadonlySecret && secret != album.V.ReadwriteSecret ) {
 		httpError( w, http.StatusForbidden )
@@ -1883,19 +1894,19 @@ func main() {
 		{ "POST", "/Special:albumSettings", requireAuth( updateAlbumSettings ) },
 		{ "GET",  "/Special:checkAlbumURL", requireAuth( checkAlbumURL ) },
 		{ "POST", "/Special:shareAlbum", requireAuth( shareAlbum ) },
-		{ "DELETE", "/{album}", requireAuth( deleteAlbum ) },
+		{ "DELETE", "/{owner}/{album}", requireAuth( deleteAlbum ) },
 
-		{ "PUT",  "/Special:addToAlbum/{album}", requireAuth( addToAlbum ) },
-		{ "PUT",  "/Special:removeFromAlbum/{album}", requireAuth( removeFromAlbum ) },
+		{ "PUT",  "/Special:addToAlbum/{owner}/{album}", requireAuth( addToAlbum ) },
+		{ "PUT",  "/Special:removeFromAlbum/{owner}/{album}", requireAuth( removeFromAlbum ) },
 
-		{ "GET",  "/Special:download/{album}", requireAuth( downloadAlbum ) },
+		{ "GET",  "/Special:download/{owner}/{album}", requireAuth( downloadAlbum ) },
 		{ "POST", "/Special:download", requireAuth( downloadPhotos ) },
 
 		{ "GET",  "/", requireAuth( viewLibrary ) },
-		{ "GET",  "/{album}", requireAuth( viewAlbum ) },
+		{ "GET",  "/{owner}/{album}", requireAuth( viewAlbum ) },
 
 		{ "PUT",  "/", requireAuth( uploadToLibrary ) },
-		{ "PUT",  "/{album}", requireAuth( uploadToAlbum ) },
+		{ "PUT",  "/{owner}/{album}", requireAuth( uploadToAlbum ) },
 		{ "PUT",  "/Special:uploadToPhoto", requireAuth( uploadToPhoto ) },
 	} )
 
@@ -1906,13 +1917,13 @@ func main() {
 		{ "GET",  "/Special:thumbhash-1.0.0.js", serveJS( thumbhashjs ) },
 		{ "GET",  "/robots.txt", serveString( "User-agent: *\nDisallow: /", "text/plain" ) },
 
-		{ "GET",  "/{album}/{secret}", viewAlbumAsGuest },
-		{ "GET",  "/{album}/{secret}/asset/{asset}", getAssetAsGuest },
-		{ "GET",  "/{album}/{secret}/thumbnail/{asset}", getThumbnailAsGuest },
+		{ "GET",  "/{owner}/{album}/{secret}", viewAlbumAsGuest },
+		{ "GET",  "/{owner}/{album}/{secret}/asset/{asset}", getAssetAsGuest },
+		{ "GET",  "/{owner}/{album}/{secret}/thumbnail/{asset}", getThumbnailAsGuest },
 
-		{ "GET",  "/{album}/{secret}/download", downloadAlbumAsGuest },
-		{ "POST", "/{album}/{secret}/download", downloadPhotosAsGuest },
-		{ "PUT",  "/{album}/{secret}", uploadToAlbumAsGuest },
+		{ "GET",  "/{owner}/{album}/{secret}/download", downloadAlbumAsGuest },
+		{ "POST", "/{owner}/{album}/{secret}/download", downloadPhotosAsGuest },
+		{ "PUT",  "/{owner}/{album}/{secret}", uploadToAlbumAsGuest },
 	} )
 
 	done := make( chan os.Signal, 1 )
