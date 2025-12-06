@@ -6,6 +6,7 @@ import (
 	"cmp"
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"database/sql"
 	_ "embed"
 	"encoding/base64"
@@ -256,6 +257,7 @@ func initDB( memory_db bool ) {
 		Shared: 0,
 		ReadonlySecret: "aaaaaaaa",
 		ReadwriteSecret: "bbbbbbbb",
+		GuestPassword: sql.NullString { "gg", true },
 	} ) )
 
 	addFileToAlbum( ctx, mike, "DSCN0025.jpg", 2 )
@@ -634,8 +636,8 @@ func geocodeRoute( w http.ResponseWriter, r *http.Request, user User ) {
 
 type HTMLAlbum struct {
 	Name string
-	UrlSlug string
 	Owner string
+	UrlSlug string
 	KeyPhotoSha256 string
 }
 
@@ -644,8 +646,8 @@ func toHTMLAlbums( albums []sqlc.GetAlbumsForUserRow ) []HTMLAlbum {
 	for i, album := range albums {
 		html_albums[ i ] = HTMLAlbum {
 			Name: album.Name,
-			UrlSlug: album.UrlSlug,
 			Owner: album.Owner,
+			UrlSlug: album.UrlSlug,
 			KeyPhotoSha256: hex.EncodeToString( album.KeyPhotoSha256 ),
 		}
 	}
@@ -674,8 +676,8 @@ func createAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 
 func genericAlbumHandler( w http.ResponseWriter, r *http.Request, user User, owned_only bool, handler func( http.ResponseWriter, *http.Request, User, sqlc.GetAlbumByURLRow ) ) {
 	album := queryOptional( queries.GetAlbumByURL( r.Context(), sqlc.GetAlbumByURLParams {
-		UrlSlug: r.PathValue( "album" ),
 		Owner: r.PathValue( "owner" ),
+		UrlSlug: r.PathValue( "album" ),
 	} ) )
 	if !album.Valid {
 		httpError( w, http.StatusNotFound )
@@ -703,6 +705,7 @@ func deleteAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 		const _30_days = 30 * 24 * time.Hour
 		try( queries.DeleteAlbum( r.Context(), sqlc.DeleteAlbumParams {
 			DeleteAt: justI64( time.Now().Add( _30_days ).Unix() ),
+			Owner: user.ID,
 			UrlSlug: album.UrlSlug,
 		} ) )
 		w.Header().Set( "HX-Redirect", "/Special:deleted" )
@@ -1197,10 +1200,18 @@ func getAssetAsGuest( w http.ResponseWriter, r *http.Request ) {
 	}
 
 	secret := r.PathValue( "secret" )
+	password, password_err := r.Cookie( "guest_password" )
+	var password_str sql.NullString
+	if password_err == nil {
+		password_str = sql.NullString { password.Value, true }
+	}
+
 	metadata := queryOptional( queries.GetAssetGuestMetadata( r.Context(), sqlc.GetAssetGuestMetadataParams {
+		Owner: r.PathValue( "owner" ),
 		UrlSlug: r.PathValue( "album" ),
 		ReadonlySecret: secret,
 		ReadwriteSecret: secret,
+		GuestPassword: password_str,
 		Sha256: sha256[:],
 	} ) )
 	if !metadata.Valid {
@@ -1223,10 +1234,18 @@ func getThumbnailAsGuest( w http.ResponseWriter, r *http.Request ) {
 	}
 
 	secret := r.PathValue( "secret" )
+	password, password_err := r.Cookie( "guest_password" )
+	var password_str sql.NullString
+	if password_err == nil {
+		password_str = sql.NullString { password.Value, true }
+	}
+
 	asset := queryOptional( queries.GetAssetGuestThumbnail( r.Context(), sqlc.GetAssetGuestThumbnailParams {
+		Owner: r.PathValue( "owner" ),
 		UrlSlug: r.PathValue( "album" ),
 		ReadonlySecret: secret,
 		ReadwriteSecret: secret,
+		GuestPassword: password_str,
 		Sha256: sha256[:],
 	} ) )
 	if !asset.Valid {
@@ -1247,12 +1266,30 @@ func guestAlbumHandler( w http.ResponseWriter, r *http.Request, handler func( ht
 		Owner: r.PathValue( "owner" ),
 	} ) )
 	secret := r.PathValue( "secret" )
-	if !album.Valid || ( secret != album.V.ReadonlySecret && secret != album.V.ReadwriteSecret ) {
+	password, password_err := r.Cookie( "guest_password" )
+
+	readonly := false
+	readwrite := false
+	authed := false
+	if album.Valid {
+		subtle.WithDataIndependentTiming( func() {
+			readonly = subtle.ConstantTimeCompare( []byte( secret ), []byte( album.V.ReadonlySecret ) ) == 1
+			readwrite = subtle.ConstantTimeCompare( []byte( secret ), []byte( album.V.ReadwriteSecret ) ) == 1
+			authed = !album.V.GuestPassword.Valid || ( password_err == nil && subtle.ConstantTimeCompare( []byte( password.Value ), []byte( album.V.GuestPassword.String ) ) == 1 )
+		} )
+	}
+
+	if !readonly && !readwrite {
 		httpError( w, http.StatusForbidden )
 		return
 	}
 
-	handler( w, r, album.V, secret == album.V.ReadwriteSecret )
+	if !authed {
+		try( guestAlbumPasswordForm( album.V, secret ).Render( r.Context(), w ) )
+		return
+	}
+
+	handler( w, r, album.V, readwrite )
 }
 
 func viewAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
@@ -1918,6 +1955,7 @@ func main() {
 		{ "GET",  "/robots.txt", serveString( "User-agent: *\nDisallow: /", "text/plain" ) },
 
 		{ "GET",  "/{owner}/{album}/{secret}", viewAlbumAsGuest },
+		{ "POST", "/{owner}/{album}/{secret}", authenticateToGuestAlbum },
 		{ "GET",  "/{owner}/{album}/{secret}/asset/{asset}", getAssetAsGuest },
 		{ "GET",  "/{owner}/{album}/{secret}/thumbnail/{asset}", getThumbnailAsGuest },
 

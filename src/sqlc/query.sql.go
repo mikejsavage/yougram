@@ -82,9 +82,9 @@ const createAlbum = `-- name: CreateAlbum :exec
 
 INSERT INTO album (
 	owner, name, url_slug,
-	shared, readonly_secret, readwrite_secret,
+	shared, readonly_secret, readwrite_secret, guest_password,
 	autoassign_start_date, autoassign_end_date, autoassign_latitude, autoassign_longitude, autoassign_radius
-) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )
+) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )
 `
 
 type CreateAlbumParams struct {
@@ -94,6 +94,7 @@ type CreateAlbumParams struct {
 	Shared              int64
 	ReadonlySecret      string
 	ReadwriteSecret     string
+	GuestPassword       sql.NullString
 	AutoassignStartDate sql.NullInt64
 	AutoassignEndDate   sql.NullInt64
 	AutoassignLatitude  sql.NullFloat64
@@ -112,6 +113,7 @@ func (q *Queries) CreateAlbum(ctx context.Context, arg CreateAlbumParams) error 
 		arg.Shared,
 		arg.ReadonlySecret,
 		arg.ReadwriteSecret,
+		arg.GuestPassword,
 		arg.AutoassignStartDate,
 		arg.AutoassignEndDate,
 		arg.AutoassignLatitude,
@@ -204,16 +206,17 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, 
 }
 
 const deleteAlbum = `-- name: DeleteAlbum :exec
-UPDATE album SET delete_at = ? WHERE url_slug = ?
+UPDATE album SET delete_at = ? WHERE owner = ? AND url_slug = ?
 `
 
 type DeleteAlbumParams struct {
 	DeleteAt sql.NullInt64
+	Owner    int64
 	UrlSlug  string
 }
 
 func (q *Queries) DeleteAlbum(ctx context.Context, arg DeleteAlbumParams) error {
-	_, err := q.db.ExecContext(ctx, deleteAlbum, arg.DeleteAt, arg.UrlSlug)
+	_, err := q.db.ExecContext(ctx, deleteAlbum, arg.DeleteAt, arg.Owner, arg.UrlSlug)
 	return err
 }
 
@@ -343,7 +346,7 @@ func (q *Queries) GetAlbumAutoassignRules(ctx context.Context) ([]GetAlbumAutoas
 const getAlbumByURL = `-- name: GetAlbumByURL :one
 SELECT
 	album.id, album.owner, url_slug, user.username AS owner_username,
-	album.name, shared, readonly_secret, readwrite_secret,
+	album.name, shared, readonly_secret, readwrite_secret, guest_password,
 	album_key_asset.sha256 AS key_photo_sha256
 FROM album
 LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
@@ -351,12 +354,12 @@ INNER JOIN user ON album.owner = user.id
 LEFT OUTER JOIN album_photo ON album_photo.album_id = album.id
 LEFT OUTER JOIN photo ON album_photo.photo_id = photo.id
 LEFT OUTER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
-WHERE url_slug = ? AND user.username = ? AND album.delete_at IS NULL
+WHERE user.username = ? AND url_slug = ? AND album.delete_at IS NULL
 `
 
 type GetAlbumByURLParams struct {
-	UrlSlug string
 	Owner   string
+	UrlSlug string
 }
 
 type GetAlbumByURLRow struct {
@@ -368,11 +371,12 @@ type GetAlbumByURLRow struct {
 	Shared          int64
 	ReadonlySecret  string
 	ReadwriteSecret string
+	GuestPassword   sql.NullString
 	KeyPhotoSha256  []byte
 }
 
 func (q *Queries) GetAlbumByURL(ctx context.Context, arg GetAlbumByURLParams) (GetAlbumByURLRow, error) {
-	row := q.db.QueryRowContext(ctx, getAlbumByURL, arg.UrlSlug, arg.Owner)
+	row := q.db.QueryRowContext(ctx, getAlbumByURL, arg.Owner, arg.UrlSlug)
 	var i GetAlbumByURLRow
 	err := row.Scan(
 		&i.ID,
@@ -383,6 +387,7 @@ func (q *Queries) GetAlbumByURL(ctx context.Context, arg GetAlbumByURLParams) (G
 		&i.Shared,
 		&i.ReadonlySecret,
 		&i.ReadwriteSecret,
+		&i.GuestPassword,
 		&i.KeyPhotoSha256,
 	)
 	return i, err
@@ -531,15 +536,18 @@ SELECT type, original_filename, EXISTS(
 	INNER JOIN photo ON photo.id = photo_asset.photo_id
 	INNER JOIN album_photo ON album_photo.photo_id = photo.id
 	INNER JOIN album ON album.id = album_photo.album_id
-	WHERE album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? )
+	INNER JOIN user ON user.id = album.owner
+	WHERE user.username = ? AND album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? ) AND ( album.guest_password IS NULL OR album.guest_password = ? )
 ) AS has_permission
 FROM asset WHERE sha256 = ?
 `
 
 type GetAssetGuestMetadataParams struct {
+	Owner           string
 	UrlSlug         string
 	ReadonlySecret  string
 	ReadwriteSecret string
+	GuestPassword   sql.NullString
 	Sha256          []byte
 }
 
@@ -551,9 +559,11 @@ type GetAssetGuestMetadataRow struct {
 
 func (q *Queries) GetAssetGuestMetadata(ctx context.Context, arg GetAssetGuestMetadataParams) (GetAssetGuestMetadataRow, error) {
 	row := q.db.QueryRowContext(ctx, getAssetGuestMetadata,
+		arg.Owner,
 		arg.UrlSlug,
 		arg.ReadonlySecret,
 		arg.ReadwriteSecret,
+		arg.GuestPassword,
 		arg.Sha256,
 	)
 	var i GetAssetGuestMetadataRow
@@ -567,15 +577,18 @@ SELECT thumbnail, original_filename, EXISTS(
 	INNER JOIN photo ON photo.id = photo_asset.photo_id
 	INNER JOIN album_photo ON album_photo.photo_id = photo.id
 	INNER JOIN album ON album.id = album_photo.album_id
-	WHERE album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? )
+	INNER JOIN user ON user.id = album.owner
+	WHERE user.username = ? AND album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? ) AND ( album.guest_password IS NULL OR album.guest_password = ? )
 ) AS has_permission
 FROM asset WHERE sha256 = ?
 `
 
 type GetAssetGuestThumbnailParams struct {
+	Owner           string
 	UrlSlug         string
 	ReadonlySecret  string
 	ReadwriteSecret string
+	GuestPassword   sql.NullString
 	Sha256          []byte
 }
 
@@ -587,9 +600,11 @@ type GetAssetGuestThumbnailRow struct {
 
 func (q *Queries) GetAssetGuestThumbnail(ctx context.Context, arg GetAssetGuestThumbnailParams) (GetAssetGuestThumbnailRow, error) {
 	row := q.db.QueryRowContext(ctx, getAssetGuestThumbnail,
+		arg.Owner,
 		arg.UrlSlug,
 		arg.ReadonlySecret,
 		arg.ReadwriteSecret,
+		arg.GuestPassword,
 		arg.Sha256,
 	)
 	var i GetAssetGuestThumbnailRow
@@ -1048,16 +1063,16 @@ func (q *Queries) GetUsers(ctx context.Context) ([]GetUsersRow, error) {
 }
 
 const isAlbumURLInUse = `-- name: IsAlbumURLInUse :one
-SELECT EXISTS ( SELECT 1 FROM album WHERE url_slug = ? AND owner = ? )
+SELECT EXISTS ( SELECT 1 FROM album WHERE owner = ? AND url_slug = ? )
 `
 
 type IsAlbumURLInUseParams struct {
-	UrlSlug string
 	Owner   int64
+	UrlSlug string
 }
 
 func (q *Queries) IsAlbumURLInUse(ctx context.Context, arg IsAlbumURLInUseParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, isAlbumURLInUse, arg.UrlSlug, arg.Owner)
+	row := q.db.QueryRowContext(ctx, isAlbumURLInUse, arg.Owner, arg.UrlSlug)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -1121,26 +1136,37 @@ func (q *Queries) ResetUserPassword(ctx context.Context, arg ResetUserPasswordPa
 }
 
 const restoreDeletedAlbum = `-- name: RestoreDeletedAlbum :exec
-UPDATE album SET delete_at = NULL WHERE url_slug = ?
+UPDATE album SET delete_at = NULL WHERE owner = ? AND url_slug = ?
 `
 
-func (q *Queries) RestoreDeletedAlbum(ctx context.Context, urlSlug string) error {
-	_, err := q.db.ExecContext(ctx, restoreDeletedAlbum, urlSlug)
+type RestoreDeletedAlbumParams struct {
+	Owner   int64
+	UrlSlug string
+}
+
+func (q *Queries) RestoreDeletedAlbum(ctx context.Context, arg RestoreDeletedAlbumParams) error {
+	_, err := q.db.ExecContext(ctx, restoreDeletedAlbum, arg.Owner, arg.UrlSlug)
 	return err
 }
 
 const setAlbumIsShared = `-- name: SetAlbumIsShared :exec
-UPDATE album SET shared = ? WHERE id = ? AND owner = ?
+UPDATE album SET shared = ?, guest_password = ? WHERE id = ? AND owner = ?
 `
 
 type SetAlbumIsSharedParams struct {
-	Shared int64
-	ID     int64
-	Owner  int64
+	Shared        int64
+	GuestPassword sql.NullString
+	ID            int64
+	Owner         int64
 }
 
 func (q *Queries) SetAlbumIsShared(ctx context.Context, arg SetAlbumIsSharedParams) error {
-	_, err := q.db.ExecContext(ctx, setAlbumIsShared, arg.Shared, arg.ID, arg.Owner)
+	_, err := q.db.ExecContext(ctx, setAlbumIsShared,
+		arg.Shared,
+		arg.GuestPassword,
+		arg.ID,
+		arg.Owner,
+	)
 	return err
 }
 

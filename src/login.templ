@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/hex"
+	"fmt"
 	"unicode"
+	"mikegram/sqlc"
 )
 
 templ loginFormTemplate() {
@@ -319,4 +321,89 @@ templ resetPasswordFormTemplate() {
 	</style>
 
 	@changePasswordForm( true )
+}
+
+templ guestAlbumPasswordForm( album sqlc.GetAlbumByURLRow, secret string ) {
+	<!DOCTYPE html>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>{ album.Name }</title>
+
+	@autorefresh()
+	<script src="/Special:htmx-2.0.4.js"></script>
+
+	<style>
+	* {
+		box-sizing: border-box;
+	}
+
+	html {
+		height: 100%;
+	}
+
+	body {
+		display: flex;
+		font-family: sans-serif;
+		line-height: 1.5;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		width: 100%;
+		margin: 0;
+	}
+
+	@keyframes spinning {
+		0%   { left: 0; }
+		25%  { left: 0.1rem; }
+		75%  { left: -0.1rem; }
+		100% { left: 0; }
+	}
+
+	input[type=password] {
+		border: 2px solid #000;
+		border-radius: 0;
+		font-size: 100%;
+		padding: 0.5rem;
+		width: 100%;
+		max-width: 20rem;
+	}
+
+	input[type=password]:focus {
+		outline: 2px solid #69b3e7;
+	}
+
+	input[type=password]:disabled {
+		position: relative;
+		animation: spinning 0.15s infinite;
+	}
+
+	form {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 150%;
+		max-width: 100%;
+		padding: 0.5rem;
+	}
+
+	h1 {
+		padding: 0;
+		margin: 0;
+		text-align: center;
+	}
+	</style>
+
+	<form
+		hx-post={ fmt.Sprintf( "/%s/%s/%s", album.OwnerUsername, album.UrlSlug, secret ) }
+		hx-target="#error"
+		hx-swap="textContent"
+		hx-disabled-elt="find input"
+		hx-on::before-request="htmx.find('#error').innerText = ''"
+	>
+		<h1>{ album.Name }</h1>
+		<input type="password" name="password" placeholder="Password" autofocus>
+		<button type="submit">Submit</button>
+		<span id="error"></span>
+	</form>
 }

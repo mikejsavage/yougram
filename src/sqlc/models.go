@@ -27,6 +27,7 @@ type Album struct {
 	Shared              int64
 	ReadonlySecret      string
 	ReadwriteSecret     string
+	GuestPassword       sql.NullString
 	DeleteAt            sql.NullInt64
 	AutoassignStartDate sql.NullInt64
 	AutoassignEndDate   sql.NullInt64

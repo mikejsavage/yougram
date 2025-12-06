@@ -80,6 +80,11 @@ CREATE TABLE IF NOT EXISTS album (
 	readonly_secret TEXT NOT NULL,
 	readwrite_secret TEXT NOT NULL,
 
+	-- it's very unfortunate that we need two layers of auth but without something that requires
+	-- human interaction all your photos end up in AI training sets
+	-- this is plaintext so you can show it in the UI
+	guest_password TEXT CHECK( guest_password <> '' ),
+
 	delete_at INTEGER,
 
 	autoassign_start_date INTEGER,

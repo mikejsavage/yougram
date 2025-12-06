@@ -137,22 +137,26 @@ func verifyPassword( password string, hash string ) bool {
 	return ok
 }
 
+func makeSecureCookie( r *http.Request ) http.Cookie {
+	return http.Cookie {
+		// NOTE: Forwarded: for=192.0.2.60;proto=http;by=203.0.113.43
+		Secure: strings.Contains( r.Header.Get( "Forwarded" ), "proto=https" ),
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	}
+}
+
 func setAuthCookie( w http.ResponseWriter, r *http.Request, value string ) {
 	expiration := -1
 	if value != "" {
 		expiration = int( ( 365 * 24 * time.Hour ).Seconds() )
 	}
 
-	cookie := http.Cookie {
-		Name: "auth",
-		Value: value,
-		Path: "/",
-		MaxAge: expiration,
-		// NOTE: Forwarded: for=192.0.2.60;proto=http;by=203.0.113.43
-		Secure: strings.Contains( r.Header.Get( "Forwarded" ), "proto=https" ),
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-	}
+	cookie := makeSecureCookie( r )
+	cookie.Name = "auth"
+	cookie.Value = value
+	cookie.Path = "/"
+	cookie.MaxAge = expiration
 
 	http.SetCookie( w, &cookie )
 }
@@ -305,5 +309,22 @@ func resetPassword( w http.ResponseWriter, r *http.Request ) {
 		return
 	}
 
+	w.Header().Set( "HX-Refresh", "true" )
+}
+
+func authenticateToGuestAlbum( w http.ResponseWriter, r *http.Request ) {
+	password := r.PostFormValue( "password" )
+	expiration := -1
+	if password != "" {
+		expiration = int( ( 365 * 24 * time.Hour ).Seconds() )
+	}
+
+	cookie := makeSecureCookie( r )
+	cookie.Name = "guest_password"
+	cookie.Value = password
+	cookie.Path = r.URL.Path
+	cookie.MaxAge = expiration
+
+	http.SetCookie( w, &cookie )
 	w.Header().Set( "HX-Refresh", "true" )
 }

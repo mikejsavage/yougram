@@ -83,7 +83,8 @@ SELECT type, original_filename, EXISTS(
 	INNER JOIN photo ON photo.id = photo_asset.photo_id
 	INNER JOIN album_photo ON album_photo.photo_id = photo.id
 	INNER JOIN album ON album.id = album_photo.album_id
-	WHERE album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? )
+	INNER JOIN user ON user.id = album.owner
+	WHERE user.username = @owner AND album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? ) AND ( album.guest_password IS NULL OR album.guest_password = ? )
 ) AS has_permission
 FROM asset WHERE sha256 = ?;
 
@@ -93,7 +94,8 @@ SELECT thumbnail, original_filename, EXISTS(
 	INNER JOIN photo ON photo.id = photo_asset.photo_id
 	INNER JOIN album_photo ON album_photo.photo_id = photo.id
 	INNER JOIN album ON album.id = album_photo.album_id
-	WHERE album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? )
+	INNER JOIN user ON user.id = album.owner
+	WHERE user.username = @owner AND album.url_slug = ? AND ( album.readonly_secret = ? OR album.readwrite_secret = ? ) AND ( album.guest_password IS NULL OR album.guest_password = ? )
 ) AS has_permission
 FROM asset WHERE sha256 = ?;
 
@@ -196,18 +198,18 @@ ORDER BY album.name;
 -- name: CreateAlbum :exec
 INSERT INTO album (
 	owner, name, url_slug,
-	shared, readonly_secret, readwrite_secret,
+	shared, readonly_secret, readwrite_secret, guest_password,
 	autoassign_start_date, autoassign_end_date, autoassign_latitude, autoassign_longitude, autoassign_radius
-) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );
+) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );
 
 -- name: DeleteAlbum :exec
-UPDATE album SET delete_at = ? WHERE url_slug = ?;
+UPDATE album SET delete_at = ? WHERE owner = ? AND url_slug = ?;
 
 -- name: PurgeDeletedAlbums :exec
 DELETE FROM album WHERE delete_at IS NOT NULL AND delete_at < ?;
 
 -- name: RestoreDeletedAlbum :exec
-UPDATE album SET delete_at = NULL WHERE url_slug = ?;
+UPDATE album SET delete_at = NULL WHERE owner = ? AND url_slug = ?;
 
 -- name: AddPhotoToAlbum :exec
 INSERT OR IGNORE INTO album_photo ( album_id, photo_id ) VALUES ( ?, ? );
@@ -232,7 +234,7 @@ ORDER BY album.name;
 -- name: GetAlbumByURL :one
 SELECT
 	album.id, album.owner, url_slug, user.username AS owner_username,
-	album.name, shared, readonly_secret, readwrite_secret,
+	album.name, shared, readonly_secret, readwrite_secret, guest_password,
 	album_key_asset.sha256 AS key_photo_sha256
 FROM album
 LEFT OUTER JOIN album_key_asset ON album.id = album_key_asset.id
@@ -240,7 +242,7 @@ INNER JOIN user ON album.owner = user.id
 LEFT OUTER JOIN album_photo ON album_photo.album_id = album.id
 LEFT OUTER JOIN photo ON album_photo.photo_id = photo.id
 LEFT OUTER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
-WHERE url_slug = ? AND user.username = @owner AND album.delete_at IS NULL;
+WHERE user.username = @owner AND url_slug = ? AND album.delete_at IS NULL;
 
 -- name: GetAlbumDateRange :one
 SELECT
@@ -279,10 +281,10 @@ FROM album WHERE ? BETWEEN autoassign_start_date AND autoassign_end_date;
 UPDATE album SET name = ?, url_slug = ? WHERE id = ? AND owner = ?;
 
 -- name: SetAlbumIsShared :exec
-UPDATE album SET shared = ? WHERE id = ? AND owner = ?;
+UPDATE album SET shared = ?, guest_password = ? WHERE id = ? AND owner = ?;
 
 -- name: IsAlbumURLInUse :one
-SELECT EXISTS ( SELECT 1 FROM album WHERE url_slug = ? AND owner = ? );
+SELECT EXISTS ( SELECT 1 FROM album WHERE owner = ? AND url_slug = ? );
 
 
 ----------------
