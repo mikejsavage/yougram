@@ -28,3 +28,5 @@ require (
 	github.com/tinylib/msgp v1.3.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 )
+
+replace github.com/evanoberholster/imagemeta => ./imagemeta

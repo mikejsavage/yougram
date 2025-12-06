@@ -1,3 +1,4 @@
+/src/imagemeta/ linguist-vendored
 /src/stb/*.h linguist-vendored
 /src/vendor_js/ linguist-vendored
 /src/sqlc/ linguist-generated

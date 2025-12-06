@@ -1,0 +1,32 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Thumbnails
+*DS_Store
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Benchmarks
+*.txt
+
+# Coverage
+*.cov
+
+samples/*
+xml/test*
+testImages/gen.go
+testImages/*.html
+test/*
+meta/cmd/*
+xmp/test/samples/*
+
+*.CR3
+*.CR2
