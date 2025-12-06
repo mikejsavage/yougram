@@ -32,8 +32,8 @@ CREATE TABLE IF NOT EXISTS asset (
 	longitude REAL CHECK( longitude >= -180 AND longitude < 180 )
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS idx_asset__created_at ON asset( created_at );
-CREATE INDEX IF NOT EXISTS idx_asset__date_taken ON asset( date_taken );
+CREATE INDEX IF NOT EXISTS asset__created_at ON asset( created_at );
+CREATE INDEX IF NOT EXISTS asset__date_taken ON asset( date_taken );
 
 ------------
 -- PHOTOS --
@@ -62,9 +62,9 @@ INNER JOIN asset ON asset.sha256 = IFNULL( photo.primary_asset, (
 		ORDER BY lol.created_at DESC LIMIT 1
 ) );
 
-CREATE INDEX IF NOT EXISTS idx_photo__owner ON photo( owner );
-CREATE INDEX IF NOT EXISTS idx_photo_asset__photo_id ON photo_asset( photo_id );
-CREATE INDEX IF NOT EXISTS idx_photo_asset__asset_id ON photo_asset( asset_id );
+CREATE INDEX IF NOT EXISTS photo__owner ON photo( owner );
+CREATE INDEX IF NOT EXISTS photo_asset__photo_id ON photo_asset( photo_id );
+CREATE INDEX IF NOT EXISTS photo_asset__asset_id ON photo_asset( asset_id );
 
 ------------
 -- ALBUMS --
@@ -119,8 +119,8 @@ LEFT OUTER JOIN photo_primary_asset ON photo_primary_asset.photo_id = IFNULL( al
 ) );
 
 -- the unique constraint makes the first index pointless, not sure if we ever need the second one
--- CREATE INDEX IF NOT EXISTS idx_album_photo__album_id ON album_photo( album_id );
-CREATE INDEX IF NOT EXISTS idx_album_photo__photo_id ON album_photo( photo_id );
+-- CREATE INDEX IF NOT EXISTS album_photo__album_id ON album_photo( album_id );
+CREATE INDEX IF NOT EXISTS album_photo__photo_id ON album_photo( photo_id );
 
 ----------------
 -- AI TAGGING --
