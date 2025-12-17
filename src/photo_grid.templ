@@ -16,7 +16,7 @@ templ fullscreen( base_urls BaseURLs ) {
 	// image until the new one has loaded, so this has to go inside the for loop so
 	// the imgs are deleted and recreated when cycling between photos or you get
 	// visual glitches
-	<template x-if="fullscreen == i - 1">
+	<template x-if="fullscreen == visible_start + i - 1">
 		<dialog class="fullscreen"
 			x-data="{
 				metadata: null,
