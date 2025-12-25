@@ -1596,7 +1596,7 @@ func addFile( ctx context.Context, user int64, path string, album_id sql.Null[ i
 }
 
 func addFileToAlbum( ctx context.Context, user int64, path string, album_id int64 ) error {
-	return addFile( ctx, user, path, sql.Null[ int64 ] { album_id, true } )
+	return addFile( ctx, user, path, just( album_id ) )
 }
 
 func pathPhotoHandler( w http.ResponseWriter, r *http.Request, user User, handler func( http.ResponseWriter, *http.Request, User, int64 ) ) {
