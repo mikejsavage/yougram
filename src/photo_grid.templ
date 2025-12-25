@@ -723,7 +723,13 @@ templ albumHeader( album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumO
 
 			{{ date_range := try1( queries.GetAlbumDateRange( ctx, album.ID ) ) }}
 			if date_range.OldestPhoto != nil && date_range.NewestPhoto != nil {
-				<span>{ showNullableDate( date_range.OldestPhoto ) } &ndash; { showNullableDate( date_range.NewestPhoto ) }</span>
+				{{ from := showNullableDate( date_range.OldestPhoto ) }}
+				{{ to := showNullableDate( date_range.NewestPhoto ) }}
+				if from == to {
+					<span>{ from }</span>
+				} else {
+					<span>{ from } &ndash; { to }</span>
+				}
 			}
 			<span>{ len( photos ) } { sel( len( photos ) == 1, "photo", "photos" ) }</span>
 		</span>
