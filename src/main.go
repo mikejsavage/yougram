@@ -1440,7 +1440,9 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 			orientation = exif.Orientation
 		}
 
-		if !exif.CreateDate().IsZero() {
+		if !exif.DateTimeOriginal().IsZero() {
+			date = justI64( exif.DateTimeOriginal().Unix() )
+		} else if !exif.CreateDate().IsZero() {
 			date = justI64( exif.CreateDate().Unix() )
 		}
 
