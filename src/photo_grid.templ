@@ -414,7 +414,7 @@ templ downloadButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership, bas
 		</button>
 
 		<dialog id="download" @click="DialogClicked">
-			{{ action := base_urls.Download + sel( ownership != AlbumOwnership_Guest, album.OwnerUsername + "/" + album.UrlSlug, "" ) }}
+			{{ action := base_urls.Download + sel( ownership != AlbumOwnership_Guest, "/" + album.OwnerUsername + "/" + album.UrlSlug, "" ) }}
 			<form method="GET" action={ templ.URL( action ) }>
 				<h2>Download { album.Name }</h2>
 
@@ -897,7 +897,7 @@ func getStandardBaseURLs() BaseURLs {
 	return BaseURLs {
 		Asset: "/Special:asset/",
 		Thumbnail: "/Special:thumbnail/",
-		Download: "/Special:download/",
+		Download: "/Special:download",
 	}
 }
 
