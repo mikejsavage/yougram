@@ -179,5 +179,5 @@ Then you should be able to use the Makefile to compile yougram, or by hand:
 ```
 sqlc generate
 templ generate -path src
-go build -C src -o ../mikegram
+go build -C src -o ../yougram
 ```
