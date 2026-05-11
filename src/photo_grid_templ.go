@@ -394,7 +394,7 @@ func downloadButton(album sqlc.GetAlbumByURLRow, ownership AlbumOwnership, base_
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		action := base_urls.Download + sel(ownership != AlbumOwnership_Guest, album.OwnerUsername+"/"+album.UrlSlug, "")
+		action := base_urls.Download + sel(ownership != AlbumOwnership_Guest, "/"+album.OwnerUsername+"/"+album.UrlSlug, "")
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<form method=\"GET\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -924,7 +924,7 @@ func getStandardBaseURLs() BaseURLs {
 	return BaseURLs{
 		Asset:     "/Special:asset/",
 		Thumbnail: "/Special:thumbnail/",
-		Download:  "/Special:download/",
+		Download:  "/Special:download",
 	}
 }
 

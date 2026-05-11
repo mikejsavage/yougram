@@ -75,6 +75,9 @@ var thumbhashjs string
 
 var checksum string
 
+var favicon []byte
+var favicon_modtime time.Time
+
 var guest_url string
 
 func sel[ T any ]( p bool, t T, f T ) T {
@@ -345,7 +348,7 @@ func httpError( w http.ResponseWriter, status int ) {
 }
 
 func cacheControlImmutable( w http.ResponseWriter ) {
-	// 60 * 60 * 24 * 365 = 31536000
+	// 1 year = 60 * 60 * 24 * 365 = 31536000
 	w.Header().Set( "Cache-Control", "max-age=31536000, immutable" )
 }
 
@@ -1695,6 +1698,17 @@ func serveJS( content string ) func( http.ResponseWriter, *http.Request ) {
 	return serveString( content, "text/javascript; charset=utf-8" )
 }
 
+func serveFavicon( w http.ResponseWriter, r *http.Request ) {
+	if favicon == nil {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+
+	// 1 hour = 60 * 60 = 360
+	w.Header().Set( "Cache-Control", "max-age=360" )
+	http.ServeContent( w, r, "favicon.png", favicon_modtime, bytes.NewReader( favicon ) )
+}
+
 func makeRouteRegex( route string ) *regexp.Regexp {
 	regex := "^" + route + "$"
 	regex = strings.ReplaceAll( regex, ".", "\\." ) // escape .
@@ -1902,6 +1916,21 @@ func main() {
 	initBackgroundTaskRunner()
 	initGeocoder()
 
+	{
+		var err error
+		favicon, err = os.ReadFile( "favicon.png" )
+		if errors.Is( err, os.ErrNotExist ) {
+			fmt.Printf( "FYI you can put a favicon in favicon.png\n" )
+		} else {
+			must( err )
+		}
+
+		if favicon != nil {
+			stat := must1( os.Stat( "favicon.png" ) )
+			favicon_modtime = stat.ModTime()
+		}
+	}
+
 	// daily tasks
 	go func() {
 		for now := range time.Tick( 24 * time.Hour ) {
@@ -1910,6 +1939,8 @@ func main() {
 	}()
 
 	private_http_server := startHttpServer( private_listen_addr, false, []Route {
+		{ "GET",  "/favicon.png", serveFavicon },
+
 		{ "GET",  "/Special:checksum", getChecksum },
 		{ "GET",  "/Special:alpinejs-3.14.9.js", serveJS( alpinejs ) },
 		{ "GET",  "/Special:htmx-2.0.4.js", serveJS( htmxjs ) },
@@ -1950,11 +1981,13 @@ func main() {
 	} )
 
 	guest_http_server := startHttpServer( guest_listen_addr, true, []Route {
+		{ "GET",  "/favicon.png", serveFavicon },
+		{ "GET",  "/robots.txt", serveString( "User-agent: *\nDisallow: /", "text/plain" ) },
+
 		{ "GET",  "/Special:checksum", getChecksum },
 		{ "GET",  "/Special:alpinejs-3.14.9.js", serveJS( alpinejs ) },
 		{ "GET",  "/Special:htmx-2.0.4.js", serveJS( htmxjs ) },
 		{ "GET",  "/Special:thumbhash-1.0.0.js", serveJS( thumbhashjs ) },
-		{ "GET",  "/robots.txt", serveString( "User-agent: *\nDisallow: /", "text/plain" ) },
 
 		{ "GET",  "/{owner}/{album}/{secret}", viewAlbumAsGuest },
 		{ "POST", "/{owner}/{album}/{secret}", authenticateToGuestAlbum },
