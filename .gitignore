@@ -6,10 +6,12 @@
 /generated
 /cookie_encryption_key.bin
 /yougram.sq3*
+/favicon.png
 
 *.avif
 *.heic
 *.jpeg
 *.jpg
+*.jxl
 *.png
 *.webp
