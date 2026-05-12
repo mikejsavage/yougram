@@ -1,3 +1,33 @@
+# Compile prepare_container
+FROM docker.io/ziglings/ziglang:0.12.0 AS zig
+COPY container/prepare_container.zig /
+RUN zig build-exe -O ReleaseSmall -mcpu=baseline -fstrip prepare_container.zig
+
+
+# Compile yougram
+FROM docker.io/library/golang:1.24-alpine AS go
+RUN apk add --no-cache git ca-certificates make gcc g++ musl-dev
+WORKDIR /build
+
+COPY src /build/src/
+COPY Makefile /build/
+COPY sqlc.json /build/
+
+# Install and run templ/sqlc and make some stub bins so the Makefile works
+WORKDIR /build/src
+RUN echo -e "#!/bin/sh\nexec true" > /bin/templ
+RUN echo -e "#!/bin/sh\nexec true" > /bin/sqlc
+RUN chmod +x /bin/templ /bin/sqlc
+RUN go get -tool github.com/a-h/templ/cmd/templ@v0.3.865
+RUN go get -tool github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
+RUN go tool sqlc generate -f ../sqlc.json
+RUN go tool templ generate
+
+WORKDIR /build
+RUN make release
+
+
+# Actual container
 FROM scratch
 
 EXPOSE 8000
@@ -5,8 +35,8 @@ EXPOSE 8001
 VOLUME [ "/data" ]
 ENTRYPOINT [ "/yougram", "serve", "--private-listen-addr", "8000", "--guest-listen-addr", "8001" ]
 
-COPY prepare_container /
+COPY --from=zig /prepare_container /
 RUN [ "/prepare_container" ]
 WORKDIR /data
 
-COPY yougram /
+COPY --from=go /build/yougram /
