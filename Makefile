@@ -1,19 +1,22 @@
 BIN_SUFFIX=-dev
 TAGS=fts5 nodynamic
-GOFLAGS=-tags "$(TAGS)"
+GOFLAGS=
+LDFLAGS=
 
 ifeq ($(shell uname -s),Linux)
 	TAGS += sqlite_omit_load_extension osusergo netgo
-	GOFLAGS = -ldflags="-extldflags=-static" -tags "$(TAGS)" -gcflags "-N -l"
+	GOFLAGS += -gcflags "-N -l"
+	LDFLAGS += -extldflags=-static
 endif
 
 all:
 	sqlc generate
 	templ generate -path src
-	env GO_CFLAGS=-O2 go build -C src -o ../yougram$(BIN_SUFFIX) $(GOFLAGS)
+	env GO_CFLAGS=-O2 go build -C src -o ../yougram$(BIN_SUFFIX) $(GOFLAGS) -ldflags="$(LDFLAGS)" -tags "$(TAGS)"
 
 release: BIN_SUFFIX =
 release: TAGS += release
+release: LDFLAGS += -s -w
 release: all
 
 clean:
