@@ -486,7 +486,7 @@ func uploadButton() templ.Component {
 			templ_7745c5c3_Var25 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<script>\n\tfunction MakeUploadForm() {\n\t\treturn {\n\t\t\tfiles: [ ],\n\n\t\t\tUpload( idx ) {\n\t\t\t\tif( idx >= this.files.length ) {\n\t\t\t\t\treturn;\n\t\t\t\t}\n\n\t\t\t\tconst xhr = new XMLHttpRequest();\n\t\t\t\txhr.open( \"PUT\", window.location.pathname, true );\n\t\t\t\txhr.upload.onprogress = e => this.files[ idx ].progress = e.loaded / e.total;\n\t\t\t\txhr.onload = () => {\n\t\t\t\t\tthis.files[ idx ].progress = 1;\n\t\t\t\t\tthis.Upload( idx + 1 );\n\t\t\t\t};\n\n\t\t\t\tlet data = new FormData();\n\t\t\t\tdata.append( \"assets\", this.files[ idx ].file );\n\n\t\t\t\txhr.send( data );\n\n\t\t\t\tthis.files[ idx ].xhr = xhr;\n\t\t\t},\n\n\t\t\tasync Changed( e ) {\n\t\t\t\tlet first_new = this.files.length;\n\t\t\t\tthis.totoa\n\n\t\t\t\tfor( const file of e.target.files ) {\n\t\t\t\t\tlet promise = new Promise( function( resolve ) {\n\t\t\t\t\t\tlet reader = new FileReader();\n\t\t\t\t\t\treader.onload = function( e ) {\n\t\t\t\t\t\t\tresolve( e.target.result );\n\t\t\t\t\t\t};\n\t\t\t\t\t\treader.readAsDataURL( file );\n\t\t\t\t\t} );\n\n\t\t\t\t\tthis.files.push( {\n\t\t\t\t\t\tfile: file,\n\t\t\t\t\t\tname: file.name,\n\t\t\t\t\t\tthumbnail: await promise,\n\t\t\t\t\t\tprogress: 0,\n\t\t\t\t\t} );\n\t\t\t\t}\n\n\t\t\t\tthis.Upload( first_new );\n\t\t\t},\n\n\t\t\tCancel( idx ) {\n\t\t\t},\n\t\t};\n\t}\n\t</script><div x-show=\"!selecting\" x-data=\"MakeUploadForm()\"><style>\n\t\t@scope {\n\t\t\timg {\n\t\t\t\taspect-ratio: 1;\n\t\t\t\twidth: 2rem;\n\t\t\t\tobject-fit: cover;\n\t\t\t\tobject-position: 50% 50%;\n\t\t\t\tvertical-align: middle;\n\t\t\t\tmargin: 0.25rem 0;\n\t\t\t}\n\t\t}\n\t\t</style><button type=\"button\"><label>Upload <input type=\"file\" name=\"photos\" accept=\".jpg,.jpeg,.png,.heic,image/heic,image/*,video/*\" multiple @change=\"Changed\" style=\"display: none\"></label></button><div class=\"dropdown\" x-cloak x-show=\"files.length &gt; 0\"><div style=\"max-height: 50vh; overflow-y: scroll\"><template x-for=\"(file, i) in files\"><div><!-- <img :src=\"file.thumbnail\"> --><span x-text=\"Math.floor( file.progress * 100 )\"></span>% <span x-text=\"file.name\"></span></div></template></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<script>\n\tfunction MakeUploadForm() {\n\t\treturn {\n\t\t\tfiles: [ ],\n\t\t\tstacks: [ ],\n\t\t\tstate: \"idle\",\n\t\t\tautostack: true,\n\t\t\tprogress: \"50%\",\n\t\t\tshow_form: false,\n\n\t\t\tFilesSelected( e ) {\n\t\t\t\tthis.files = [ ];\n\t\t\t\tfor( const file of e.target.files ) {\n\t\t\t\t\tthis.files.push( file );\n\t\t\t\t}\n\t\t\t\tthis.MakeStacks();\n\t\t\t\tthis.$root.querySelector( \"dialog\" ).showModal();\n\t\t\t},\n\n\t\t\tIsNormalImage( ext ) {\n\t\t\t\tconsole.log( ext );\n\t\t\t\text = ext.toLowerCase();\n\t\t\t\treturn false\n\t\t\t\t\t|| ext == \"avif\"\n\t\t\t\t\t|| ext == \"heic\" || ext == \"heif\"\n\t\t\t\t\t|| ext == \"jpg\" || ext == \"jpeg\"\n\t\t\t\t\t|| ext == \"jxl\"\n\t\t\t\t\t|| ext == \"png\"\n\t\t\t\t\t|| ext == \"webp\";\n\t\t\t},\n\n\t\t\tMakeStacks() {\n\t\t\t\tthis.stacks = [ ];\n\n\t\t\t\tif( this.autostack ) {\n\t\t\t\t\tlet stack_indices = { };\n\t\t\t\t\tfor( const file of this.files ) {\n\t\t\t\t\t\tlet noext = file.name.replace( /\\.[^/.]+$/, \"\" );\n\t\t\t\t\t\tif( stack_indices[ noext ] == null ) {\n\t\t\t\t\t\t\tstack_indices[ noext ] = this.stacks.length;\n\t\t\t\t\t\t\tthis.stacks.push( { progress: 0, files: [ ] } );\n\t\t\t\t\t\t}\n\n\t\t\t\t\t\tlet ext = /[^.]+$/.exec( file )[ 0 ];\n\t\t\t\t\t\tlet stack = this.stacks[ stack_indices[ noext ] ];\n\t\t\t\t\t\tif( this.IsNormalImage( ext ) ) {\n\t\t\t\t\t\t\tstack.files.unshift( file );\n\t\t\t\t\t\t}\n\t\t\t\t\t\telse {\n\t\t\t\t\t\t\tstack.files.push( file );\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\telse {\n\t\t\t\t\tfor( const file of this.files ) {\n\t\t\t\t\t\tthis.stacks.push( { progress: 0, files: [ file ] } );\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t},\n\n\t\t\tconcurrency: 2,\n\n\t\t\tUploadStack( idx ) {\n\t\t\t\tif( idx >= this.stacks.length )\n\t\t\t\t\treturn;\n\n\t\t\t\tconst xhr = new XMLHttpRequest();\n\t\t\t\txhr.open( \"PUT\", window.location.pathname, true );\n\t\t\t\txhr.upload.onprogress = e => this.stacks[ idx ].progress = e.loaded / e.total;\n\t\t\t\txhr.onload = () => {\n\t\t\t\t\tthis.stacks[ idx ].progress = 1;\n\t\t\t\t\tthis.UploadStack( idx + this.concurrency );\n\t\t\t\t};\n\n\t\t\t\tlet data = new FormData();\n\t\t\t\tfor( const file of this.stacks[ idx ].files ) {\n\t\t\t\t\tdata.append( \"assets\", file );\n\t\t\t\t}\n\n\t\t\t\txhr.send( data );\n\t\t\t},\n\n\t\t\tStartUpload() {\n\t\t\t\tfor( let i = 0; i < this.concurrency; i++ ) {\n\t\t\t\t\tthis.UploadStack( i );\n\t\t\t\t}\n\t\t\t},\n\t\t};\n\t}\n\t</script><div x-show=\"!selecting\" x-data=\"MakeUploadForm()\"><button type=\"button\" x-show=\"state == &#39;idle&#39;\"><label>Upload <input type=\"file\" name=\"photos\" accept=\".jpg,.jpeg,.png,.heic,image/heic,image/*,video/*\" multiple @change=\"FilesSelected\" style=\"display: none\"></label></button> <button type=\"button\" x-show=\"state != &#39;idle&#39;\" :style=\"&#34;background-image: linear-gradient(to right, lime, lime &#34; + progress + &#34;, #efefef &#34; + progress + &#34;, #efefef 100%&#34;\">Uploading...</button> <dialog @click=\"DialogClicked\"><form><h2>Upload</h2><fieldset style=\"display: flex; gap: 1rem\" :disabled=\"state == &#39;uploading&#39;\"><label><input type=\"checkbox\" x-model=\"autostack\" @change=\"MakeStacks\" checked> Stack files with the same name, e.g. IMG_1234.JPG and IMG_1234.RAW. This is meant for stacking RAWs and Live Photos.</label></fieldset><span><span x-text=\"files.length\"></span> files to <span x-text=\"stacks.length\"></span> stacks</span> <button @click.prevent=\"StartUpload\">Upload</button><div style=\"max-height: 50vh; overflow-y: scroll\"><template x-for=\"stack in stacks\"><div><span x-text=\"Math.floor( stack.progress * 100 )\"></span>%<template x-for=\"file in stack.files\"><span x-text=\"file.name\"></span></template></div></template></div></form></dialog></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -551,7 +551,7 @@ func removeFromAlbumButton(album sqlc.GetAlbumByURLRow) templ.Component {
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(templ.URL("/Special:removeFromAlbum/" + album.OwnerUsername + "/" + album.UrlSlug))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 688, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 734, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
@@ -564,7 +564,7 @@ func removeFromAlbumButton(album sqlc.GetAlbumByURLRow) templ.Component {
 		var templ_7745c5c3_Var29 string
 		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 693, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 739, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 		if templ_7745c5c3_Err != nil {
@@ -667,7 +667,7 @@ func albumHeader(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwn
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 719, Col: 18}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 765, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -685,7 +685,7 @@ func albumHeader(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwn
 			var templ_7745c5c3_Var33 string
 			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(album.OwnerUsername)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 722, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 768, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
@@ -708,7 +708,7 @@ func albumHeader(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwn
 				var templ_7745c5c3_Var34 string
 				templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(from)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 730, Col: 17}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 776, Col: 17}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 				if templ_7745c5c3_Err != nil {
@@ -726,7 +726,7 @@ func albumHeader(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwn
 				var templ_7745c5c3_Var35 string
 				templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(from)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 732, Col: 17}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 778, Col: 17}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 				if templ_7745c5c3_Err != nil {
@@ -739,7 +739,7 @@ func albumHeader(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwn
 				var templ_7745c5c3_Var36 string
 				templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(to)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 732, Col: 32}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 778, Col: 32}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 				if templ_7745c5c3_Err != nil {
@@ -758,7 +758,7 @@ func albumHeader(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwn
 		var templ_7745c5c3_Var37 string
 		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(len(photos))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 735, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 781, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 		if templ_7745c5c3_Err != nil {
@@ -771,7 +771,7 @@ func albumHeader(album sqlc.GetAlbumByURLRow, photos []Photo, ownership AlbumOwn
 		var templ_7745c5c3_Var38 string
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(sel(len(photos) == 1, "photo", "photos"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 735, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 781, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 		if templ_7745c5c3_Err != nil {
@@ -882,7 +882,7 @@ func photogridWithHeader(photos []Photo, subheader templ.Component, base_urls Ba
 		}
 		templ_7745c5c3_Var42, templ_7745c5c3_Err := templruntime.ScriptContentOutsideStringLiteral(photos)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 799, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 845, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var42)
 		if templ_7745c5c3_Err != nil {
@@ -980,7 +980,7 @@ func libraryTemplate(photos []Photo) templ.Component {
 			var templ_7745c5c3_Var45 string
 			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(len(photos))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 921, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 967, Col: 25}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 			if templ_7745c5c3_Err != nil {
@@ -993,7 +993,7 @@ func libraryTemplate(photos []Photo) templ.Component {
 			var templ_7745c5c3_Var46 string
 			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(sel(len(photos) == 1, "photo", "photos"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 921, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 967, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 			if templ_7745c5c3_Err != nil {
@@ -1105,7 +1105,7 @@ func guestAlbumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, can_upload 
 		var templ_7745c5c3_Var50 string
 		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 953, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 999, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 		if templ_7745c5c3_Err != nil {
@@ -1118,7 +1118,7 @@ func guestAlbumTemplate(album sqlc.GetAlbumByURLRow, photos []Photo, can_upload 
 		var templ_7745c5c3_Var51 string
 		templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s/%s/%s/%s/thumbnail/%s", guest_url, album.OwnerUsername, album.UrlSlug, album.ReadonlySecret, hex.EncodeToString(album.KeyPhotoSha256)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 954, Col: 191}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 1000, Col: 191}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 		if templ_7745c5c3_Err != nil {

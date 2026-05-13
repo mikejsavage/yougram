@@ -507,90 +507,136 @@ templ uploadButton() {
 	function MakeUploadForm() {
 		return {
 			files: [ ],
+			stacks: [ ],
+			state: "idle",
+			autostack: true,
+			progress: "50%",
+			show_form: false,
 
-			Upload( idx ) {
-				if( idx >= this.files.length ) {
-					return;
+			FilesSelected( e ) {
+				this.files = [ ];
+				for( const file of e.target.files ) {
+					this.files.push( file );
 				}
+				this.MakeStacks();
+				this.$root.querySelector( "dialog" ).showModal();
+			},
+
+			IsNormalImage( ext ) {
+				console.log( ext );
+				ext = ext.toLowerCase();
+				return false
+					|| ext == "avif"
+					|| ext == "heic" || ext == "heif"
+					|| ext == "jpg" || ext == "jpeg"
+					|| ext == "jxl"
+					|| ext == "png"
+					|| ext == "webp";
+			},
+
+			MakeStacks() {
+				this.stacks = [ ];
+
+				if( this.autostack ) {
+					let stack_indices = { };
+					for( const file of this.files ) {
+						let noext = file.name.replace( /\.[^/.]+$/, "" );
+						if( stack_indices[ noext ] == null ) {
+							stack_indices[ noext ] = this.stacks.length;
+							this.stacks.push( { progress: 0, files: [ ] } );
+						}
+
+						let ext = /[^.]+$/.exec( file )[ 0 ];
+						let stack = this.stacks[ stack_indices[ noext ] ];
+						if( this.IsNormalImage( ext ) ) {
+							stack.files.unshift( file );
+						}
+						else {
+							stack.files.push( file );
+						}
+					}
+				}
+				else {
+					for( const file of this.files ) {
+						this.stacks.push( { progress: 0, files: [ file ] } );
+					}
+				}
+			},
+
+			concurrency: 2,
+
+			UploadStack( idx ) {
+				if( idx >= this.stacks.length )
+					return;
 
 				const xhr = new XMLHttpRequest();
 				xhr.open( "PUT", window.location.pathname, true );
-				xhr.upload.onprogress = e => this.files[ idx ].progress = e.loaded / e.total;
+				xhr.upload.onprogress = e => this.stacks[ idx ].progress = e.loaded / e.total;
 				xhr.onload = () => {
-					this.files[ idx ].progress = 1;
-					this.Upload( idx + 1 );
+					this.stacks[ idx ].progress = 1;
+					this.UploadStack( idx + this.concurrency );
 				};
 
 				let data = new FormData();
-				data.append( "assets", this.files[ idx ].file );
-
-				xhr.send( data );
-
-				this.files[ idx ].xhr = xhr;
-			},
-
-			async Changed( e ) {
-				let first_new = this.files.length;
-				this.totoa
-
-				for( const file of e.target.files ) {
-					let promise = new Promise( function( resolve ) {
-						let reader = new FileReader();
-						reader.onload = function( e ) {
-							resolve( e.target.result );
-						};
-						reader.readAsDataURL( file );
-					} );
-
-					this.files.push( {
-						file: file,
-						name: file.name,
-						thumbnail: await promise,
-						progress: 0,
-					} );
+				for( const file of this.stacks[ idx ].files ) {
+					data.append( "assets", file );
 				}
 
-				this.Upload( first_new );
+				xhr.send( data );
 			},
 
-			Cancel( idx ) {
+			StartUpload() {
+				for( let i = 0; i < this.concurrency; i++ ) {
+					this.UploadStack( i );
+				}
 			},
 		};
 	}
 	</script>
 
 	<div x-show="!selecting" x-data="MakeUploadForm()">
-		<style>
-		@scope {
-			img {
-				aspect-ratio: 1;
-				width: 2rem;
-				object-fit: cover;
-				object-position: 50% 50%;
-				vertical-align: middle;
-				margin: 0.25rem 0;
-			}
-		}
-		</style>
-
-		<button type="button">
+		<button type="button" x-show="state == 'idle'">
 			<label>
 				Upload
-				<input type="file" name="photos" accept=".jpg,.jpeg,.png,.heic,image/heic,image/*,video/*" multiple @change="Changed" style="display: none">
+				<input type="file" name="photos" accept=".jpg,.jpeg,.png,.heic,image/heic,image/*,video/*" multiple @change="FilesSelected" style="display: none">
 			</label>
 		</button>
 
-		<div class="dropdown" x-cloak x-show="files.length > 0">
-			<div style="max-height: 50vh; overflow-y: scroll">
-				<template x-for="(file, i) in files">
-					<div>
-						<!-- <img :src="file.thumbnail"> -->
-						<span x-text="Math.floor( file.progress * 100 )"></span>%
-						<span x-text="file.name"></span>
-					</div>
-				</template>
-			</div>
-		</div>
+		<button type="button"
+			x-show="state != 'idle'"
+			:style='"background-image: linear-gradient(to right, lime, lime " + progress + ", #efefef " + progress + ", #efefef 100%"'
+		>
+			Uploading...
+		</button>
+
+		<dialog @click="DialogClicked">
+			<form>
+				<h2>Upload</h2>
+
+				<fieldset style="display: flex; gap: 1rem" :disabled="state == 'uploading'">
+					<label>
+						<input type="checkbox" x-model="autostack" @change="MakeStacks" checked>
+						Stack files with the same name, e.g. IMG_1234.JPG and IMG_1234.RAW.
+						This is meant for stacking RAWs and Live Photos.
+					</label>
+				</fieldset>
+
+				<span><span x-text="files.length"></span> files to <span x-text="stacks.length"></span> stacks</span>
+
+				<button @click.prevent="StartUpload">Upload</button>
+
+				<div style="max-height: 50vh; overflow-y: scroll">
+					<template x-for="stack in stacks">
+						<div>
+							<span x-text="Math.floor( stack.progress * 100 )"></span>%
+							<template x-for="file in stack.files">
+								<span x-text="file.name"></span>
+							</template>
+						</div>
+					</template>
+				</div>
+			</form>
+		</dialog>
 	</div>
 }
 
