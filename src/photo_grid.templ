@@ -1,9 +1,11 @@
 package main
 
-import "encoding/hex"
-import "fmt"
-import "time"
-import "mikegram/sqlc"
+import (
+	"encoding/hex"
+	"fmt"
+	"time"
+	"mikegram/sqlc"
+)
 
 type BaseURLs struct {
 	Asset string
@@ -452,7 +454,6 @@ templ downloadButton( album sqlc.GetAlbumByURLRow, ownership AlbumOwnership, bas
 
 templ downloadSelectedButton( base_urls BaseURLs ) {
 	<div x-cloak x-show="selecting" x-data="{
-		show: false,
 		include: null,
 		variants: null,
 		heic_as_jpg: null,
