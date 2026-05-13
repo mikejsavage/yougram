@@ -44,6 +44,8 @@ import (
 	 * linux shitware and it's the only reasonable way to use them
 	 */
 	"github.com/gen2brain/avif"
+	// same for jpeg-xl
+	"github.com/gen2brain/jpegxl"
 
 	"github.com/adrium/goheif"
 	"github.com/galdor/go-thumbhash"
@@ -269,6 +271,7 @@ func initDB( memory_db bool ) {
 		return
 	}
 	addFileToAlbum( ctx, mike, "hato.profile0.8bpc.yuv420.avif", 1 )
+	addFileToAlbum( ctx, mike, "zoltan-tasi-CLJeQCr2F_A-unsplash.jxl", 1 )
 	addFileToAlbum( ctx, mike, "4_webp_ll.webp", 1 )
 	addFile( ctx, mike, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } )
 	addFile( ctx, mike, "IMG_2330.HEIC", sql.Null[ int64 ] { } )
@@ -394,13 +397,16 @@ func imageToRGBA( img image.Image, err error ) ( *image.RGBA, error ) {
 }
 
 func decodeImage( data []byte, extension string ) ( *image.RGBA, error ) {
-	extension = strings.ToLower( extension )
-
+	// TODO: maybe just try them all in turn. they should fail fast with magic bytes etc anyway
 	if extension == ".avif" {
 		return imageToRGBA( avif.Decode( bytes.NewReader( data ) ) )
 	}
 
-	if extension == ".heic" {
+	if extension == ".jxl" {
+		return imageToRGBA( jpegxl.Decode( bytes.NewReader( data ) ) )
+	}
+
+	if extension == ".heic" || extension == ".heif" {
 		return imageToRGBA( goheif.Decode( bytes.NewReader( data ) ) )
 	}
 
@@ -485,25 +491,28 @@ func pathValueAsset( r *http.Request ) ( string, []byte, error ) {
 }
 
 func serveAsset( w http.ResponseWriter, r *http.Request, sha256 string, asset_type string, original_filename string ) {
-	dir := "assets"
-	ext := ".jpg"
-	if asset_type == "heic" {
-		accepts := strings.Split( r.Header.Get( "Accept" ), "," )
-		if slices.Contains( accepts, "image/heic" ) {
-			ext = ".heic"
-		} else {
-			dir = "generated"
-			ext = ".heic.jpg"
-		}
+	use_original := true
+	if asset_type == "heic" || asset_type == "jxl" {
+		accept := strings.Split( r.Header.Get( "Accept" ), "," )
+		use_original = slices.Contains( accept, "image/" + asset_type ) || slices.Contains( accept, "image/*" ) || slices.Contains( accept, "*/*" )
 	}
 
-	filename := dir + "/" + sha256 + ext
+	ext := normalisedExtension( original_filename )
+	filename := sel( use_original, "assets", "generated" ) + "/" + sha256 + ext + sel( use_original, "", ".jpg" )
 	f := try1( os.Open( filename ) )
 	defer f.Close()
 
+	mime := "jpeg"
+	if use_original {
+		mime = ext[ 1: ]
+		if mime == "jpg" {
+			mime = "jpeg"
+		}
+	}
+
 	cacheControlImmutable( w )
-	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s%s\"", original_filename, sel( ext == ".heic.jpg", ".jpg", "" ) ) )
-	w.Header().Set( "Content-Type", sel( ext == ".heic", "image/heic", "image/jpeg" ) )
+	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s%s\"", original_filename, sel( use_original, "", ".jpg" ) ) )
+	w.Header().Set( "Content-Type", "image/" + mime )
 	w.Header().Set( "ETag", "\"" + sha256 + "\"" )
 
 	http.ServeContent( w, r,
@@ -900,7 +909,7 @@ func serveAlbumZip( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumB
 		}
 	}
 
-	serveZip( album.Name, files, true, w ) // TODO: heic as jpg?
+	serveZip( album.Name, files, true, true, w ) // TODO: heic as jpg?
 }
 
 func downloadAlbum( w http.ResponseWriter, r *http.Request, user User ) {
@@ -947,7 +956,7 @@ func downloadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
 	}
 
 	now := time.Now().Format( "yougram-20060102-150405" )
-	serveZip( now, files, true, w ) // TODO: heic as jpg?
+	serveZip( now, files, true, true, w ) // TODO: heic as jpg?
 }
 
 func downloadPhotosAsGuest( w http.ResponseWriter, r *http.Request ) {
@@ -996,7 +1005,7 @@ func downloadPhotosAsGuest( w http.ResponseWriter, r *http.Request ) {
 		}
 
 		now := time.Now().Format( "yougram-20060102-150405" )
-		serveZip( now, files, true, w ) // TODO: heic as jpg?
+		serveZip( now, files, true, true, w ) // TODO: heic as jpg?
 	} )
 }
 
@@ -1427,11 +1436,24 @@ type AddedAsset struct {
 	Longitude sql.NullFloat64
 }
 
+func normalisedExtension( filename string ) string {
+	extension := strings.ToLower( filepath.Ext( filename ) )
+	if extension == ".heif" {
+		return ".heic"
+	}
+	if extension == ".jpeg" {
+		return ".jpg"
+	}
+	return extension
+}
+
 func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset, error ) {
 	fmt.Printf( "addAsset( %s )\n", filename )
+	before := time.Now()
 
 	sha256 := sha256.Sum256( data )
 
+	// extract metadata
 	var date sql.NullInt64
 	var latitude sql.NullFloat64
 	var longitude sql.NullFloat64
@@ -1460,66 +1482,38 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 		return AddedAsset { sha256, date, latitude, longitude }, nil
 	}
 
-	before := time.Now()
-
-	extension := strings.ToLower( filepath.Ext( filename ) )
-	is_heic := strings.ToLower( filepath.Ext( filename ) ) == ".heic"
-	ext := sel( is_heic, ".heic", ".jpg" )
-
+	// check the image decodes before we save it
+	extension := normalisedExtension( filename )
 	decoded, err := decodeImage( data, extension )
 	if err != nil {
 		return AddedAsset { }, err
 	}
 
-	fmt.Printf( "\torientation %d\n", orientation )
-
-	// if !album_id.Valid && date.Valid && latitude.Valid {
-	// 	rows := try1( db.Query( "SELECT album_id, latitude, longitude, radius FROM auto_assign_rules WHERE start_date <= $1 AND end_date >= $1 ORDER BY end_date - start_date ASC", date.V.Unix() ) )
-	// 	defer rows.Close()
-    //
-	// 	for rows.Next() {
-	// 		var id int64
-	// 		var rule_latitude float64
-	// 		var rule_longitude float64
-	// 		var radius float64
-	// 		try( rows.Scan( &id, &rule_latitude, &rule_longitude, &radius ) )
-    //
-	// 		if distance( LatLong { latitude.V, longitude.V }, LatLong { rule_latitude, rule_longitude } ) > radius {
-	// 			continue
-	// 		}
-    //
-	// 		album_id = sql.Null[ int64 ] { id, true }
-	// 		break
-	// 	}
-	// }
-
-	fmt.Printf( "\tEXIF decoded %dms\n", time.Since( before ).Milliseconds() )
-
-	reoriented := reorient( decoded, orientation )
-	fmt.Printf( "\treoriented %dms\n", time.Since( before ).Milliseconds() )
-
-	hex_sha256 := hex.EncodeToString( sha256[:] )
-	err = saveAsset( data, hex_sha256 + ext )
+	asset_filename := hex.EncodeToString( sha256[:] ) + extension
+	err = saveAsset( data, asset_filename )
 	if err != nil {
 		return AddedAsset { }, err
 	}
-	if is_heic {
+
+	// generate thumbnail/thumbhash/fallback jpgs for heic/jxl
+	reoriented := reorient( decoded, orientation )
+	thumbnail, thumbhash := generateThumbnail( reoriented )
+
+	asset_type := "image"
+	if extension == ".heic" || extension == ".jxl" {
 		jpeg := must1( stb.StbToJpg( reoriented, 95 ) )
-		fmt.Printf( "\theic -> jpeg %dms %d -> %d\n", time.Since( before ).Milliseconds(), len( data ), len( jpeg ) )
-		err = saveGenerated( jpeg, hex_sha256 + ".heic.jpg" )
+		err = saveGenerated( jpeg, asset_filename + ".jpg" )
 		if err != nil {
 			return AddedAsset { }, err
 		}
+		asset_type = extension[ 1: ]
 	}
-	fmt.Printf( "\tsave assets %dms\n", time.Since( before ).Milliseconds() )
-
-	thumbnail, thumbhash := generateThumbnail( reoriented )
 
 	err = queries.CreateAsset( ctx, sqlc.CreateAssetParams {
 		Sha256: sha256[:],
 		CreatedAt: time.Now().Unix(),
 		OriginalFilename: filename,
-		Type: sel( is_heic, "heic", "jpg" ),
+		Type: asset_type,
 		Thumbnail: thumbnail,
 		Thumbhash: thumbhash,
 		DateTaken: date,
@@ -1545,10 +1539,7 @@ func addFile( ctx context.Context, user int64, path string, album_id sql.Null[ i
 		return err
 	}
 
-	asset, err := addAsset( ctx, img, path )
-	if err != nil {
-		return err
-	}
+	asset := must1( addAsset( ctx, img, path ) )
 
 	photos, err := queries.GetAssetPhotos( ctx, sqlc.GetAssetPhotosParams {
 		AssetID: asset.Sha256[:],
@@ -1629,19 +1620,25 @@ type ZipFile struct {
 	Type string
 }
 
-func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.ResponseWriter ) {
+func getAssetDirAndExtensions( asset_type string, heic_as_jpeg bool, jxl_as_jpeg bool ) ( string, string, string ) {
+	if heic_as_jpeg && asset_type == "heic" {
+		return "generated", "heic.jpg", "jpg"
+	}
+
+	if jxl_as_jpeg && asset_type == "jxl" {
+		return "generated", "jxl.jpg", "jpg"
+	}
+
+	return "assets", asset_type, asset_type
+}
+
+func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, jxl_as_jpeg bool, w http.ResponseWriter ) {
 	// magic numbers obtained from ImHex and Wikipedia
 	const end_of_central_directory_size = 22
 	content_length := int64( end_of_central_directory_size )
+
 	for _, asset := range assets {
-		dir := "assets"
-		disk_extension := asset.Type
-		zip_extension := asset.Type
-		if heic_as_jpeg && asset.Type == "heic" {
-			dir = "generated"
-			disk_extension = "heic.jpg"
-			zip_extension = "jpg"
-		}
+		dir, disk_extension, zip_extension := getAssetDirAndExtensions( asset.Type, heic_as_jpeg, jxl_as_jpeg )
 
 		filename := hex.EncodeToString( asset.Sha256 )
 		f := try1( os.Open( dir + "/" + filename + "." + disk_extension ) )
@@ -1663,14 +1660,7 @@ func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, w http.Resp
 	archive := zip.NewWriter( w )
 
 	for _, asset := range assets {
-		dir := "assets"
-		disk_extension := asset.Type
-		zip_extension := asset.Type
-		if heic_as_jpeg && asset.Type == "heic" {
-			dir = "generated"
-			disk_extension = "heic.jpg"
-			zip_extension = "jpg"
-		}
+		dir, disk_extension, zip_extension := getAssetDirAndExtensions( asset.Type, heic_as_jpeg, jxl_as_jpeg )
 
 		filename := hex.EncodeToString( asset.Sha256 )
 		a := try1( os.Open( dir + "/" + filename + "." + disk_extension ) )

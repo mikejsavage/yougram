@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS asset (
 	sha256 BLOB PRIMARY KEY CHECK( length( sha256 ) = 32 ),
 	created_at INTEGER NOT NULL,
 	original_filename TEXT NOT NULL,
-	type TEXT NOT NULL CHECK( type = 'jpg' OR type = 'heic' OR type = 'raw' ),
+	type TEXT NOT NULL CHECK( type = 'image' OR type = 'jxl' OR type = 'heic' OR type = 'raw' ),
 	thumbnail BLOB NOT NULL,
 	thumbhash BLOB NOT NULL,
 	description TEXT,
