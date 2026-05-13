@@ -1820,6 +1820,7 @@ func main() {
 		db_path = "file::memory:"
 		fmt.Println( "Using in memory database. Nothing will be saved when you quit the server!" )
 		fmt.Printf( "curl --header \"Cookie: auth=%s\" localhost:5678/\n", encodeAuthCookie( "mike", make( []byte, 16 ) ) )
+		fmt.Printf( "http://localhost:5678\n" )
 	}
 
 	// sqlite_vec.Auto()
