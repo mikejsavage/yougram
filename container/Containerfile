@@ -7,23 +7,15 @@ RUN zig build-exe -O ReleaseSmall -mcpu=baseline -fstrip prepare_container.zig
 # Compile yougram
 FROM docker.io/library/golang:1.24-alpine AS go
 RUN apk add --no-cache git ca-certificates make gcc g++ musl-dev
-WORKDIR /build
 
-COPY src /build/src/
-COPY Makefile /build/
-COPY sqlc.json /build/
-
-# Install and run templ/sqlc and make some stub bins so the Makefile works
-WORKDIR /build/src
+# Make templ/sqlc nop bins so the Makefile works
 RUN echo -e "#!/bin/sh\nexec true" > /bin/templ
 RUN echo -e "#!/bin/sh\nexec true" > /bin/sqlc
 RUN chmod +x /bin/templ /bin/sqlc
-RUN go get -tool github.com/a-h/templ/cmd/templ@v0.3.865
-RUN go get -tool github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
-RUN go tool sqlc generate -f ../sqlc.json
-RUN go tool templ generate
 
 WORKDIR /build
+COPY src /build/src/
+COPY Makefile /build/
 RUN make release
 
 
