@@ -33,7 +33,6 @@ import (
 	"syscall"
 	"time"
 
-	"mikegram/moondream"
 	"mikegram/sqlc"
 	"mikegram/stb"
 
@@ -1903,7 +1902,6 @@ func main() {
 	fs_watcher := initFSWatcher()
 	defer fs_watcher.Close()
 
-	moondream.Init()
 	initBackgroundTaskRunner()
 	initGeocoder()
 
@@ -2005,5 +2003,4 @@ func main() {
 
 	shutdownGeocoder()
 	shutdownBackgroundTaskRunner()
-	moondream.Shutdown()
 }

@@ -1,12 +1,11 @@
 package main
 
 import (
-	"context"
-	"fmt"
+	// "context"
+	// "fmt"
 	"sync"
 
-	"mikegram/moondream"
-	"mikegram/sqlc"
+	// "mikegram/sqlc"
 )
 
 var fast_tasks []func()
@@ -17,10 +16,11 @@ var shutdown bool
 var shutdown_waiter sync.WaitGroup
 
 const (
-	TagGenerator_0 = iota // lobotomised Moondream 2b from moondream-zig
+	TagGenerator_0 = iota // TODO
 )
 
 func tagAPhoto() {
+	/*
 	if !moondream.Ok() {
 		return
 	}
@@ -40,6 +40,7 @@ func tagAPhoto() {
 	fmt.Printf( "%v -> %s\n", untagged.V.Sha256, description )
 
 	addSlowBackgroundTask( tagAPhoto )
+	*/
 }
 
 // TODO: maybe try to thread a context through this
