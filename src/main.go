@@ -447,8 +447,8 @@ func setAvatar( w http.ResponseWriter, r *http.Request, user User ) {
 	orientation := meta.OrientationHorizontal
 	exif, err := imagemeta.Decode( bytes.NewReader( data ) )
 	if err == nil {
-		if exif.Orientation >= meta.OrientationHorizontal && exif.Orientation <= meta.OrientationRotate270 {
-			orientation = exif.Orientation
+		if exif.IFD0.Orientation >= meta.OrientationHorizontal && exif.IFD0.Orientation <= meta.OrientationRotate270 {
+			orientation = exif.IFD0.Orientation
 		}
 	}
 	reoriented := reorient( resized, orientation )
@@ -1460,14 +1460,14 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 
 	exif, err := imagemeta.Decode( bytes.NewReader( data ) )
 	if err == nil {
-		if exif.Orientation >= meta.OrientationHorizontal && exif.Orientation <= meta.OrientationRotate270 {
-			orientation = exif.Orientation
+		if exif.IFD0.Orientation >= meta.OrientationHorizontal && exif.IFD0.Orientation <= meta.OrientationRotate270 {
+			orientation = exif.IFD0.Orientation
 		}
 
-		if !exif.DateTimeOriginal().IsZero() {
-			date = justI64( exif.DateTimeOriginal().Unix() )
-		} else if !exif.CreateDate().IsZero() {
-			date = justI64( exif.CreateDate().Unix() )
+		if !exif.OriginalDate().IsZero() {
+			date = justI64( exif.OriginalDate().Unix() )
+		} else if !exif.DigitizedDate().IsZero() {
+			date = justI64( exif.DigitizedDate().Unix() )
 		}
 
 		if exif.GPS.Latitude() != 0 || exif.GPS.Longitude() != 0 || exif.GPS.Altitude() != 0 {

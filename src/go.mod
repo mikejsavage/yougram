@@ -7,7 +7,7 @@ require github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd // indire
 require (
 	github.com/a-h/templ v0.3.865
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/evanoberholster/imagemeta v0.3.1
+	github.com/evanoberholster/imagemeta v1.0.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/galdor/go-thumbhash v1.0.0
 	github.com/gen2brain/avif v0.4.4
@@ -20,14 +20,9 @@ require (
 
 require (
 	github.com/ebitengine/purego v0.8.3 // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/tetratelabs/wazero v1.9.0 // indirect
-	github.com/tinylib/msgp v1.3.0 // indirect
+	github.com/tinylib/msgp v1.6.3 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 )
-
-replace github.com/evanoberholster/imagemeta => ./imagemeta
