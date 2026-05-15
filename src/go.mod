@@ -11,6 +11,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/galdor/go-thumbhash v1.0.0
 	github.com/gen2brain/avif v0.4.4
+	github.com/gen2brain/jpegxl v0.4.5
 	github.com/mattn/go-sqlite3 v1.14.28
 	golang.org/x/crypto v0.39.0
 	golang.org/x/image v0.29.0
@@ -19,7 +20,6 @@ require (
 
 require (
 	github.com/ebitengine/purego v0.8.3 // indirect
-	github.com/gen2brain/jpegxl v0.4.5 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
