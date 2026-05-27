@@ -184,11 +184,13 @@ func initDB( memory_db bool ) {
 		id := queryOne[ int32 ]( ctx, "PRAGMA application_id" )
 		version := queryOne[ int32 ]( ctx, "PRAGMA user_version" )
 
-		if id != 0 && version != 0 {
+		if id == 0 && version == 0 {
+			exec( ctx, "PRAGMA journal_mode = WAL" )
+			exec( ctx, db_schema )
+		} else {
 			if id != application_id {
 				log.Fatal( "This doesn't look like a yougram DB" )
 			}
-
 			if version < schema_version {
 				log.Fatal( "You are using an older yougram than the DB" )
 			}
@@ -202,12 +204,9 @@ func initDB( memory_db bool ) {
 	exec( ctx, fmt.Sprintf( "PRAGMA user_version = %d", schema_version ) )
 
 	exec( ctx, "PRAGMA foreign_keys = ON" )
-	exec( ctx, "PRAGMA journal_mode = WAL" )
 	exec( ctx, "PRAGMA synchronous = NORMAL" )
 	exec( ctx, "PRAGMA integrity_check" )
 	exec( ctx, "PRAGMA foreign_key_check" )
-
-	exec( ctx, db_schema )
 
 	if !memory_db {
 		return
