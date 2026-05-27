@@ -523,7 +523,7 @@ type GetAnAssetThatNeedsANewAIDescriptionRow struct {
 	Thumbnail []byte
 }
 
-func (q *Queries) GetAnAssetThatNeedsANewAIDescription(ctx context.Context, generator int64) (GetAnAssetThatNeedsANewAIDescriptionRow, error) {
+func (q *Queries) GetAnAssetThatNeedsANewAIDescription(ctx context.Context, generator string) (GetAnAssetThatNeedsANewAIDescriptionRow, error) {
 	row := q.db.QueryRowContext(ctx, getAnAssetThatNeedsANewAIDescription, generator)
 	var i GetAnAssetThatNeedsANewAIDescriptionRow
 	err := row.Scan(&i.Sha256, &i.Thumbnail)
@@ -1198,7 +1198,7 @@ INSERT OR REPLACE INTO ai_description ( asset_id, generator, description ) VALUE
 
 type SetAssetAIDescriptionParams struct {
 	AssetID     []byte
-	Generator   int64
+	Generator   string
 	Description string
 }
 

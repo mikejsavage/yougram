@@ -133,7 +133,7 @@ CREATE INDEX IF NOT EXISTS album_photo__photo_id ON album_photo( photo_id );
 ----------------
 CREATE TABLE IF NOT EXISTS ai_description (
 	asset_id BLOB PRIMARY KEY REFERENCES asset( sha256 ),
-	generator INTEGER NOT NULL,
+	generator TEXT NOT NULL,
 	description TEXT NOT NULL
 ) STRICT;
 

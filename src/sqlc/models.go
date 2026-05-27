@@ -10,7 +10,7 @@ import (
 
 type AiDescription struct {
 	AssetID     []byte
-	Generator   int64
+	Generator   string
 	Description string
 }
 

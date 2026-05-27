@@ -15,10 +15,6 @@ var wake_channel chan int
 var shutdown bool
 var shutdown_waiter sync.WaitGroup
 
-const (
-	TagGenerator_0 = iota // TODO
-)
-
 func tagAPhoto() {
 	/*
 	if !moondream.Ok() {
@@ -33,7 +29,7 @@ func tagAPhoto() {
 	description := moondream.DescribePhoto( untagged.V.Thumbnail )
 	must( queries.SetAssetAIDescription( context.Background(), sqlc.SetAssetAIDescriptionParams {
 		AssetID: untagged.V.Sha256,
-		Generator: TagGenerator_0,
+		Generator: "qwen3.5",
 		Description: description,
 	} ) )
 
