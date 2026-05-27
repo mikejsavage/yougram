@@ -129,12 +129,16 @@ func try( err error ) {
 }
 
 func try1[ T1 any ]( v1 T1, err error ) T1 {
-	try( err )
+	if err != nil {
+		panic( wrapError( err ) )
+	}
 	return v1
 }
 
 func try2[ T1 any, T2 any ]( v1 T1, v2 T2, err error ) ( T1, T2 ) {
-	try( err )
+	if err != nil {
+		panic( wrapError( err ) )
+	}
 	return v1, v2
 }
 
