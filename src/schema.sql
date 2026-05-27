@@ -10,8 +10,8 @@ CREATE TABLE IF NOT EXISTS user (
 	id INTEGER PRIMARY KEY,
 	username TEXT NOT NULL UNIQUE CHECK( username <> '' ),
 	password TEXT NOT NULL,
-	needs_to_reset_password INTEGER NOT NULL CHECK( needs_to_reset_password = 0 OR needs_to_reset_password = 1 ),
-	enabled INTEGER DEFAULT 1 NOT NULL CHECK( enabled = 0 OR enabled = 1 ),
+	needs_to_reset_password INTEGER NOT NULL CHECK( needs_to_reset_password IN (0, 1) ),
+	enabled INTEGER DEFAULT 1 NOT NULL CHECK( enabled IN (0, 1) ),
 	cookie BLOB NOT NULL CHECK( length( cookie ) = 16 ),
 	avatar BLOB REFERENCES avatar( sha256 )
 ) STRICT;
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS album (
 	url_slug TEXT NOT NULL CHECK( url_slug <> '' ),
 	key_photo INTEGER REFERENCES photo( id ) ON DELETE SET NULL,
 
-	shared INTEGER NOT NULL CHECK( shared = 0 OR shared = 1 ),
+	shared INTEGER NOT NULL CHECK( shared IN (0, 1) ),
 	readonly_secret TEXT NOT NULL,
 	readwrite_secret TEXT NOT NULL,
 
