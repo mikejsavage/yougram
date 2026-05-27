@@ -95,7 +95,7 @@ backend yougram
 and I run yougram like:
 
 ```
-./mikegram serve
+./yougram serve
     --private-listen-addr localhost:10005
     --guest-listen-addr 100.64.0.4:10006
     --guest-url https://guestgram.mikejsavage.co.uk
