@@ -1449,19 +1449,10 @@ func normalisedExtension( filename string ) string {
 	return extension
 }
 
-func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset, error ) {
-	fmt.Printf( "addAsset( %s )\n", filename )
-	before := time.Now()
+func decodeMetadata( r io.ReadSeeker ) ( date sql.NullInt64, latitude sql.NullFloat64, longitude sql.NullFloat64, orientation meta.Orientation ) {
+	orientation = meta.OrientationHorizontal
 
-	sha256 := sha256.Sum256( data )
-
-	// extract metadata
-	var date sql.NullInt64
-	var latitude sql.NullFloat64
-	var longitude sql.NullFloat64
-	orientation := meta.OrientationHorizontal
-
-	exif, err := imagemeta.Decode( bytes.NewReader( data ) )
+	exif, err := imagemeta.Decode( r )
 	if err == nil {
 		if exif.IFD0.Orientation >= meta.OrientationHorizontal && exif.IFD0.Orientation <= meta.OrientationRotate270 {
 			orientation = exif.IFD0.Orientation
@@ -1478,7 +1469,40 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 			longitude = sql.NullFloat64 { exif.GPS.Longitude(), true }
 		}
 	}
+	return
+}
 
+func rescanMetadata() {
+	rows := must1( db.Query( "SELECT sha256, original_filename FROM asset" ) )
+	defer rows.Close()
+	for rows.Next() {
+		var sha256 []byte
+		var original_filename string
+		must( rows.Scan( &sha256, &original_filename ) )
+
+		asset_filename := "assets/" + hex.EncodeToString( sha256 ) + normalisedExtension( original_filename )
+		f := must1( os.Open( asset_filename ) )
+		defer f.Close()
+		date, latitude, longitude, _ := decodeMetadata( f )
+
+		must( queries.UpdateAssetMetadata( context.Background(), sqlc.UpdateAssetMetadataParams {
+			Sha256: sha256,
+			DateTaken: date,
+			Latitude: latitude,
+			Longitude: longitude,
+		} ) )
+	}
+	must( rows.Close() )
+}
+
+func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset, error ) {
+	fmt.Printf( "addAsset( %s )\n", filename )
+	before := time.Now()
+
+	sha256 := sha256.Sum256( data )
+
+	// extract metadata
+	date, latitude, longitude, orientation := decodeMetadata( bytes.NewReader( data ) )
 	if try1( queries.AssetExists( ctx, sha256[:] ) ) == 1 {
 		// TODO: get metadata from the db maybe
 		return AddedAsset { sha256, date, latitude, longitude }, nil

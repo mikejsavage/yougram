@@ -110,6 +110,9 @@ WHERE album.id = ? AND (
 	OR ( @include_raws AND asset.type = "raw" )
 );
 
+-- name: UpdateAssetMetadata :exec
+UPDATE asset SET date_taken = ?, latitude = ?, longitude = ? WHERE sha256 = ?;
+
 
 ------------
 -- PHOTOS --

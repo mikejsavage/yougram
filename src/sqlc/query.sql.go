@@ -1253,3 +1253,24 @@ func (q *Queries) SetUserPasswordIfMustReset(ctx context.Context, arg SetUserPas
 	err := row.Scan(&column_1)
 	return column_1, err
 }
+
+const updateAssetMetadata = `-- name: UpdateAssetMetadata :exec
+UPDATE asset SET date_taken = ?, latitude = ?, longitude = ? WHERE sha256 = ?
+`
+
+type UpdateAssetMetadataParams struct {
+	DateTaken sql.NullInt64
+	Latitude  sql.NullFloat64
+	Longitude sql.NullFloat64
+	Sha256    []byte
+}
+
+func (q *Queries) UpdateAssetMetadata(ctx context.Context, arg UpdateAssetMetadataParams) error {
+	_, err := q.db.ExecContext(ctx, updateAssetMetadata,
+		arg.DateTaken,
+		arg.Latitude,
+		arg.Longitude,
+		arg.Sha256,
+	)
+	return err
+}
