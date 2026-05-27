@@ -76,6 +76,10 @@ var thumbhashjs string
 
 var checksum string
 
+//go:embed default_favicon.png
+var default_favicon []byte
+var default_favicon_modtime = time.Date( 2026, time.May, 27, 0, 0, 0, 0, time.UTC )
+
 var favicon []byte
 var favicon_modtime time.Time
 
@@ -1715,14 +1719,12 @@ func serveJS( content string ) func( http.ResponseWriter, *http.Request ) {
 }
 
 func serveFavicon( w http.ResponseWriter, r *http.Request ) {
-	if favicon == nil {
-		httpError( w, http.StatusNotFound )
-		return
-	}
+	icon := sel( favicon == nil, default_favicon, favicon )
+	modtime := sel( favicon == nil, default_favicon_modtime, favicon_modtime )
 
 	// 1 hour = 60 * 60 = 360
 	w.Header().Set( "Cache-Control", "max-age=360" )
-	http.ServeContent( w, r, "favicon.png", favicon_modtime, bytes.NewReader( favicon ) )
+	http.ServeContent( w, r, "favicon.png", modtime, bytes.NewReader( icon ) )
 }
 
 func makeRouteRegex( route string ) *regexp.Regexp {

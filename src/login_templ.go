@@ -36,21 +36,15 @@ func loginFormTemplate() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>yougram</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>yougram</title><link rel=\"icon\" type=\"image/png\" href=\"/favicon.png\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
-		}
-		if favicon != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<link rel=\"icon\" type=\"image/png\" href=\"/favicon.png\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 		}
 		templ_7745c5c3_Err = autorefresh().Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<script src=\"/Special:htmx-2.0.4.js\"></script><style>\n\t* {\n\t\tbox-sizing: border-box;\n\t}\n\n\thtml {\n\t\theight: 100%;\n\t}\n\n\tbody {\n\t\tdisplay: flex;\n\t\tfont-family: sans-serif;\n\t\tline-height: 1.5;\n\t\talign-items: center;\n\t\tjustify-content: center;\n\t\theight: 100%;\n\t\twidth: 100%;\n\t\tmargin: 0;\n\t}\n\n\t@keyframes spinning {\n\t\t0%   { left: 0; }\n\t\t25%  { left: 0.1rem; }\n\t\t75%  { left: -0.1rem; }\n\t\t100% { left: 0; }\n\t}\n\n\tinput[type=password]:disabled {\n\t\tposition: relative;\n\t\tanimation: spinning 0.15s infinite;\n\t}\n\t</style><form method=\"POST\" hx-post=\"/Special:authenticate\" hx-target=\"#error\" hx-swap=\"textContent\" hx-disabled-elt=\"find input\" hx-on::before-request=\"htmx.find('#error').innerText = ''\"><style>\n\t\t@scope {\n\t\t\t:scope {\n\t\t\t\tdisplay: flex;\n\t\t\t\tflex-direction: column;\n\t\t\t\talign-items: center;\n\t\t\t\tgap: 0.5rem;\n\t\t\t\tfont-size: 150%;\n\t\t\t\tmax-width: 100%;\n\t\t\t\tpadding: 0.5rem;\n\t\t\t}\n\n\t\t\th1 {\n\t\t\t\tpadding: 0;\n\t\t\t\tmargin: 0;\n\t\t\t\ttext-align: center;\n\t\t\t}\n\n\t\t\t.users {\n\t\t\t\tdisplay: flex;\n\t\t\t\tflex-wrap: wrap;\n\t\t\t\tgap: 1rem;\n\t\t\t\tjustify-content: center;\n\t\t\t\tmax-width: 50vw;\n\t\t\t}\n\n\t\t\t.users label {\n\t\t\t\tcolor: #666;\n\t\t\t\tcursor: pointer;\n\t\t\t\tdisplay: flex;\n\t\t\t\tflex-direction: column;\n\t\t\t\talign-items: center;\n\t\t\t\tpadding: 1rem;\n\t\t\t}\n\n\t\t\t.users img {\n\t\t\t\taspect-ratio: 1;\n\t\t\t\theight: 2lh;\n\t\t\t\tborder-radius: 50%;\n\t\t\t\tobject-fit: contain;\n\t\t\t\tfilter: grayscale( 100% );\n\t\t\t}\n\n\t\t\t.users div {\n\t\t\t\tdisplay: flex;\n\t\t\t\talign-items: center;\n\t\t\t\tjustify-content: center;\n\t\t\t\twidth: 2lh;\n\t\t\t\theight: 2lh;\n\t\t\t\tborder: 2px solid #333;\n\t\t\t\tborder-radius: 50%;\n\t\t\t}\n\n\t\t\t.users input[type=radio] {\n\t\t\t\tdisplay: none;\n\t\t\t}\n\n\t\t\t.users label:has( input:checked ) {\n\t\t\t\tcolor: black;\n\t\t\t\tfont-weight: bold;\n\t\t\t}\n\n\t\t\t.users label:has( input:checked ) img {\n\t\t\t\tfilter: none;\n\t\t\t}\n\n\t\t\tinput[type=password] {\n\t\t\t\tborder: 2px solid #000;\n\t\t\t\tborder-radius: 0;\n\t\t\t\tfont-size: 100%;\n\t\t\t\tpadding: 0.5rem;\n\t\t\t\twidth: 100%;\n\t\t\t\tmax-width: 20rem;\n\t\t\t}\n\n\t\t\tinput[type=password]:focus {\n\t\t\t\toutline: 2px solid #69b3e7;\n\t\t\t}\n\n\t\t\t:scope:not(:has(input:checked)) input[type=password] {\n\t\t\t\tvisibility: hidden;\n\t\t\t}\n\n\t\t\t#error {\n\t\t\t\tcolor: #ff5733;\n\t\t\t\tpadding: 0 0.5rem;\n\t\t\t\theight: 1lh;\n\t\t\t}\n\t\t}\n\t\t</style><h1><span id=\"subtitle\">you</span>gram</h1><noscript>Sorry but nothing works without Javascript</noscript><div class=\"users\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<script src=\"/Special:htmx-2.0.4.js\"></script><style>\n\t* {\n\t\tbox-sizing: border-box;\n\t}\n\n\thtml {\n\t\theight: 100%;\n\t}\n\n\tbody {\n\t\tdisplay: flex;\n\t\tfont-family: sans-serif;\n\t\tline-height: 1.5;\n\t\talign-items: center;\n\t\tjustify-content: center;\n\t\theight: 100%;\n\t\twidth: 100%;\n\t\tmargin: 0;\n\t}\n\n\t@keyframes spinning {\n\t\t0%   { left: 0; }\n\t\t25%  { left: 0.1rem; }\n\t\t75%  { left: -0.1rem; }\n\t\t100% { left: 0; }\n\t}\n\n\tinput[type=password]:disabled {\n\t\tposition: relative;\n\t\tanimation: spinning 0.15s infinite;\n\t}\n\t</style><form method=\"POST\" hx-post=\"/Special:authenticate\" hx-target=\"#error\" hx-swap=\"textContent\" hx-disabled-elt=\"find input\" hx-on::before-request=\"htmx.find('#error').innerText = ''\"><style>\n\t\t@scope {\n\t\t\t:scope {\n\t\t\t\tdisplay: flex;\n\t\t\t\tflex-direction: column;\n\t\t\t\talign-items: center;\n\t\t\t\tgap: 0.5rem;\n\t\t\t\tfont-size: 150%;\n\t\t\t\tmax-width: 100%;\n\t\t\t\tpadding: 0.5rem;\n\t\t\t}\n\n\t\t\th1 {\n\t\t\t\tpadding: 0;\n\t\t\t\tmargin: 0;\n\t\t\t\ttext-align: center;\n\t\t\t}\n\n\t\t\t.users {\n\t\t\t\tdisplay: flex;\n\t\t\t\tflex-wrap: wrap;\n\t\t\t\tgap: 1rem;\n\t\t\t\tjustify-content: center;\n\t\t\t\tmax-width: 50vw;\n\t\t\t}\n\n\t\t\t.users label {\n\t\t\t\tcolor: #666;\n\t\t\t\tcursor: pointer;\n\t\t\t\tdisplay: flex;\n\t\t\t\tflex-direction: column;\n\t\t\t\talign-items: center;\n\t\t\t\tpadding: 1rem;\n\t\t\t}\n\n\t\t\t.users img {\n\t\t\t\taspect-ratio: 1;\n\t\t\t\theight: 2lh;\n\t\t\t\tborder-radius: 50%;\n\t\t\t\tobject-fit: contain;\n\t\t\t\tfilter: grayscale( 100% );\n\t\t\t}\n\n\t\t\t.users div {\n\t\t\t\tdisplay: flex;\n\t\t\t\talign-items: center;\n\t\t\t\tjustify-content: center;\n\t\t\t\twidth: 2lh;\n\t\t\t\theight: 2lh;\n\t\t\t\tborder: 2px solid #333;\n\t\t\t\tborder-radius: 50%;\n\t\t\t}\n\n\t\t\t.users input[type=radio] {\n\t\t\t\tdisplay: none;\n\t\t\t}\n\n\t\t\t.users label:has( input:checked ) {\n\t\t\t\tcolor: black;\n\t\t\t\tfont-weight: bold;\n\t\t\t}\n\n\t\t\t.users label:has( input:checked ) img {\n\t\t\t\tfilter: none;\n\t\t\t}\n\n\t\t\tinput[type=password] {\n\t\t\t\tborder: 2px solid #000;\n\t\t\t\tborder-radius: 0;\n\t\t\t\tfont-size: 100%;\n\t\t\t\tpadding: 0.5rem;\n\t\t\t\twidth: 100%;\n\t\t\t\tmax-width: 20rem;\n\t\t\t}\n\n\t\t\tinput[type=password]:focus {\n\t\t\t\toutline: 2px solid #69b3e7;\n\t\t\t}\n\n\t\t\t:scope:not(:has(input:checked)) input[type=password] {\n\t\t\t\tvisibility: hidden;\n\t\t\t}\n\n\t\t\t#error {\n\t\t\t\tcolor: #ff5733;\n\t\t\t\tpadding: 0 0.5rem;\n\t\t\t\theight: 1lh;\n\t\t\t}\n\t\t}\n\t\t</style><h1><span id=\"subtitle\">you</span>gram</h1><noscript>Sorry but nothing works without Javascript</noscript><div class=\"users\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -59,56 +53,56 @@ func loginFormTemplate() templ.Component {
 			return err
 		}
 		for _, user := range users {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<label onclick=\"document.getElementById( 'password' ).focus(); document.getElementById( 'subtitle' ).innerText = this.querySelector( 'input' ).value;\"><input type=\"radio\" name=\"username\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<label onclick=\"document.getElementById( 'password' ).focus(); document.getElementById( 'subtitle' ).innerText = this.querySelector( 'input' ).value;\"><input type=\"radio\" name=\"username\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(user.Username)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 163, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 160, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" required> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" required> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if user.Avatar != nil {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<img src=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<img src=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs("/Special:avatar/" + hex.EncodeToString(user.Avatar))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 165, Col: 71}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 162, Col: 71}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\"> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(string(unicode.ToUpper([]rune(user.Username)[0])))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 167, Col: 70}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 164, Col: 70}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -116,18 +110,18 @@ func loginFormTemplate() templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(user.Username)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 169, Col: 20}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 166, Col: 20}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</label>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</label>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><input type=\"password\" id=\"password\" name=\"password\" placeholder=\"Password\" autocomplete=\"current-password\" required><div id=\"error\"></div></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</div><input type=\"password\" id=\"password\" name=\"password\" placeholder=\"Password\" autocomplete=\"current-password\" required><div id=\"error\"></div></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -156,30 +150,30 @@ func changePasswordForm(reset bool) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<form hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<form hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(sel(reset, "/Special:resetPassword", "/Special:password"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 181, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 178, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" hx-target=\"find span\" hx-disabled-elt=\"find button\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" hx-target=\"find span\" hx-disabled-elt=\"find button\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if !reset {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<h1>Password</h1><label>Current password <input type=\"password\" name=\"old_password\" autocomplete=\"current-password\"></label> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<h1>Password</h1><label>Current password <input type=\"password\" name=\"old_password\" autocomplete=\"current-password\"></label> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<label>New password <input type=\"password\" name=\"new_password\" autocomplete=\"new-password\"></label> <label>Repeat new password <input type=\"password\" name=\"new_password2\" autocomplete=\"new-password\"></label> <button type=\"submit\">Change password</button> <span class=\"error\"></span></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<label>New password <input type=\"password\" name=\"new_password\" autocomplete=\"new-password\"></label> <label>Repeat new password <input type=\"password\" name=\"new_password2\" autocomplete=\"new-password\"></label> <button type=\"submit\">Change password</button> <span class=\"error\"></span></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -208,7 +202,7 @@ func accountSettingsTemplate() templ.Component {
 			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<main style=\"padding: 0.5rem; max-width: 20rem\"><style>\n\t\t@scope {\n\t\t\timg {\n\t\t\t\taspect-ratio: 1;\n\t\t\t\tobject-fit: cover;\n\t\t\t\tobject-position: 50% 50%;\n\t\t\t\tvertical-align: middle;\n\t\t\t\tborder-radius: 50%;\n\t\t\t}\n\t\t}\n\t\t</style><script>\n\t\tfunction MakeAvatarForm() {\n\t\t\treturn {\n\t\t\t\timg: null,\n\t\t\t\tasync FilePicked( e ) {\n\t\t\t\t\tif( e.target.files.length == 0 ) {\n\t\t\t\t\t\tthis.img = null;\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\n\t\t\t\t\tlet reader = new FileReader();\n\t\t\t\t\treader.onload = e => this.img = e.target.result;\n\t\t\t\t\treader.readAsDataURL( e.target.files[ 0 ] );\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t\t</script><form x-data=\"MakeAvatarForm()\" hx-post=\"/Special:avatar\" hx-encoding=\"multipart/form-data\" hx-target=\"find span\" hx-disabled-elt=\"find button\"><h1>Avatar</h1><div style=\"display: flex; align-items: center; gap: 1rem\"><img class=\"avatar\" :src=\"img\" x-show=\"img != null\" x-cloak style=\"width: 2lh\"><div x-show=\"img == null\" style=\"width: 2lh; height: 2lh; border: 2px solid #333; border-radius: 50%;\"></div><button type=\"button\"><label>Pick a file <input type=\"file\" name=\"avatar\" accept=\"image/*\" @change=\"FilePicked\" style=\"display: none\"></label></button> <button type=\"submit\" :disabled=\"img == null\">Save</button></div><span class=\"error\"></span></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<main style=\"padding: 0.5rem; max-width: 20rem\"><style>\n\t\t@scope {\n\t\t\timg {\n\t\t\t\taspect-ratio: 1;\n\t\t\t\tobject-fit: cover;\n\t\t\t\tobject-position: 50% 50%;\n\t\t\t\tvertical-align: middle;\n\t\t\t\tborder-radius: 50%;\n\t\t\t}\n\t\t}\n\t\t</style><script>\n\t\tfunction MakeAvatarForm() {\n\t\t\treturn {\n\t\t\t\timg: null,\n\t\t\t\tasync FilePicked( e ) {\n\t\t\t\t\tif( e.target.files.length == 0 ) {\n\t\t\t\t\t\tthis.img = null;\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\n\t\t\t\t\tlet reader = new FileReader();\n\t\t\t\t\treader.onload = e => this.img = e.target.result;\n\t\t\t\t\treader.readAsDataURL( e.target.files[ 0 ] );\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t\t</script><form x-data=\"MakeAvatarForm()\" hx-post=\"/Special:avatar\" hx-encoding=\"multipart/form-data\" hx-target=\"find span\" hx-disabled-elt=\"find button\"><h1>Avatar</h1><div style=\"display: flex; align-items: center; gap: 1rem\"><img class=\"avatar\" :src=\"img\" x-show=\"img != null\" x-cloak style=\"width: 2lh\"><div x-show=\"img == null\" style=\"width: 2lh; height: 2lh; border: 2px solid #333; border-radius: 50%;\"></div><button type=\"button\"><label>Pick a file <input type=\"file\" name=\"avatar\" accept=\"image/*\" @change=\"FilePicked\" style=\"display: none\"></label></button> <button type=\"submit\" :disabled=\"img == null\">Save</button></div><span class=\"error\"></span></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -216,7 +210,7 @@ func accountSettingsTemplate() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</main>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</main>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -245,7 +239,7 @@ func resetPasswordFormTemplate() templ.Component {
 			templ_7745c5c3_Var9 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>yougram</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>yougram</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -253,7 +247,7 @@ func resetPasswordFormTemplate() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<script src=\"/Special:htmx-2.0.4.js\"></script><style>\n\t* {\n\t\tbox-sizing: border-box;\n\t}\n\n\thtml {\n\t\theight: 100%;\n\t}\n\n\tbody {\n\t\tdisplay: flex;\n\t\tfont-family: sans-serif;\n\t\tline-height: 1.5;\n\t\talign-items: center;\n\t\tjustify-content: center;\n\t\theight: 100%;\n\t\twidth: 100%;\n\t\tmargin: 0;\n\t}\n\n\th1 {\n\t\tmargin: 0;\n\t}\n\n\tform {\n\t\tdisplay: flex;\n\t\tflex-direction: column;\n\t\tgap: 0.5rem;\n\t\tmax-width: 20rem;\n\t}\n\n\tinput[type=password] {\n\t\tborder: 1px solid #767676;\n\t\tborder-radius: 3px;\n\t\tfont-size: 100%;\n\t\tpadding: 0.5rem;\n\t\twidth: 100%;\n\n\t\t&:focus {\n\t\t\tborder-color: #333;\n\t\t\toutline: 1.5px solid var( --blue );\n\t\t}\n\n\t\t&:is(:disabled, :read-only) {\n\t\t\tbackground: #fafafa;\n\t\t\tcolor: #545454;\n\t\t}\n\t}\n\t</style>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<script src=\"/Special:htmx-2.0.4.js\"></script><style>\n\t* {\n\t\tbox-sizing: border-box;\n\t}\n\n\thtml {\n\t\theight: 100%;\n\t}\n\n\tbody {\n\t\tdisplay: flex;\n\t\tfont-family: sans-serif;\n\t\tline-height: 1.5;\n\t\talign-items: center;\n\t\tjustify-content: center;\n\t\theight: 100%;\n\t\twidth: 100%;\n\t\tmargin: 0;\n\t}\n\n\th1 {\n\t\tmargin: 0;\n\t}\n\n\tform {\n\t\tdisplay: flex;\n\t\tflex-direction: column;\n\t\tgap: 0.5rem;\n\t\tmax-width: 20rem;\n\t}\n\n\tinput[type=password] {\n\t\tborder: 1px solid #767676;\n\t\tborder-radius: 3px;\n\t\tfont-size: 100%;\n\t\tpadding: 0.5rem;\n\t\twidth: 100%;\n\n\t\t&:focus {\n\t\t\tborder-color: #333;\n\t\t\toutline: 1.5px solid var( --blue );\n\t\t}\n\n\t\t&:is(:disabled, :read-only) {\n\t\t\tbackground: #fafafa;\n\t\t\tcolor: #545454;\n\t\t}\n\t}\n\t</style>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -286,20 +280,20 @@ func guestAlbumPasswordForm(album sqlc.GetAlbumByURLRow, secret string) templ.Co
 			templ_7745c5c3_Var10 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 334, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 331, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -307,33 +301,33 @@ func guestAlbumPasswordForm(album sqlc.GetAlbumByURLRow, secret string) templ.Co
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<script src=\"/Special:htmx-2.0.4.js\"></script><style>\n\t* {\n\t\tbox-sizing: border-box;\n\t}\n\n\thtml {\n\t\theight: 100%;\n\t}\n\n\tbody {\n\t\tdisplay: flex;\n\t\tfont-family: sans-serif;\n\t\tline-height: 1.5;\n\t\talign-items: center;\n\t\tjustify-content: center;\n\t\theight: 100%;\n\t\twidth: 100%;\n\t\tmargin: 0;\n\t}\n\n\t@keyframes spinning {\n\t\t0%   { left: 0; }\n\t\t25%  { left: 0.1rem; }\n\t\t75%  { left: -0.1rem; }\n\t\t100% { left: 0; }\n\t}\n\n\tinput[type=password] {\n\t\tborder: 2px solid #000;\n\t\tborder-radius: 0;\n\t\tfont-size: 100%;\n\t\tpadding: 0.5rem;\n\t\twidth: 100%;\n\t\tmax-width: 20rem;\n\t}\n\n\tinput[type=password]:focus {\n\t\toutline: 2px solid #69b3e7;\n\t}\n\n\tinput[type=password]:disabled {\n\t\tposition: relative;\n\t\tanimation: spinning 0.15s infinite;\n\t}\n\n\tform {\n\t\tdisplay: flex;\n\t\tflex-direction: column;\n\t\talign-items: center;\n\t\tgap: 0.5rem;\n\t\tfont-size: 150%;\n\t\tmax-width: 100%;\n\t\tpadding: 0.5rem;\n\t}\n\n\th1 {\n\t\tpadding: 0;\n\t\tmargin: 0;\n\t\ttext-align: center;\n\t}\n\t</style><form hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<script src=\"/Special:htmx-2.0.4.js\"></script><style>\n\t* {\n\t\tbox-sizing: border-box;\n\t}\n\n\thtml {\n\t\theight: 100%;\n\t}\n\n\tbody {\n\t\tdisplay: flex;\n\t\tfont-family: sans-serif;\n\t\tline-height: 1.5;\n\t\talign-items: center;\n\t\tjustify-content: center;\n\t\theight: 100%;\n\t\twidth: 100%;\n\t\tmargin: 0;\n\t}\n\n\t@keyframes spinning {\n\t\t0%   { left: 0; }\n\t\t25%  { left: 0.1rem; }\n\t\t75%  { left: -0.1rem; }\n\t\t100% { left: 0; }\n\t}\n\n\tinput[type=password] {\n\t\tborder: 2px solid #000;\n\t\tborder-radius: 0;\n\t\tfont-size: 100%;\n\t\tpadding: 0.5rem;\n\t\twidth: 100%;\n\t\tmax-width: 20rem;\n\t}\n\n\tinput[type=password]:focus {\n\t\toutline: 2px solid #69b3e7;\n\t}\n\n\tinput[type=password]:disabled {\n\t\tposition: relative;\n\t\tanimation: spinning 0.15s infinite;\n\t}\n\n\tform {\n\t\tdisplay: flex;\n\t\tflex-direction: column;\n\t\talign-items: center;\n\t\tgap: 0.5rem;\n\t\tfont-size: 150%;\n\t\tmax-width: 100%;\n\t\tpadding: 0.5rem;\n\t}\n\n\th1 {\n\t\tpadding: 0;\n\t\tmargin: 0;\n\t\ttext-align: center;\n\t}\n\t</style><form hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/%s/%s/%s", album.OwnerUsername, album.UrlSlug, secret))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 402, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 399, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" hx-target=\"#error\" hx-swap=\"textContent\" hx-disabled-elt=\"find input\" hx-on::before-request=\"htmx.find('#error').innerText = ''\"><h1>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" hx-target=\"#error\" hx-swap=\"textContent\" hx-disabled-elt=\"find input\" hx-on::before-request=\"htmx.find('#error').innerText = ''\"><h1>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(album.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 408, Col: 18}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `login.templ`, Line: 405, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</h1><input type=\"password\" name=\"password\" placeholder=\"Password\" autofocus> <button type=\"submit\">Submit</button> <span id=\"error\"></span></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</h1><input type=\"password\" name=\"password\" placeholder=\"Password\" autofocus> <button type=\"submit\">Submit</button> <span id=\"error\"></span></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -1,4 +1,4 @@
-# yougram
+# ![](/src/default_favicon.png) yougram
 
 ![yougram](/readme_assets/screenshot.jpg?raw=true)
 
