@@ -5,7 +5,7 @@ go 1.24.0
 require github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd // indirect
 
 require (
-	github.com/a-h/templ v0.3.865
+	github.com/a-h/templ v0.3.960
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/evanoberholster/imagemeta v1.0.0
 	github.com/fsnotify/fsnotify v1.9.0
@@ -24,5 +24,5 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/tetratelabs/wazero v1.9.0 // indirect
 	github.com/tinylib/msgp v1.6.3 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
 )
