@@ -377,7 +377,11 @@ templ baseWithSidebar( user User, current_url string, title string, body templ.C
 			}
 			</style>
 
-			<b>{ user.Username }gram</b>
+			{{ const index_pointing_at_the_viewer = "&#129781;" }}
+			<b>
+				<span style="font-size: 150%; vertical-align: middle">@templ.Raw( index_pointing_at_the_viewer )</span>
+				{ user.Username }gram
+			</b>
 
 			<hr>
 

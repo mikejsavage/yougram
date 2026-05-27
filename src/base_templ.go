@@ -327,20 +327,33 @@ func baseWithSidebar(user User, current_url string, title string, body templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, ";\n\t}\n\t</script><body x-data=\"{ albums: MakeAlbumList() }\"><nav x-data=\"{ search: '' }\"><style>\n\t\t\t@scope to (dialog) {\n\t\t\t\t:scope {\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tflex-direction: column;\n\t\t\t\t\tposition: fixed;\n\t\t\t\t\tleft: 0;\n\t\t\t\t\ttop: 0;\n\t\t\t\t\tbottom: 0;\n\t\t\t\t\twidth: var( --sidebar-width );\n\t\t\t\t\tbackground: #eee;\n\t\t\t\t\tborder-right: 1px solid #ccc;\n\t\t\t\t\tpadding: 0.5rem;\n\t\t\t\t}\n\n\t\t\t\ta {\n\t\t\t\t\tcolor: black;\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tgap: 0.5rem;\n\t\t\t\t\ttext-decoration: none;\n\n\t\t\t\t\t&:hover { text-decoration: underline; }\n\t\t\t\t\t&:visited { color: black; }\n\t\t\t\t}\n\n\t\t\t\tbutton, input {\n\t\t\t\t\tmargin-block: 0.25rem;\n\t\t\t\t}\n\n\t\t\t\t.curr {\n\t\t\t\t\tfont-weight: bold;\n\t\t\t\t}\n\n\t\t\t\thr {\n\t\t\t\t\twidth: 50%;\n\t\t\t\t\tborder-color: transparent;\n\t\t\t\t}\n\t\t\t}\n\t\t\t</style><b>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, ";\n\t}\n\t</script><body x-data=\"{ albums: MakeAlbumList() }\"><nav x-data=\"{ search: '' }\"><style>\n\t\t\t@scope to (dialog) {\n\t\t\t\t:scope {\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tflex-direction: column;\n\t\t\t\t\tposition: fixed;\n\t\t\t\t\tleft: 0;\n\t\t\t\t\ttop: 0;\n\t\t\t\t\tbottom: 0;\n\t\t\t\t\twidth: var( --sidebar-width );\n\t\t\t\t\tbackground: #eee;\n\t\t\t\t\tborder-right: 1px solid #ccc;\n\t\t\t\t\tpadding: 0.5rem;\n\t\t\t\t}\n\n\t\t\t\ta {\n\t\t\t\t\tcolor: black;\n\t\t\t\t\tdisplay: flex;\n\t\t\t\t\tgap: 0.5rem;\n\t\t\t\t\ttext-decoration: none;\n\n\t\t\t\t\t&:hover { text-decoration: underline; }\n\t\t\t\t\t&:visited { color: black; }\n\t\t\t\t}\n\n\t\t\t\tbutton, input {\n\t\t\t\t\tmargin-block: 0.25rem;\n\t\t\t\t}\n\n\t\t\t\t.curr {\n\t\t\t\t\tfont-weight: bold;\n\t\t\t\t}\n\n\t\t\t\thr {\n\t\t\t\t\twidth: 50%;\n\t\t\t\t\tborder-color: transparent;\n\t\t\t\t}\n\t\t\t}\n\t\t\t</style>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		const index_pointing_at_the_viewer = "&#129781;"
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<b><span style=\"font-size: 150%; vertical-align: middle\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templ.Raw(index_pointing_at_the_viewer).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(user.Username)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `base.templ`, Line: 380, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `base.templ`, Line: 383, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "gram</b><hr>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "gram</b><hr>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -348,7 +361,7 @@ func baseWithSidebar(user User, current_url string, title string, body templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<a href=\"/Special:logout\">Log out</a><hr>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<a href=\"/Special:logout\">Log out</a><hr>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -360,7 +373,7 @@ func baseWithSidebar(user User, current_url string, title string, body templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<hr>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<hr>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -368,7 +381,7 @@ func baseWithSidebar(user User, current_url string, title string, body templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<input type=\"search\" placeholder=\"Search albums\" x-model=\"search\"><div><style>\n\t\t\t\t@scope {\n\t\t\t\t\t:scope {\n\t\t\t\t\t\tdisplay: flex;\n\t\t\t\t\t\tflex-direction: column;\n\t\t\t\t\t\tgap: 0.5rem;\n\t\t\t\t\t\toverflow-y: auto;\n\t\t\t\t\t\tflex-grow: 1;\n\t\t\t\t\t\tmargin-right: -0.5rem;\n\t\t\t\t\t\tpadding-right: 0.5rem;\n\t\t\t\t\t\tpadding-top: 0.25rem;\n\t\t\t\t\t\tmargin-bottom: -0.5rem;\n\t\t\t\t\t\tpadding-bottom: 0.5rem;\n\t\t\t\t\t\tscrollbar-width: thin;\n\t\t\t\t\t}\n\n\t\t\t\t\ta div {\n\t\t\t\t\t\tflex-shrink: 0;\n\t\t\t\t\t}\n\n\t\t\t\t\ta span {\n\t\t\t\t\t\twhite-space: nowrap;\n\t\t\t\t\t\ttext-overflow: ellipsis;\n\t\t\t\t\t\toverflow-x: hidden;\n\t\t\t\t\t}\n\n\t\t\t\t\timg {\n\t\t\t\t\t\taspect-ratio: 1;\n\t\t\t\t\t\tobject-fit: cover;\n\t\t\t\t\t\tobject-position: 50% 50%;\n\t\t\t\t\t\tflex-shrink: 0;\n\t\t\t\t\t}\n\n\t\t\t\t\t.placeholder {\n\t\t\t\t\t\tborder: 1px solid #333;\n\t\t\t\t\t\twidth: 1lh;\n\t\t\t\t\t\theight: 1lh;\n\t\t\t\t\t\tflex-shrink: 0;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\t</style><template x-for=\"album in albums\"><template x-if=\"album.Name.toLowerCase().includes( search.toLowerCase() )\"><a :href=\"'/' + album.Owner + '/' + album.UrlSlug\" :class=\"window.location.pathname.startsWith( '/' + album.Owner + '/' + album.UrlSlug ) ? 'curr' : ''\"><template x-if=\"album.KeyPhotoSha256.length > 0\"><img :src=\"'/Special:thumbnail/' + album.KeyPhotoSha256\" style=\"height: 1lh\"></template><template x-if=\"album.KeyPhotoSha256.length == 0\"><div class=\"placeholder\"></div></template><span x-text=\"album.Name\"></span></a></template></template></div></nav>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<input type=\"search\" placeholder=\"Search albums\" x-model=\"search\"><div><style>\n\t\t\t\t@scope {\n\t\t\t\t\t:scope {\n\t\t\t\t\t\tdisplay: flex;\n\t\t\t\t\t\tflex-direction: column;\n\t\t\t\t\t\tgap: 0.5rem;\n\t\t\t\t\t\toverflow-y: auto;\n\t\t\t\t\t\tflex-grow: 1;\n\t\t\t\t\t\tmargin-right: -0.5rem;\n\t\t\t\t\t\tpadding-right: 0.5rem;\n\t\t\t\t\t\tpadding-top: 0.25rem;\n\t\t\t\t\t\tmargin-bottom: -0.5rem;\n\t\t\t\t\t\tpadding-bottom: 0.5rem;\n\t\t\t\t\t\tscrollbar-width: thin;\n\t\t\t\t\t}\n\n\t\t\t\t\ta div {\n\t\t\t\t\t\tflex-shrink: 0;\n\t\t\t\t\t}\n\n\t\t\t\t\ta span {\n\t\t\t\t\t\twhite-space: nowrap;\n\t\t\t\t\t\ttext-overflow: ellipsis;\n\t\t\t\t\t\toverflow-x: hidden;\n\t\t\t\t\t}\n\n\t\t\t\t\timg {\n\t\t\t\t\t\taspect-ratio: 1;\n\t\t\t\t\t\tobject-fit: cover;\n\t\t\t\t\t\tobject-position: 50% 50%;\n\t\t\t\t\t\tflex-shrink: 0;\n\t\t\t\t\t}\n\n\t\t\t\t\t.placeholder {\n\t\t\t\t\t\tborder: 1px solid #333;\n\t\t\t\t\t\twidth: 1lh;\n\t\t\t\t\t\theight: 1lh;\n\t\t\t\t\t\tflex-shrink: 0;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\t</style><template x-for=\"album in albums\"><template x-if=\"album.Name.toLowerCase().includes( search.toLowerCase() )\"><a :href=\"'/' + album.Owner + '/' + album.UrlSlug\" :class=\"window.location.pathname.startsWith( '/' + album.Owner + '/' + album.UrlSlug ) ? 'curr' : ''\"><template x-if=\"album.KeyPhotoSha256.length > 0\"><img :src=\"'/Special:thumbnail/' + album.KeyPhotoSha256\" style=\"height: 1lh\"></template><template x-if=\"album.KeyPhotoSha256.length == 0\"><div class=\"placeholder\"></div></template><span x-text=\"album.Name\"></span></a></template></template></div></nav>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -376,7 +389,7 @@ func baseWithSidebar(user User, current_url string, title string, body templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</body>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</body>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
