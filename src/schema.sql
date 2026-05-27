@@ -19,17 +19,22 @@ CREATE TABLE IF NOT EXISTS user (
 ------------
 -- ASSETS --
 ------------
+CREATE TABLE IF NOT EXISTS valid_asset_type (
+    type TEXT PRIMARY KEY
+) STRICT;
+INSERT OR IGNORE INTO valid_asset_type VALUES ( 'image' ), ( 'jxl' ), ( 'heic' ), ( 'raw' );
+
 CREATE TABLE IF NOT EXISTS asset (
 	sha256 BLOB PRIMARY KEY CHECK( length( sha256 ) = 32 ),
 	created_at INTEGER NOT NULL,
 	original_filename TEXT NOT NULL,
-	type TEXT NOT NULL CHECK( type = 'image' OR type = 'jxl' OR type = 'heic' OR type = 'raw' ),
+	type TEXT NOT NULL REFERENCES valid_asset_type( type ),
 	thumbnail BLOB NOT NULL,
 	thumbhash BLOB NOT NULL,
 	description TEXT,
 	date_taken INTEGER,
 	latitude REAL CHECK( latitude >= -90 AND latitude <= 90 ),
-	longitude REAL CHECK( longitude >= -180 AND longitude < 180 )
+	longitude REAL CHECK( longitude >= -180 AND longitude <= 180 ) -- seems like other formats allow -180 and +180
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS asset__created_at ON asset( created_at );
@@ -100,13 +105,9 @@ CREATE TABLE IF NOT EXISTS album (
 	),
 
 	FOREIGN KEY( id, key_photo ) REFERENCES album_photo( album_id, photo_id ),
+	CHECK( readonly_secret != readwrite_secret ),
 	UNIQUE( owner, url_slug )
 ) STRICT;
-
-CREATE TRIGGER IF NOT EXISTS ensure_album_secrets_are_different
-AFTER INSERT ON album FOR EACH ROW
-WHEN NEW.readonly_secret = NEW.readwrite_secret
-BEGIN SELECT RAISE( ABORT, 'readonly_secret = readwrite_secret' ); END;
 
 CREATE TABLE IF NOT EXISTS album_photo (
 	album_id INTEGER NOT NULL REFERENCES album( id ) ON DELETE CASCADE,
@@ -117,10 +118,10 @@ CREATE TABLE IF NOT EXISTS album_photo (
 CREATE VIEW IF NOT EXISTS album_key_asset
 AS SELECT album.id, photo_primary_asset.sha256 FROM album
 LEFT OUTER JOIN photo_primary_asset ON photo_primary_asset.photo_id = IFNULL( album.key_photo, (
-	SELECT lol.photo_id FROM album_photo
-	INNER JOIN photo_primary_asset AS lol ON album_photo.photo_id = lol.photo_id
+	SELECT newest_asset.photo_id FROM album_photo
+	INNER JOIN photo_primary_asset AS newest_asset ON album_photo.photo_id = newest_asset.photo_id
 	WHERE album_photo.album_id = album.id
-	ORDER BY lol.date_taken DESC LIMIT 1
+	ORDER BY newest_asset.date_taken DESC LIMIT 1
 ) );
 
 -- the unique constraint makes the first index pointless, not sure if we ever need the second one

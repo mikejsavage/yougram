@@ -100,3 +100,7 @@ type User struct {
 	Cookie               []byte
 	Avatar               []byte
 }
+
+type ValidAssetType struct {
+	Type string
+}
