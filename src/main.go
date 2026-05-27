@@ -1775,6 +1775,8 @@ func showHelpAndQuit() {
 	fmt.Printf(
 `Usage: %s <command>
     serve --private <addr:port> --guest <addr:port> --guest-url <https://guestgram.blah.com>
+        Run the yougram server. Binds the private and guest interface to the given addresses.
+        You need to provide the public address of the guest interface so links in the UI work.
     create-user [username]
         Create a user with the given username and a random password.
     reset-password [username]
