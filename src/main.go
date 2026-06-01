@@ -503,7 +503,7 @@ func serveAsset( w http.ResponseWriter, r *http.Request, sha256 string, asset_ty
 		use_original = slices.Contains( accept, "image/" + asset_type ) || slices.Contains( accept, "image/*" ) || slices.Contains( accept, "*/*" )
 	}
 
-	ext := normalisedExtension( original_filename )
+	ext := normalizedExtension( original_filename )
 	filename := sel( use_original, "assets", "generated" ) + "/" + sha256 + ext + sel( use_original, "", ".jpg" )
 	f := try1( os.Open( filename ) )
 	defer f.Close()
@@ -1442,7 +1442,7 @@ type AddedAsset struct {
 	Longitude sql.NullFloat64
 }
 
-func normalisedExtension( filename string ) string {
+func normalizedExtension( filename string ) string {
 	extension := strings.ToLower( filepath.Ext( filename ) )
 	if extension == ".heif" {
 		return ".heic"
@@ -1484,7 +1484,7 @@ func rescanMetadata() {
 		var original_filename string
 		must( rows.Scan( &sha256, &original_filename ) )
 
-		asset_filename := "assets/" + hex.EncodeToString( sha256 ) + normalisedExtension( original_filename )
+		asset_filename := "assets/" + hex.EncodeToString( sha256 ) + normalizedExtension( original_filename )
 		f := must1( os.Open( asset_filename ) )
 		defer f.Close()
 		date, latitude, longitude, _ := decodeMetadata( f )
@@ -1513,7 +1513,7 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 	}
 
 	// check the image decodes before we save it
-	extension := normalisedExtension( filename )
+	extension := normalizedExtension( filename )
 	decoded, err := decodeImage( data, extension )
 	if err != nil {
 		return AddedAsset { }, err
