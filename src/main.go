@@ -1382,8 +1382,13 @@ func reorient( img *image.RGBA, orientation meta.Orientation ) *image.RGBA {
 }
 
 func generateThumbnail( image *image.RGBA ) ( []byte, []byte ) {
+	// thumbnails are supposed to max out at 6cm. 5k 27 inch monitors and Apple displays are around 220dpi or 87dpcm
+	// 6cm at 87dpcm is ~512px so that seems like a reasonable thumbnail size
+	// on my windows pc the 6cm is affected by display scaling so thumbnails typically max out at
+	// 9cm and with a single column I was able to get a thumbnail of about 13.5cm, but oh well
 	const thumbnail_size = 512.0
 
+	// resize the smallest dim to 512px but don't scale up
 	scale := min( 1, thumbnail_size / float64( min( image.Rect.Dx(), image.Rect.Dy() ) ) )
 	thumbnail := stb.StbResize( image, int( float64( image.Rect.Dx() ) * scale ), int( float64( image.Rect.Dy() ) * scale ) )
 	thumbnail_jpg := must1( stb.StbToJpg( thumbnail, 75 ) )
