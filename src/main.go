@@ -392,37 +392,6 @@ func getAvatar( w http.ResponseWriter, r *http.Request ) {
 	_ = try1( w.Write( avatar.V ) )
 }
 
-func imageToRGBA( img image.Image, err error ) ( *image.RGBA, error ) {
-	if err != nil {
-		return nil, err
-	}
-
-	rgba := image.NewRGBA( img.Bounds() )
-	draw.Draw( rgba, rgba.Bounds(), img, img.Bounds().Min, draw.Src )
-	return rgba, nil
-}
-
-func decodeImage( data []byte, extension string ) ( *image.RGBA, error ) {
-	// TODO: maybe just try them all in turn. they should fail fast with magic bytes etc anyway
-	if extension == ".avif" {
-		return imageToRGBA( avif.Decode( bytes.NewReader( data ) ) )
-	}
-
-	if extension == ".jxl" {
-		return imageToRGBA( jpegxl.Decode( bytes.NewReader( data ) ) )
-	}
-
-	if extension == ".heic" || extension == ".heif" {
-		return imageToRGBA( goheif.Decode( bytes.NewReader( data ) ) )
-	}
-
-	if extension == ".webp" {
-		return imageToRGBA( webp.Decode( bytes.NewReader( data ) ) )
-	}
-
-	return stb.StbLoad( data )
-}
-
 func setAvatar( w http.ResponseWriter, r *http.Request, user User ) {
 	try( r.ParseMultipartForm( 32 * megabyte ) )
 
@@ -437,7 +406,13 @@ func setAvatar( w http.ResponseWriter, r *http.Request, user User ) {
 	data := try1( io.ReadAll( f ) )
 	try( f.Close() )
 
-	original, err := decodeImage( data, filepath.Ext( avatar.Filename ) )
+	image_format := findImageFormat( normalizedExtension( avatar.Filename ) )
+	if image_format == nil {
+		httpError( w, http.StatusBadRequest )
+		return
+	}
+
+	original, err := image_format.Decode( data )
 	if err != nil {
 		fmt.Printf( "%v\n", err )
 		httpError( w, http.StatusBadRequest )
@@ -1499,6 +1474,92 @@ func rescanMetadata() {
 	must( rows.Close() )
 }
 
+type ImageFormat struct {
+	Extension string
+	Mime string
+	Decode func( []byte ) ( *image.RGBA, error )
+	NeedsJpegFallback bool
+}
+
+func imageToRGBA( img image.Image, err error ) ( *image.RGBA, error ) {
+	if err != nil {
+		return nil, err
+	}
+
+	rgba := image.NewRGBA( img.Bounds() )
+	draw.Draw( rgba, rgba.Bounds(), img, img.Bounds().Min, draw.Src )
+	return rgba, nil
+}
+
+func wrapDecoder( decoder func( io.Reader ) ( image.Image, error ) ) func( []byte ) ( *image.RGBA, error ) {
+	return func( data []byte ) ( *image.RGBA, error ) {
+		return imageToRGBA( decoder( bytes.NewReader( data ) ) )
+	}
+}
+
+var image_formats []ImageFormat = []ImageFormat {
+	ImageFormat {
+		Extension: "jpg",
+		Mime: "image/jpeg",
+		Decode: stb.StbLoad,
+	},
+	ImageFormat {
+		Extension: "png",
+		Mime: "image/png",
+		Decode: stb.StbLoad,
+	},
+	ImageFormat {
+		Extension: "gif",
+		Mime: "image/gif",
+		Decode: stb.StbLoad,
+	},
+	ImageFormat {
+		Extension: "bmp",
+		Mime: "image/bmp",
+		Decode: stb.StbLoad,
+	},
+	ImageFormat {
+		Extension: "tga",
+		Mime: "image/tga",
+		Decode: stb.StbLoad,
+	},
+	ImageFormat {
+		Extension: "avif",
+		Mime: "image/avif",
+		Decode: wrapDecoder( avif.Decode ),
+	},
+	ImageFormat {
+		Extension: "webp",
+		Mime: "image/webp",
+		Decode: wrapDecoder( webp.Decode ),
+	},
+	ImageFormat {
+		Extension: "heic",
+		Mime: "image/heic",
+		Decode: wrapDecoder( goheif.Decode ),
+		NeedsJpegFallback: true,
+	},
+	ImageFormat {
+		Extension: "jxl",
+		Mime: "image/jxl",
+		Decode: wrapDecoder( jpegxl.Decode ),
+		NeedsJpegFallback: true,
+	},
+}
+
+func findImageFormat( ext string ) *ImageFormat {
+	for _, format := range image_formats {
+		if format.Extension == ext {
+			return &format
+		}
+	}
+	return nil
+}
+
+var video_file_extensions = []string {
+	".mp4", ".mov", ".avi", ".webm",
+}
+
 func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset, error ) {
 	fmt.Printf( "addAsset( %s )\n", filename )
 	before := time.Now()
@@ -1512,34 +1573,55 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 		return AddedAsset { sha256, date, latitude, longitude }, nil
 	}
 
-	// check the image decodes before we save it
+	asset_type := ""
+	var thumbnail []byte
+	var thumbhash []byte
+
 	extension := normalizedExtension( filename )
-	decoded, err := decodeImage( data, extension )
-	if err != nil {
-		return AddedAsset { }, err
-	}
+	image_format := findImageFormat( extension )
+	if image_format != nil {
+		asset_type = "image"
 
-	asset_filename := hex.EncodeToString( sha256[:] ) + extension
-	err = saveAsset( data, asset_filename )
-	if err != nil {
-		return AddedAsset { }, err
-	}
-
-	// generate thumbnail/thumbhash/fallback jpgs for heic/jxl
-	reoriented := reorient( decoded, orientation )
-	thumbnail, thumbhash := generateThumbnail( reoriented )
-
-	asset_type := "image"
-	if extension == ".heic" || extension == ".jxl" {
-		jpeg := must1( stb.StbToJpg( reoriented, 95 ) )
-		err = saveGenerated( jpeg, asset_filename + ".jpg" )
+		// check the image decodes before we save it
+		decoded, err := image_format.Decode( data )
 		if err != nil {
 			return AddedAsset { }, err
 		}
-		asset_type = extension[ 1: ]
+
+		asset_filename := hex.EncodeToString( sha256[:] ) + extension
+		err = saveAsset( data, asset_filename )
+		if err != nil {
+			return AddedAsset { }, err
+		}
+
+		// generate thumbnail/thumbhash/fallback jpgs for heic/jxl
+		reoriented := reorient( decoded, orientation )
+		thumbnail, thumbhash = generateThumbnail( reoriented )
+
+		if image_format.NeedsJpegFallback {
+			jpeg := must1( stb.StbToJpg( reoriented, 95 ) )
+			err = saveGenerated( jpeg, asset_filename + ".jpg" )
+			if err != nil {
+				return AddedAsset { }, err
+			}
+			asset_type = extension[ 1: ]
+		}
 	}
 
-	err = queries.CreateAsset( ctx, sqlc.CreateAssetParams {
+	if asset_type == "" {
+		for _, format := range video_file_extensions {
+			if format == extension {
+				asset_type = "video"
+				// TODO: generate thumbnail
+			}
+		}
+	}
+
+	if asset_type == "" {
+		asset_type = "raw"
+	}
+
+	err := queries.CreateAsset( ctx, sqlc.CreateAssetParams {
 		Sha256: sha256[:],
 		CreatedAt: time.Now().Unix(),
 		OriginalFilename: filename,

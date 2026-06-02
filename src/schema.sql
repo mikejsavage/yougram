@@ -22,19 +22,24 @@ CREATE TABLE IF NOT EXISTS user (
 CREATE TABLE IF NOT EXISTS valid_asset_type (
     type TEXT PRIMARY KEY
 ) STRICT;
-INSERT OR IGNORE INTO valid_asset_type VALUES ( 'image' ), ( 'jxl' ), ( 'heic' ), ( 'raw' );
+INSERT OR IGNORE INTO valid_asset_type VALUES
+	( 'image' ), ( 'jxl' ), ( 'heic' ),
+	( 'video' ), -- ( 'h265' ),
+	( 'raw' );
 
 CREATE TABLE IF NOT EXISTS asset (
 	sha256 BLOB PRIMARY KEY CHECK( length( sha256 ) = 32 ),
 	created_at INTEGER NOT NULL,
 	original_filename TEXT NOT NULL,
 	type TEXT NOT NULL REFERENCES valid_asset_type( type ),
-	thumbnail BLOB NOT NULL,
-	thumbhash BLOB NOT NULL,
+	thumbnail BLOB,
+	thumbhash BLOB,
 	description TEXT,
 	date_taken INTEGER,
 	latitude REAL CHECK( latitude >= -90 AND latitude <= 90 ),
-	longitude REAL CHECK( longitude >= -180 AND longitude <= 180 ) -- seems like other formats allow -180 and +180
+	longitude REAL CHECK( longitude >= -180 AND longitude <= 180 ), -- seems like other formats allow -180 and +180
+
+	CHECK( type = 'raw' OR ( thumbnail IS NOT NONE AND thumbhash IS NOT NONE ) )
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS asset__created_at ON asset( created_at );
