@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS asset (
 	latitude REAL CHECK( latitude >= -90 AND latitude <= 90 ),
 	longitude REAL CHECK( longitude >= -180 AND longitude <= 180 ), -- seems like other formats allow -180 and +180
 
-	CHECK( type = 'raw' OR ( thumbnail IS NOT NONE AND thumbhash IS NOT NONE ) )
+	CHECK( type = 'raw' OR ( thumbnail IS NOT NULL AND thumbhash IS NOT NULL ) )
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS asset__created_at ON asset( created_at );
