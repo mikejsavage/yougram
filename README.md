@@ -31,7 +31,6 @@ and falsehoods. [It also won't work in Firefox until they implement @scope.][ffs
 - Snappy: I'm not a web developer so everything happens instantly
 - Scalable: yougram does not currently scale to millions of photos, but tens of thousands is ok
 - RAW support: you can upload and download RAWs and they stack with your JPEGs but that's about it
-  (also not true yet)
 - Video support: not yet
 
 
@@ -54,8 +53,8 @@ and falsehoods. [It also won't work in Firefox until they implement @scope.][ffs
 5. Run it with `yougram serve --private-interface 0.0.0.0:12345 --guest-interface 0.0.0.0:12346
    --guest-url https://guestgram.example.com`. Remember, yougram stores everything in the current
    working directory, so make sure you're in the right place first!
-6. Optionally, if you want AI image classification, download the Moondream model and put it in the
-   `moondream` directory.
+6. Optionally, if you want AI image classification, download `qwen.gguf` from TODO and put it in the
+   `ai` directory.
 
 For a concrete example, my HAProxy config looks like this:
 
@@ -109,7 +108,7 @@ yougram/
     assets/ <- contains all your photos, only back up this folder!
         metadata_backup.json: ...yougram also saves all its metadata here, in a backup friendly format
     generated/ <- contains thumbnails and HEIC -> JPG conversions and the like, this can be entirely regenerated from your assets so you don't need to keep it safe
-    moondream/ <- contains AI models for image classification, you downloaded these from the internet so again feel free to kill it
+    ai/ <- contains AI models for image classification, you downloaded these from the internet so again feel free to kill it
 ```
 
 
@@ -120,13 +119,12 @@ Download a new binary.
 
 ## System requirements
 
-I develop on macOS and Linux. Yougram should run on Windows and other Unixes but I haven't and won't
-test them.
+Yougram officially supports x86_64 Linux, arm64 Linux, and arm64 macOS.
 
 Yougram should run on arbitrarily bad hardware, but probably don't enable the AI features on a
 Raspberry Pi.
 
-The yougram binary is around 25MB. The optional Moondream AI model is 2GB.
+The yougram binary is around 25MB. Qwen image classification models range from 500MB to mega huge.
 
 
 ## Security
