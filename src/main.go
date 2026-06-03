@@ -33,6 +33,7 @@ import (
 	"syscall"
 	"time"
 
+	"mikegram/ffmpeg"
 	"mikegram/sqlc"
 	"mikegram/stb"
 
@@ -1037,7 +1038,7 @@ func uploadToLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 
 	for i, header := range r.MultipartForm.File[ "assets" ] {
 		f := try1( header.Open() )
-		assets[ i ] = try1( addAsset( r.Context(), try1( io.ReadAll( f ) ), header.Filename ) )
+		assets[ i ] = try1( addAsset( r.Context(), f, header.Filename ) )
 		try( f.Close() )
 	}
 
@@ -1095,7 +1096,7 @@ func uploadToAlbumImpl( w http.ResponseWriter, r *http.Request, userID sql.NullI
 
 	for i, header := range r.MultipartForm.File[ "assets" ] {
 		f := try1( header.Open() )
-		assets[ i ] = try1( addAsset( r.Context(), try1( io.ReadAll( f ) ), header.Filename ) )
+		assets[ i ] = try1( addAsset( r.Context(), f, header.Filename ) )
 		try( f.Close() )
 	}
 
@@ -1165,7 +1166,7 @@ func uploadToPhoto( w http.ResponseWriter, r *http.Request, user User ) {
 
 		for i, header := range r.MultipartForm.File[ "assets" ] {
 			f := try1( header.Open() )
-			assets[ i ] = try1( addAsset( r.Context(), try1( io.ReadAll( f ) ), header.Filename ) )
+			assets[ i ] = try1( addAsset( r.Context(), f, header.Filename ) )
 			try( f.Close() )
 		}
 
@@ -1395,19 +1396,19 @@ func generateThumbnail( image *image.RGBA ) ( []byte, []byte ) {
 	return thumbnail_jpg, thumbhash.EncodeImage( thumbnail )
 }
 
-func writeFileFSync( name string, data []byte, perm os.FileMode ) error {
+func writeFileFSync( name string, r io.Reader, perm os.FileMode ) error {
 	f, err := os.OpenFile( name, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, perm )
 	if err != nil {
 		return err
 	}
-	_, err = f.Write( data )
+	_, err = io.Copy( f, r )
 	err1 := f.Sync()
 	err2 := f.Close()
 	return cmp.Or( err, err1, err2 )
 }
 
-func saveAsset( data []byte, filename string ) error {
-	return writeFileFSync( "assets/" + filename, data, 0644 )
+func saveAsset( r io.Reader, filename string ) error {
+	return writeFileFSync( "assets/" + filename, r, 0644 )
 }
 
 func saveGenerated( data []byte, filename string ) error {
@@ -1415,7 +1416,7 @@ func saveGenerated( data []byte, filename string ) error {
 }
 
 type AddedAsset struct {
-	Sha256 [32]byte
+	Sha256 [sha256.Size]byte
 	Date sql.NullInt64
 	Latitude sql.NullFloat64
 	Longitude sql.NullFloat64
@@ -1503,48 +1504,48 @@ func wrapDecoder( decoder func( io.Reader ) ( image.Image, error ) ) func( []byt
 
 var image_formats []ImageFormat = []ImageFormat {
 	ImageFormat {
-		Extension: "jpg",
+		Extension: ".jpg",
 		Mime: "image/jpeg",
 		Decode: stb.StbLoad,
 	},
 	ImageFormat {
-		Extension: "png",
+		Extension: ".png",
 		Mime: "image/png",
 		Decode: stb.StbLoad,
 	},
 	ImageFormat {
-		Extension: "gif",
+		Extension: ".gif",
 		Mime: "image/gif",
 		Decode: stb.StbLoad,
 	},
 	ImageFormat {
-		Extension: "bmp",
+		Extension: ".bmp",
 		Mime: "image/bmp",
 		Decode: stb.StbLoad,
 	},
 	ImageFormat {
-		Extension: "tga",
+		Extension: ".tga",
 		Mime: "image/tga",
 		Decode: stb.StbLoad,
 	},
 	ImageFormat {
-		Extension: "avif",
+		Extension: ".avif",
 		Mime: "image/avif",
 		Decode: wrapDecoder( avif.Decode ),
 	},
 	ImageFormat {
-		Extension: "webp",
+		Extension: ".webp",
 		Mime: "image/webp",
 		Decode: wrapDecoder( webp.Decode ),
 	},
 	ImageFormat {
-		Extension: "heic",
+		Extension: ".heic",
 		Mime: "image/heic",
 		Decode: wrapDecoder( goheif.Decode ),
 		NeedsJpegFallback: true,
 	},
 	ImageFormat {
-		Extension: "jxl",
+		Extension: ".jxl",
 		Mime: "image/jxl",
 		Decode: wrapDecoder( jpegxl.Decode ),
 		NeedsJpegFallback: true,
@@ -1564,14 +1565,18 @@ var video_file_extensions = []string {
 	".mp4", ".mov", ".avi", ".webm",
 }
 
-func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset, error ) {
-	fmt.Printf( "addAsset( %s )\n", filename )
+func addAsset( ctx context.Context, r io.ReadSeeker, filename string ) ( AddedAsset, error ) {
 	before := time.Now()
 
-	sha256 := sha256.Sum256( data )
+	hasher := sha256.New()
+	_ = try1( io.Copy( hasher, r ) )
+	sha256 := [sha256.Size]byte( hasher.Sum( nil ) )
+
+	fmt.Printf( "addAsset( %s ) %s\n", filename, hex.EncodeToString( sha256[:] ) )
 
 	// extract metadata
-	date, latitude, longitude, orientation := decodeMetadata( bytes.NewReader( data ) )
+	_ = try1( r.Seek( 0, io.SeekStart ) )
+	date, latitude, longitude, orientation := decodeMetadata( r )
 	if try1( queries.AssetExists( ctx, sha256[:] ) ) == 1 {
 		// TODO: get metadata from the db maybe
 		return AddedAsset { sha256, date, latitude, longitude }, nil
@@ -1587,20 +1592,21 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 		asset_type = "image"
 
 		// check the image decodes before we save it
+		_ = try1( r.Seek( 0, io.SeekStart ) )
+		data := try1( io.ReadAll( r ) )
 		decoded, err := image_format.Decode( data )
 		if err != nil {
 			return AddedAsset { }, err
 		}
 
+		reoriented := reorient( decoded, orientation )
+		thumbnail, thumbhash = generateThumbnail( reoriented )
+
 		asset_filename := hex.EncodeToString( sha256[:] ) + extension
-		err = saveAsset( data, asset_filename )
+		err = saveAsset( bytes.NewReader( data ), asset_filename )
 		if err != nil {
 			return AddedAsset { }, err
 		}
-
-		// generate thumbnail/thumbhash/fallback jpgs for heic/jxl
-		reoriented := reorient( decoded, orientation )
-		thumbnail, thumbhash = generateThumbnail( reoriented )
 
 		if image_format.NeedsJpegFallback {
 			jpeg := must1( stb.StbToJpg( reoriented, 95 ) )
@@ -1616,7 +1622,22 @@ func addAsset( ctx context.Context, data []byte, filename string ) ( AddedAsset,
 		for _, format := range video_file_extensions {
 			if format == extension {
 				asset_type = "video"
-				// TODO: generate thumbnail
+
+				temp := try1( os.CreateTemp( "", "yougram_video_*" + extension ) )
+				defer os.Remove( temp.Name() )
+				_ = try1( r.Seek( 0, io.SeekStart ) )
+				_ = try1( io.Copy( temp, r ) )
+				try( temp.Close() )
+
+				first_frame := try1( ffmpeg.FirstFrame( temp.Name() ) )
+				thumbnail, thumbhash = generateThumbnail( first_frame )
+
+				asset_filename := hex.EncodeToString( sha256[:] ) + extension
+				_ = try1( r.Seek( 0, io.SeekStart ) )
+				err := saveAsset( r, asset_filename )
+				if err != nil {
+					return AddedAsset { }, err
+				}
 			}
 		}
 	}
@@ -1650,12 +1671,7 @@ func addFile( ctx context.Context, user int64, path string, album_id sql.Null[ i
 	}
 	defer f.Close()
 
-	img, err := io.ReadAll( f )
-	if err != nil {
-		return err
-	}
-
-	asset := must1( addAsset( ctx, img, path ) )
+	asset := must1( addAsset( ctx, f, path ) )
 
 	photos, err := queries.GetAssetPhotos( ctx, sqlc.GetAssetPhotosParams {
 		AssetID: asset.Sha256[:],
