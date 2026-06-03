@@ -142,7 +142,7 @@ func makeSecureCookie( r *http.Request ) http.Cookie {
 		// NOTE: Forwarded: for=192.0.2.60;proto=http;by=203.0.113.43
 		Secure: strings.Contains( r.Header.Get( "Forwarded" ), "proto=https" ),
 		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 	}
 }
 
