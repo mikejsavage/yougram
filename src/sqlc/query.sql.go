@@ -616,16 +616,14 @@ const getAssetMetadata = `-- name: GetAssetMetadata :one
 SELECT type, original_filename, EXISTS(
 	SELECT 1 FROM photo_asset
 	INNER JOIN photo ON photo.id = photo_asset.photo_id
-	INNER JOIN album_photo ON album_photo.photo_id = photo.id
-	INNER JOIN album ON album.id = album_photo.album_id
-	-- TODO: this is failing when the photo is owned but not in an album
-	WHERE photo_asset.asset_id = ? AND ( photo.owner = ? OR album.owner = ? OR album.shared )
+	LEFT JOIN album_photo ON album_photo.photo_id = photo.id
+	LEFT JOIN album ON album.id = album_photo.album_id
+	WHERE photo_asset.asset_id = a.sha256 AND ( photo.owner = ? OR album.owner = ? OR album.shared )
 ) AS has_permission
-FROM asset WHERE sha256 = ?
+FROM asset a WHERE sha256 = ?
 `
 
 type GetAssetMetadataParams struct {
-	AssetID []byte
 	Owner   sql.NullInt64
 	Owner_2 int64
 	Sha256  []byte
@@ -638,12 +636,7 @@ type GetAssetMetadataRow struct {
 }
 
 func (q *Queries) GetAssetMetadata(ctx context.Context, arg GetAssetMetadataParams) (GetAssetMetadataRow, error) {
-	row := q.db.QueryRowContext(ctx, getAssetMetadata,
-		arg.AssetID,
-		arg.Owner,
-		arg.Owner_2,
-		arg.Sha256,
-	)
+	row := q.db.QueryRowContext(ctx, getAssetMetadata, arg.Owner, arg.Owner_2, arg.Sha256)
 	var i GetAssetMetadataRow
 	err := row.Scan(&i.Type, &i.OriginalFilename, &i.HasPermission)
 	return i, err

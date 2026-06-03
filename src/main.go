@@ -517,7 +517,6 @@ func getAsset( w http.ResponseWriter, r *http.Request, user User ) {
 	}
 
 	metadata := queryOptional( queries.GetAssetMetadata( r.Context(), sqlc.GetAssetMetadataParams {
-		AssetID: sha256[:],
 		Owner: justI64( user.ID ),
 		Owner_2: user.ID,
 		Sha256: sha256[:],
