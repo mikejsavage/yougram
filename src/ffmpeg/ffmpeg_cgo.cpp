@@ -37,7 +37,6 @@ static FirstFrameResult StringError( const char * str ) {
 }
 
 extern "C" FirstFrameResult FirstFrame( const char * path ) {
-	printf( "%s\n", path );
 	AVFormatContext * fmt_ctx = NULL;
 	int ok = avformat_open_input( &fmt_ctx, path, NULL, NULL );
 	if( ok < 0 ) {
