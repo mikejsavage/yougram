@@ -558,10 +558,10 @@ func serveJson[ T any ]( w http.ResponseWriter, x T ) {
 }
 
 type JsonVariant struct {
-	Sha256 string
+	Asset string `json:"asset"`
 	Type string
 	OriginalFilename string
-	Thumbhash string
+	Thumbhash string `json:"thumbhash"`
 	Description *string `json:"description,omitempty"`
 	DateTaken *int64 `json:"date_taken,omitempty"`
 	Latitude *float64 `json:"latitude,omitempty"`
@@ -573,7 +573,7 @@ func variantsToJson( rows []sqlc.GetPhotoVariantsRow ) []JsonVariant {
 
 	for i, row := range rows {
 		variants[ i ] = JsonVariant {
-			Sha256: hex.EncodeToString( row.Sha256 ),
+			Asset: hex.EncodeToString( row.Sha256 ),
 			Type: row.Type,
 			OriginalFilename: row.OriginalFilename,
 			Thumbhash: base64.StdEncoding.EncodeToString( row.Thumbhash ),
