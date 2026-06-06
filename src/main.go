@@ -293,6 +293,8 @@ func initDB( memory_db bool ) {
 		} ) )
 	}
 
+	addFileToAlbum( ctx, mike, "original.mp4", helsinki )
+
 	seagull := must1( hex.DecodeString( "cc85f99cd694c63840ff359e13610390f85c4ea0b315fc2b033e5839e7591949" ) )
 	tx := must1( db.Begin() )
 	defer tx.Rollback()
@@ -475,29 +477,38 @@ func pathValueAsset( r *http.Request ) ( string, []byte, error ) {
 }
 
 func serveAsset( w http.ResponseWriter, r *http.Request, sha256 string, asset_type string, original_filename string ) {
+	ext := normalizedExtension( original_filename )
 	use_original := true
-	if asset_type == "heic" || asset_type == "jxl" {
-		accept := strings.Split( r.Header.Get( "Accept" ), "," )
-		use_original = slices.Contains( accept, "image/" + asset_type ) || slices.Contains( accept, "image/*" ) || slices.Contains( accept, "*/*" )
+	var mime string
+
+	image_format := findImageFormat( ext )
+	if image_format != nil {
+		mime = image_format.Mime
+		if image_format.NeedsJpegFallback {
+			accept := strings.Split( r.Header.Get( "Accept" ), "," )
+			use_original = slices.Contains( accept, image_format.Mime ) || slices.Contains( accept, "image/*" ) || slices.Contains( accept, "*/*" )
+			if !use_original {
+				mime = "image/jpeg"
+			}
+		}
 	}
 
-	ext := normalizedExtension( original_filename )
+	for _, video_format := range video_formats {
+		if video_format.Extension == ext {
+			mime = video_format.Mime
+		}
+	}
+
 	filename := sel( use_original, "assets", "generated" ) + "/" + sha256 + ext + sel( use_original, "", ".jpg" )
 	f := try1( os.Open( filename ) )
 	defer f.Close()
 
-	mime := "jpeg"
-	if use_original {
-		mime = ext[ 1: ]
-		if mime == "jpg" {
-			mime = "jpeg"
-		}
-	}
-
 	cacheControlImmutable( w )
 	w.Header().Set( "Content-Disposition", fmt.Sprintf( "inline; filename=\"%s%s\"", original_filename, sel( use_original, "", ".jpg" ) ) )
-	w.Header().Set( "Content-Type", "image/" + mime )
 	w.Header().Set( "ETag", "\"" + sha256 + "\"" )
+	if mime != "" {
+		w.Header().Set( "Content-Type", mime )
+	}
 
 	http.ServeContent( w, r,
 		"", // filename, only used to set mime type
@@ -996,6 +1007,7 @@ type Photo struct {
 	ID int64 `json:"id"`
 	Asset string `json:"asset"`
 	Thumbhash string `json:"thumbhash"`
+	Video bool `json:"video,omitempty"`
 }
 
 func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
@@ -1005,6 +1017,7 @@ func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 			ID: photo.ID,
 			Asset: hex.EncodeToString( photo.Sha256 ),
 			Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
+			Video: photo.Type == "video",
 		} )
 	}
 
@@ -1020,6 +1033,7 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 				ID: photo.ID,
 				Asset: hex.EncodeToString( photo.Sha256 ),
 				Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
+				Video: photo.Type == "video",
 			} )
 		}
 
@@ -1563,8 +1577,28 @@ func findImageFormat( ext string ) *ImageFormat {
 	return nil
 }
 
-var video_file_extensions = []string {
-	".mp4", ".mov", ".avi", ".webm",
+type VideoFormat struct {
+	Extension string
+	Mime string
+}
+
+var video_formats = []VideoFormat {
+	VideoFormat {
+		Extension: ".mp4",
+		Mime: "video/mp4",
+	},
+	VideoFormat {
+		Extension: ".mov",
+		Mime: "video/quicktime",
+	},
+	VideoFormat {
+		Extension: ".avi",
+		Mime: "video/x-msvideo",
+	},
+	VideoFormat {
+		Extension: ".webm",
+		Mime: "video/webm",
+	},
 }
 
 func addAsset( ctx context.Context, r io.ReadSeeker, filename string ) ( AddedAsset, error ) {
@@ -1621,8 +1655,8 @@ func addAsset( ctx context.Context, r io.ReadSeeker, filename string ) ( AddedAs
 	}
 
 	if asset_type == "" {
-		for _, format := range video_file_extensions {
-			if format == extension {
+		for _, video_format := range video_formats {
+			if video_format.Extension == extension {
 				asset_type = "video"
 
 				temp := try1( os.CreateTemp( "", "yougram_video_*" + extension ) )
