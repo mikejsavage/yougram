@@ -78,13 +78,14 @@ func (q *Queries) AssetExists(ctx context.Context, sha256 []byte) (int64, error)
 	return column_1, err
 }
 
-const createAlbum = `-- name: CreateAlbum :exec
+const createAlbum = `-- name: CreateAlbum :one
 
 INSERT INTO album (
 	owner, name, url_slug,
 	shared, readonly_secret, readwrite_secret, guest_password,
 	autoassign_start_date, autoassign_end_date, autoassign_latitude, autoassign_longitude, autoassign_radius
 ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )
+RETURNING id
 `
 
 type CreateAlbumParams struct {
@@ -105,8 +106,8 @@ type CreateAlbumParams struct {
 // ----------
 // ALBUMS --
 // ----------
-func (q *Queries) CreateAlbum(ctx context.Context, arg CreateAlbumParams) error {
-	_, err := q.db.ExecContext(ctx, createAlbum,
+func (q *Queries) CreateAlbum(ctx context.Context, arg CreateAlbumParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, createAlbum,
 		arg.Owner,
 		arg.Name,
 		arg.UrlSlug,
@@ -120,7 +121,9 @@ func (q *Queries) CreateAlbum(ctx context.Context, arg CreateAlbumParams) error 
 		arg.AutoassignLongitude,
 		arg.AutoassignRadius,
 	)
-	return err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const createAsset = `-- name: CreateAsset :exec

@@ -197,12 +197,13 @@ ORDER BY album.name;
 -- ALBUMS --
 ------------
 
--- name: CreateAlbum :exec
+-- name: CreateAlbum :one
 INSERT INTO album (
 	owner, name, url_slug,
 	shared, readonly_secret, readwrite_secret, guest_password,
 	autoassign_start_date, autoassign_end_date, autoassign_latitude, autoassign_longitude, autoassign_radius
-) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );
+) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )
+RETURNING id;
 
 -- name: DeleteAlbum :exec
 UPDATE album SET delete_at = ? WHERE owner = ? AND url_slug = ?;

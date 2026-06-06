@@ -241,7 +241,7 @@ func initDB( memory_db bool ) {
 		Cookie: secret[:],
 	} ) )
 
-	must( queries.CreateAlbum( ctx, sqlc.CreateAlbumParams {
+	france := must1( queries.CreateAlbum( ctx, sqlc.CreateAlbumParams {
 		Owner: mike,
 		Name: "France 2024",
 		UrlSlug: "france-2024",
@@ -249,7 +249,7 @@ func initDB( memory_db bool ) {
 		ReadonlySecret: "aaaaaaaa",
 		ReadwriteSecret: "bbbbbbbb",
 	} ) )
-	must( queries.CreateAlbum( ctx, sqlc.CreateAlbumParams {
+	helsinki := must1( queries.CreateAlbum( ctx, sqlc.CreateAlbumParams {
 		Owner: mike,
 		Name: "Helsinki 2024",
 		UrlSlug: "helsinki-2024",
@@ -262,7 +262,7 @@ func initDB( memory_db bool ) {
 		AutoassignLongitude: sql.NullFloat64 { 24.9384, true },
 		AutoassignRadius: sql.NullFloat64 { 50, true },
 	} ) )
-	must( queries.CreateAlbum( ctx, sqlc.CreateAlbumParams {
+	variant := must1( queries.CreateAlbum( ctx, sqlc.CreateAlbumParams {
 		Owner: mike,
 		Name: "Variant test album",
 		UrlSlug: "variant-test",
@@ -272,24 +272,26 @@ func initDB( memory_db bool ) {
 		GuestPassword: sql.NullString { "gg", true },
 	} ) )
 
-	addFileToAlbum( ctx, mike, "DSCN0025.jpg", 2 )
-	err := addFileToAlbum( ctx, mike, "DSCF2994.jpeg", 1 )
+	addFileToAlbum( ctx, mike, "DSCN0025.jpg", helsinki )
+	err := addFileToAlbum( ctx, mike, "DSCF2994.jpeg", france )
 	if err != nil {
 		return
 	}
-	addFileToAlbum( ctx, mike, "hato.profile0.8bpc.yuv420.avif", 1 )
-	addFileToAlbum( ctx, mike, "zoltan-tasi-CLJeQCr2F_A-unsplash.jxl", 1 )
-	addFileToAlbum( ctx, mike, "4_webp_ll.webp", 1 )
+	addFileToAlbum( ctx, mike, "hato.profile0.8bpc.yuv420.avif", france )
+	addFileToAlbum( ctx, mike, "zoltan-tasi-CLJeQCr2F_A-unsplash.jxl", france )
+	addFileToAlbum( ctx, mike, "4_webp_ll.webp", france )
 	addFile( ctx, mike, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } )
 	addFile( ctx, mike, "IMG_2330.HEIC", sql.Null[ int64 ] { } )
 
-	addFileToAlbum( ctx, mike, "1.jpg", 3 )
-	addFileToAlbum( ctx, mike, "2.jpg", 3 )
+	{
+		addFileToAlbum( ctx, mike, "1.jpg", variant )
+		addFileToAlbum( ctx, mike, "2.jpg", variant )
 
-	must( queries.AddAssetToPhoto( ctx, sqlc.AddAssetToPhotoParams {
-		AssetID: must1( hex.DecodeString( "e375d229437ec6008e6d25fff3a52acde37a4b250447a1c23d6b17c33372fdb4" ) ),
-		PhotoID: 7,
-	} ) )
+		must( queries.AddAssetToPhoto( ctx, sqlc.AddAssetToPhotoParams {
+			AssetID: must1( hex.DecodeString( "e375d229437ec6008e6d25fff3a52acde37a4b250447a1c23d6b17c33372fdb4" ) ),
+			PhotoID: 8,
+		} ) )
+	}
 
 	seagull := must1( hex.DecodeString( "cc85f99cd694c63840ff359e13610390f85c4ea0b315fc2b033e5839e7591949" ) )
 	tx := must1( db.Begin() )
@@ -309,7 +311,7 @@ func initDB( memory_db bool ) {
 		} ) )
 
 		must( qtx.AddPhotoToAlbum( ctx, sqlc.AddPhotoToAlbumParams {
-			AlbumID: 1,
+			AlbumID: france,
 			PhotoID: photo_id,
 		} ) )
 	}
@@ -652,7 +654,7 @@ func createAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	url := r.PostFormValue( "url" )
 	shared := r.PostFormValue( "shared" ) == "1"
 
-	try( queries.CreateAlbum( r.Context(), sqlc.CreateAlbumParams {
+	_ = try1( queries.CreateAlbum( r.Context(), sqlc.CreateAlbumParams {
 		Owner: user.ID,
 		Name: name,
 		UrlSlug: url,
