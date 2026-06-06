@@ -998,7 +998,7 @@ type Photo struct {
 
 func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 	photos := []Photo { }
-	for _, photo := range must1( queries.GetUserPhotos( r.Context(), justI64( user.ID ) ) ) {
+	for _, photo := range try1( queries.GetUserPhotos( r.Context(), justI64( user.ID ) ) ) {
 		photos = append( photos, Photo {
 			ID: photo.ID,
 			Asset: hex.EncodeToString( photo.Sha256 ),
