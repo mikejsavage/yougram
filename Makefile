@@ -10,7 +10,7 @@ ifeq ($(shell uname -s),Linux)
 endif
 
 all:
-	sqlc generate
+	cd src && sqlc generate
 	templ generate -path src
 	env GO_CFLAGS=-O2 go build -C src -o ../yougram$(BIN_SUFFIX) $(GOFLAGS) -ldflags="$(LDFLAGS)" -tags "$(TAGS)"
 

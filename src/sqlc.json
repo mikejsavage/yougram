@@ -3,12 +3,12 @@
 	"sql": [
 		{
 			"engine": "sqlite",
-			"queries": "src/query.sql",
-			"schema": "src/schema.sql",
+			"queries": "query.sql",
+			"schema": "schema.sql",
 			"gen": {
 				"go": {
 					"package": "sqlc",
-					"out": "src/sqlc"
+					"out": "sqlc"
 				}
 			}
 		}
