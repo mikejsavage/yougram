@@ -572,7 +572,7 @@ func serveJson[ T any ]( w http.ResponseWriter, x T ) {
 
 type JsonVariant struct {
 	Asset string `json:"asset"`
-	Type string
+	Type string `json:"type,omitempty"`
 	OriginalFilename string
 	Thumbhash string `json:"thumbhash"`
 	Description *string `json:"description,omitempty"`
@@ -587,7 +587,7 @@ func variantsToJson( rows []sqlc.GetPhotoVariantsRow ) []JsonVariant {
 	for i, row := range rows {
 		variants[ i ] = JsonVariant {
 			Asset: hex.EncodeToString( row.Sha256 ),
-			Type: row.Type,
+			Type: typeIfNotImage( row.Type ),
 			OriginalFilename: row.OriginalFilename,
 			Thumbhash: base64.StdEncoding.EncodeToString( row.Thumbhash ),
 			Description: sel( row.Description.Valid, &row.Description.String, nil ),
@@ -1007,7 +1007,11 @@ type Photo struct {
 	ID int64 `json:"id"`
 	Asset string `json:"asset"`
 	Thumbhash string `json:"thumbhash"`
-	Video bool `json:"video,omitempty"`
+	Type string `json:"string,omitempty"`
+}
+
+func typeIfNotImage( t string ) string {
+	return sel( t == "video" || t == "raw", t, "" )
 }
 
 func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
@@ -1017,7 +1021,7 @@ func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 			ID: photo.ID,
 			Asset: hex.EncodeToString( photo.Sha256 ),
 			Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
-			Video: photo.Type == "video",
+			Type: typeIfNotImage( photo.Type ),
 		} )
 	}
 
@@ -1033,7 +1037,7 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 				ID: photo.ID,
 				Asset: hex.EncodeToString( photo.Sha256 ),
 				Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
-				Video: photo.Type == "video",
+				Type: typeIfNotImage( photo.Type ),
 			} )
 		}
 
