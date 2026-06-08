@@ -486,7 +486,7 @@ func serveAsset( w http.ResponseWriter, r *http.Request, sha256 string, asset_ty
 		mime = image_format.Mime
 		if image_format.NeedsJpegFallback {
 			accept := strings.Split( r.Header.Get( "Accept" ), "," )
-			use_original = slices.Contains( accept, image_format.Mime ) || slices.Contains( accept, "image/*" ) || slices.Contains( accept, "*/*" )
+			use_original = slices.Contains( accept, image_format.Mime )
 			if !use_original {
 				mime = "image/jpeg"
 			}
