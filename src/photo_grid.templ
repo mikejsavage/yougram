@@ -55,7 +55,7 @@ templ fullscreen( base_urls BaseURLs ) {
 			@keydown.window.left="EnterFullscreen( fullscreen - 1 )"
 			@keydown.window.right="EnterFullscreen( fullscreen + 1 )"
 		>
-			<template x-if="GetPhoto().type == ''">
+			<template x-if="GetPhoto().type == null">
 				<div class="stack">
 					<img x-init="MakeThumbhash( $el, GetPhoto().thumbhash )" x-show="!thumbnail_loaded && !asset_loaded">
 					<img :src={ fmt.Sprintf( "'%s' + GetPhoto().asset", base_urls.Thumbnail ) }
