@@ -4,11 +4,9 @@
 
 yougram is a self-hosted image sharing app.
 
-[ffscope]: https://bugzilla.mozilla.org/show_bug.cgi?id=1830512
-
 Please note that yougram is very early in development and basically unusable. Parts of this readme
 have been written for an idealised future yougram that doesn't exist yet, so expect contradictions
-and falsehoods. [It also won't work in Firefox until they implement @scope.][ffscope]
+and falsehoods.
 
 
 ## Why yougram is good for you, a user
@@ -18,8 +16,8 @@ and falsehoods. [It also won't work in Firefox until they implement @scope.][ffs
   that may disappear in the future. If you like it today you will like it a decade from now too
   (not true yet)
 - Multi-user: your family can use it too
-- (optionally) AI powered: AI photo tagging so you can search for "cat", and facial recognition so
-  you can search for "Mike" (not true yet)
+- Optionally AI powered: AI photo tagging so you can search for "cat", and facial recognition so you
+  can search for "Mike" (not true yet)
 - Guest access: share secret album links with your friends, both writable (for group vacations) and
   read-only (for everyone else)
 - Backup friendly: yougram stores your data unmodified as files on disk, so it works well with
@@ -27,11 +25,12 @@ and falsehoods. [It also won't work in Firefox until they implement @scope.][ffs
 - No lock-in: getting your data out of yougram is an explicitly supported and documented workflow,
   feel free to take your photos elsewhere (not really true yet)
 - Private: nothing leaves your computer
-- Compatible with the Immich app: automatically upload your phone library to yougram (not true yet)
+- Compatible with the Immich app: automatically upload your phone library to yougram (not true yet,
+  or probably ever, probably vibecode an app at some point?)
 - Snappy: I'm not a web developer so everything happens instantly
 - Scalable: yougram does not currently scale to millions of photos, but tens of thousands is ok
 - RAW support: you can upload and download RAWs and they stack with your JPEGs but that's about it
-- Video support: not yet
+- Video support: automatically trancodes and/or remuxes to widely supported formats (not yet)
 
 
 ## Installation instructions
@@ -124,7 +123,7 @@ Yougram officially supports x86_64 Linux, arm64 Linux, and arm64 macOS.
 Yougram should run on arbitrarily bad hardware, but probably don't enable the AI features on a
 Raspberry Pi.
 
-The yougram binary is around 25MB. Qwen image classification models range from 500MB to mega huge.
+The yougram binary is around 40MB. Qwen image classification models range from 500MB to mega huge.
 
 
 ## Security
