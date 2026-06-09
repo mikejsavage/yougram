@@ -282,6 +282,7 @@ func initDB( memory_db bool ) {
 	addFileToAlbum( ctx, mike, "4_webp_ll.webp", france )
 	addFile( ctx, mike, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } )
 	addFile( ctx, mike, "IMG_2330.HEIC", sql.Null[ int64 ] { } )
+	addFile( ctx, mike, "README.md", sql.Null[ int64 ] { } )
 
 	{
 		addFileToAlbum( ctx, mike, "1.jpg", variant )
@@ -1427,7 +1428,11 @@ func writeFileFSync( name string, r io.Reader, perm os.FileMode ) error {
 	return cmp.Or( err, err1, err2 )
 }
 
-func saveAsset( r io.Reader, filename string ) error {
+func saveAsset( r io.ReadSeeker, filename string ) error {
+	_, err := r.Seek( 0, io.SeekStart )
+	if err != nil {
+		return err
+	}
 	return writeFileFSync( "assets/" + filename, r, 0644 )
 }
 
@@ -1673,7 +1678,6 @@ func addAsset( ctx context.Context, r io.ReadSeeker, filename string ) ( AddedAs
 				thumbnail, thumbhash = generateThumbnail( first_frame )
 
 				asset_filename := hex.EncodeToString( sha256[:] ) + extension
-				_ = try1( r.Seek( 0, io.SeekStart ) )
 				err := saveAsset( r, asset_filename )
 				if err != nil {
 					return AddedAsset { }, err
@@ -1684,6 +1688,11 @@ func addAsset( ctx context.Context, r io.ReadSeeker, filename string ) ( AddedAs
 
 	if asset_type == "" {
 		asset_type = "raw"
+		asset_filename := hex.EncodeToString( sha256[:] ) + extension
+		err := saveAsset( r, asset_filename )
+		if err != nil {
+			return AddedAsset { }, err
+		}
 	}
 
 	err := queries.CreateAsset( ctx, sqlc.CreateAssetParams {
