@@ -18,7 +18,7 @@ templ fullscreen( base_urls BaseURLs ) {
 	// image until the new one has loaded, so this has to go inside the for loop so
 	// the imgs are deleted and recreated when cycling between photos or you get
 	// visual glitches
-	<template x-if="fullscreen == visible_start + i - 1">
+	<template x-if="fullscreen != null">
 		<dialog class="fullscreen"
 			x-data="{
 				metadata: null,
@@ -37,7 +37,7 @@ templ fullscreen( base_urls BaseURLs ) {
 				},
 
 				GetPhoto() {
-					return this.variant == null ? Alpine.store( 'photos' )[ fullscreen ] : this.metadata.Variants[ this.variant ];
+					return this.variant == null ? Alpine.store( 'photos' )[ this.fullscreen ] : this.metadata.Variants[ this.variant ];
 				},
 
 				VariantName( variant ) {
@@ -56,17 +56,19 @@ templ fullscreen( base_urls BaseURLs ) {
 			@keydown.window.right="EnterFullscreen( fullscreen + 1 )"
 		>
 			<template x-if="GetPhoto().type == null">
-				<div class="stack">
-					<img x-init="MakeThumbhash( $el, GetPhoto().thumbhash )" x-show="!thumbnail_loaded && !asset_loaded">
-					<img :src={ fmt.Sprintf( "'%s' + GetPhoto().asset", base_urls.Thumbnail ) }
-						 @load="thumbnail_loaded = true"
-						 @error="thumbnail_failed = true"
-						 x-show="!thumbnail_failed && !asset_loaded">
-					<img :src={ fmt.Sprintf( "'%s' + GetPhoto().asset", base_urls.Asset ) }
-						 @load="asset_loaded = true"
-						 @error="asset_failed = true"
-						 x-show="!asset_failed">
-				</div>
+				<template x-for="f in [fullscreen]" :key="f">
+					<div class="stack">
+						<img x-init="MakeThumbhash( $el, GetPhoto().thumbhash )" x-show="!thumbnail_loaded && !asset_loaded">
+						<img :src={ fmt.Sprintf( "'%s' + GetPhoto().asset", base_urls.Thumbnail ) }
+							 @load="thumbnail_loaded = true"
+							 @error="thumbnail_failed = true"
+							 x-show="!thumbnail_failed && !asset_loaded">
+						<img :src={ fmt.Sprintf( "'%s' + GetPhoto().asset", base_urls.Asset ) }
+							 @load="asset_loaded = true"
+							 @error="asset_failed = true"
+							 x-show="!asset_failed">
+					</div>
+				</template>
 			</template>
 
 			<template x-if="GetPhoto().type == 'video'">
@@ -289,10 +291,11 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 		}
 		</style>
 
+		@fullscreen( base_urls )
+
 		<div class="grid" :style="{ top: top }">
-			<template x-for="i in visible_end - visible_start">
+			<template x-for="i in visible_end - visible_start" :key="i">
 				<span style="display: contents">
-					@fullscreen( base_urls )
 
 					<a class="thumbnail stack"
 						:href={ fmt.Sprintf( "'%s' + $store.photos[ visible_start + i - 1 ].asset", base_urls.Asset ) }
