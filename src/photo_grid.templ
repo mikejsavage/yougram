@@ -294,18 +294,16 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 		@fullscreen( base_urls )
 
 		<div class="grid" :style="{ top: top }">
-			<template x-for="i in visible_end - visible_start" :key="i">
-				<span style="display: contents">
-
-					<a class="thumbnail stack"
-						:href={ fmt.Sprintf( "'%s' + $store.photos[ visible_start + i - 1 ].asset", base_urls.Asset ) }
-						:class="$store.selected.has( visible_start + i - 1 ) ? 'selected' : ''"
-						@click.prevent="PhotoClicked( visible_start + i - 1, $event.shiftKey )"
-					>
-						<img x-init="MakeThumbhash( $el, $store.photos[ visible_start + i - 1 ].thumbhash )">
-						<img :src={ fmt.Sprintf( "'%s' + $store.photos[ visible_start + i - 1 ].asset", base_urls.Thumbnail ) } loading="lazy" onload="this.previousElementSibling.remove()" @error="$el.style.display = 'none'">
-					</a>
-				</span>
+			<template x-for="i in visible_end - visible_start" :key="visible_start + i">
+				<a class="thumbnail stack"
+					:href={ fmt.Sprintf( "'%s' + $store.photos[ visible_start + i - 1 ].asset", base_urls.Asset ) }
+					:class="$store.selected.has( visible_start + i - 1 ) ? 'selected' : ''"
+					@click.prevent="PhotoClicked( visible_start + i - 1, $event.shiftKey )"
+					x-data="{ loaded: false }"
+				>
+					<img :src={ fmt.Sprintf( "'%s' + $store.photos[ visible_start + i - 1 ].asset", base_urls.Thumbnail ) } loading="lazy" @load="loaded = true">
+					<img x-init="MakeThumbhash( $el, $store.photos[ visible_start + i - 1 ].thumbhash )" x-show="!loaded">
+				</a>
 			</template>
 		</div>
 	</div>
