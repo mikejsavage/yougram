@@ -249,7 +249,11 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 				-webkit-user-select: none;
 			}
 
-			.selected {
+			a {
+				outline: 0;
+			}
+
+			a.selected {
 				outline: red 2px solid;
 				outline-offset: -2px;
 			}
