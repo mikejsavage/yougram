@@ -12,32 +12,32 @@ and build them like so (assumes you clone all the dependencies into the ffmpeg d
 #! /bin/sh
 
 f() {
-    zig build -Doptimize=ReleaseSmall -Dtarget=$1
+    zig build -Doptimize=ReleaseSmall -Dtarget=$1 -Dcpu=$2
 
     cd libmp3lame
-    zig build -Doptimize=ReleaseFast -Dtarget=$1
+    zig build -Doptimize=ReleaseFast -Dtarget=$1 -Dcpu=$2
 
     cd ../libogg
-    zig build -Doptimize=ReleaseFast -Dtarget=$1
+    zig build -Doptimize=ReleaseFast -Dtarget=$1 -Dcpu=$2
 
     cd ../libvorbis
-    zig build -Doptimize=ReleaseFast -Dtarget=$1
+    zig build -Doptimize=ReleaseFast -Dtarget=$1 -Dcpu=$2
 
     cd ../zlib
-    zig build -Doptimize=ReleaseFast -Dtarget=$1
+    zig build -Doptimize=ReleaseFast -Dtarget=$1 -Dcpu=$2
 
     cd ..
-    cp zig-out/lib/libffmpeg.a blah/libffmpeg_$2.a
-    cp libmp3lame/zig-out/lib/libmp3lame.a blah/libmp3lame_$2.a
-    cp libogg/zig-out/lib/libogg.a blah/libogg_$2.a
-    cp libvorbis/zig-out/lib/libvorbis.a blah/libvorbis_$2.a
-    cp zlib/zig-out/lib/libz.a blah/libz_$2.a
+    cp zig-out/lib/libffmpeg.a blah/libffmpeg_$3.a
+    cp libmp3lame/zig-out/lib/libmp3lame.a blah/libmp3lame_$3.a
+    cp libogg/zig-out/lib/libogg.a blah/libogg_$3.a
+    cp libvorbis/zig-out/lib/libvorbis.a blah/libvorbis_$3.a
+    cp zlib/zig-out/lib/libz.a blah/libz_$3.a
 }
 
 mkdir -p blah
-f x86_64-linux-musl linux_amd64
-f aarch64-linux-musl linux_arm64
-f aarch64-macos darwin_arm64
+f x86_64-linux-musl x86_64_v3 linux_amd64
+f aarch64-linux-musl baseline linux_arm64
+f aarch64-macos apple_m1 darwin_arm64
 ```
 
 ffmpeg `ReleaseSmall` enables specific size optimisations in ffmpeg that make it much smaller,
