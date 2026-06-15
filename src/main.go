@@ -1008,7 +1008,7 @@ type Photo struct {
 	ID int64 `json:"id"`
 	Asset string `json:"asset"`
 	Thumbhash string `json:"thumbhash"`
-	Type string `json:"string,omitempty"`
+	Type string `json:"type,omitempty"`
 }
 
 func typeIfNotImage( t string ) string {
