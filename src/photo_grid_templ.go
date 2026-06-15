@@ -118,33 +118,33 @@ func photogrid(photos []Photo, base_urls BaseURLs) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"grid\" :style=\"{ top: top }\"><template x-for=\"i in visible_end - visible_start\" :key=\"visible_start + i\"><a class=\"thumbnail stack\" :href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"grid\" :style=\"{ top: top }\"><template x-for=\"i in Array.from( { length: visible_end - visible_start }, ( _, i ) => visible_start + i )\" :key=\"i\"><a class=\"thumbnail stack\" :href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("'%s' + $store.photos[ visible_start + i - 1 ].asset", base_urls.Asset))
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("'%s' + $store.photos[ i ].asset", base_urls.Asset))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 303, Col: 98}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 303, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" :class=\"$store.selected.has( visible_start + i - 1 ) ? 'selected' : ''\" @click.prevent=\"PhotoClicked( visible_start + i - 1, $event.shiftKey )\" x-data=\"{ loaded: false }\"><img :src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" :class=\"$store.selected.has( i ) ? 'selected' : ''\" @click.prevent=\"PhotoClicked( i, $event.shiftKey )\" x-data=\"{ loaded: false }\"><img :src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
-		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("'%s' + $store.photos[ visible_start + i - 1 ].asset", base_urls.Thumbnail))
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("'%s' + $store.photos[ i ].asset", base_urls.Thumbnail))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 308, Col: 106}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `photo_grid.templ`, Line: 308, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" loading=\"lazy\" @load=\"loaded = true\"> <img x-init=\"MakeThumbhash( $el, $store.photos[ visible_start + i - 1 ].thumbhash )\" x-show=\"!loaded\"></a></template></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" loading=\"lazy\" @load=\"loaded = true\"> <img x-init=\"MakeThumbhash( $el, $store.photos[ i ].thumbhash )\" x-show=\"!loaded\"></a></template></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
