@@ -149,8 +149,9 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 			UpdateLayout() {
 				const grid = this.GridSpec();
 
-				const top = window.visualViewport.pageTop - window.visualViewport.height * 0.5;
-				const bottom = window.visualViewport.pageTop + window.visualViewport.height * 1.5;
+				const margin = window.visualViewport.height * 0.5;
+				const top = window.visualViewport.pageTop - margin;
+				const bottom = window.visualViewport.pageTop + window.visualViewport.height + margin;
 
 				const row_height = parseFloat( grid.row_height ) + parseFloat( grid.gap );
 
