@@ -75,6 +75,8 @@ templ fullscreen( base_urls BaseURLs ) {
 				<div class="stack">
 					<img x-init="MakeThumbhash( $el, GetPhoto().thumbhash )" x-show="!asset_loaded">
 					<video controls :src={ fmt.Sprintf( "'%s' + GetPhoto().asset", base_urls.Asset ) }
+						x-init="$el.volume = localStorage.getItem( 'video-volume' ) ?? $el.volume; $el.muted = localStorage.getItem( 'video-muted' ) == 'true'"
+						@volumechange="localStorage.setItem( 'video-volume', $el.volume ); localStorage.setItem( 'video-muted', $el.muted )"
 						@click.stop
 						@loadeddata="asset_loaded = true"
 						@error="asset_failed = true"
