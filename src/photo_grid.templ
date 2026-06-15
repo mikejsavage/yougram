@@ -147,7 +147,6 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 			},
 
 			UpdateLayout() {
-				// TODO: account for grid pos on page
 				const grid = this.GridSpec();
 
 				const top = window.visualViewport.pageTop - window.visualViewport.height * 0.5;
@@ -220,7 +219,7 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 				display: grid;
 				grid-template-columns: repeat( auto-fill, minmax( 6cm, 1fr ) );
 				gap: 0.2rem;
-				padding: 0.5rem;
+				padding: 0.2rem;
 			}
 
 			@media (max-width: 479px) {
