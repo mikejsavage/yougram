@@ -1317,6 +1317,8 @@ func viewAlbumAsGuest( w http.ResponseWriter, r *http.Request ) {
 				ID: photo.ID,
 				Asset: hex.EncodeToString( photo.Sha256 ),
 				Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
+				RawFilename: sel( photo.Type == "raw", photo.OriginalFilename, "" ),
+				Type: typeIfNotImage( photo.Type ),
 			} )
 		}
 
