@@ -123,7 +123,7 @@ VALUES( ?, ?, ? )
 RETURNING id;
 
 -- name: GetUserPhotos :many
-SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.thumbhash, photo_primary_asset.type
+SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.original_filename, photo_primary_asset.thumbhash, photo_primary_asset.type
 FROM photo
 INNER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
 WHERE owner = ? ORDER BY photo_primary_asset.date_taken DESC;
@@ -263,7 +263,7 @@ WHERE album.id = ? AND album.delete_at IS NULL;
 SELECT owner FROM album WHERE id = ?;
 
 -- name: GetAlbumPhotos :many
-SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.thumbhash, photo_primary_asset.type
+SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.original_filename, photo_primary_asset.thumbhash, photo_primary_asset.type
 FROM photo
 INNER JOIN album_photo ON album_photo.photo_id = photo.id
 INNER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id

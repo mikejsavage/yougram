@@ -433,7 +433,7 @@ func (q *Queries) GetAlbumOwner(ctx context.Context, id int64) (int64, error) {
 }
 
 const getAlbumPhotos = `-- name: GetAlbumPhotos :many
-SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.thumbhash, photo_primary_asset.type
+SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.original_filename, photo_primary_asset.thumbhash, photo_primary_asset.type
 FROM photo
 INNER JOIN album_photo ON album_photo.photo_id = photo.id
 INNER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
@@ -442,10 +442,11 @@ ORDER BY photo_primary_asset.date_taken ASC
 `
 
 type GetAlbumPhotosRow struct {
-	ID        int64
-	Sha256    []byte
-	Thumbhash []byte
-	Type      string
+	ID               int64
+	Sha256           []byte
+	OriginalFilename string
+	Thumbhash        []byte
+	Type             string
 }
 
 func (q *Queries) GetAlbumPhotos(ctx context.Context, albumID int64) ([]GetAlbumPhotosRow, error) {
@@ -460,6 +461,7 @@ func (q *Queries) GetAlbumPhotos(ctx context.Context, albumID int64) ([]GetAlbum
 		if err := rows.Scan(
 			&i.ID,
 			&i.Sha256,
+			&i.OriginalFilename,
 			&i.Thumbhash,
 			&i.Type,
 		); err != nil {
@@ -997,17 +999,18 @@ func (q *Queries) GetUserPassword(ctx context.Context, id int64) (string, error)
 }
 
 const getUserPhotos = `-- name: GetUserPhotos :many
-SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.thumbhash, photo_primary_asset.type
+SELECT photo.id, photo_primary_asset.sha256, photo_primary_asset.original_filename, photo_primary_asset.thumbhash, photo_primary_asset.type
 FROM photo
 INNER JOIN photo_primary_asset ON photo.id = photo_primary_asset.photo_id
 WHERE owner = ? ORDER BY photo_primary_asset.date_taken DESC
 `
 
 type GetUserPhotosRow struct {
-	ID        int64
-	Sha256    []byte
-	Thumbhash []byte
-	Type      string
+	ID               int64
+	Sha256           []byte
+	OriginalFilename string
+	Thumbhash        []byte
+	Type             string
 }
 
 func (q *Queries) GetUserPhotos(ctx context.Context, owner sql.NullInt64) ([]GetUserPhotosRow, error) {
@@ -1022,6 +1025,7 @@ func (q *Queries) GetUserPhotos(ctx context.Context, owner sql.NullInt64) ([]Get
 		if err := rows.Scan(
 			&i.ID,
 			&i.Sha256,
+			&i.OriginalFilename,
 			&i.Thumbhash,
 			&i.Type,
 		); err != nil {

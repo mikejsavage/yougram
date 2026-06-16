@@ -231,6 +231,15 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 				}
 			}
 
+			a {
+				outline: 0;
+			}
+
+			a.selected {
+				outline: red 2px solid;
+				outline-offset: -2px;
+			}
+
 			.stack {
 				display: grid;
 				& > * {
@@ -246,18 +255,24 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 				object-position: 50% 50%;
 			}
 
-			img {
+			.raw {
+				background: repeating-linear-gradient(135deg,transparent,transparent 10px,#eee 10px,#eee 20px);
+				display: flex;
+				padding: 1rem;
+				align-items: center;
+				justify-content: center;
+				text-align: center;
+				word-break: break-word;
+				font-size: 2rem;
+				color: #000;
+				text-decoration: none;
 				user-select: none;
 				-webkit-user-select: none;
 			}
 
-			a {
-				outline: 0;
-			}
-
-			a.selected {
-				outline: red 2px solid;
-				outline-offset: -2px;
+			img {
+				user-select: none;
+				-webkit-user-select: none;
 			}
 
 			.fullscreen {
@@ -301,15 +316,29 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 
 		<div class="grid" :style="{ top: top }">
 			<template x-for="i in Array.from( { length: visible_end - visible_start }, ( _, i ) => visible_start + i )" :key="i">
-				<a class="thumbnail stack"
-					:href={ fmt.Sprintf( "'%s' + $store.photos[ i ].asset", base_urls.Asset ) }
-					:class="$store.selected.has( i ) ? 'selected' : ''"
-					@click.prevent="PhotoClicked( i, $event.shiftKey )"
-					x-data="{ loaded: false }"
-				>
-					<img :src={ fmt.Sprintf( "'%s' + $store.photos[ i ].asset", base_urls.Thumbnail ) } loading="lazy" @load="loaded = true">
-					<img x-init="MakeThumbhash( $el, $store.photos[ i ].thumbhash )" x-show="!loaded">
-				</a>
+				<span style="display: contents">
+					<template x-if="$store.photos[ i ].type != 'raw'">
+						<a class="thumbnail stack"
+							:href={ fmt.Sprintf( "'%s' + $store.photos[ i ].asset", base_urls.Asset ) }
+							:class="$store.selected.has( i ) ? 'selected' : ''"
+							@click.prevent="PhotoClicked( i, $event.shiftKey )"
+							x-data="{ loaded: false }"
+						>
+							<img :src={ fmt.Sprintf( "'%s' + $store.photos[ i ].asset", base_urls.Thumbnail ) } loading="lazy" @load="loaded = true">
+							<img x-init="MakeThumbhash( $el, $store.photos[ i ].thumbhash )" x-show="!loaded">
+						</a>
+					</template>
+
+					<template x-if="$store.photos[ i ].type == 'raw'">
+						<a class="raw"
+							:href={ fmt.Sprintf( "'%s' + $store.photos[ i ].asset", base_urls.Asset ) }
+							:class="$store.selected.has( i ) ? 'selected' : ''"
+							@click.prevent="PhotoClicked( i, $event.shiftKey )"
+							x-text="$store.photos[ i ].filename"
+						>
+						</a>
+					</template>
+				</span>
 			</template>
 		</div>
 	</div>

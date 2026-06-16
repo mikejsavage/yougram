@@ -282,7 +282,7 @@ func initDB( memory_db bool ) {
 	addFileToAlbum( ctx, mike, "4_webp_ll.webp", france )
 	addFile( ctx, mike, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } )
 	addFile( ctx, mike, "IMG_2330.HEIC", sql.Null[ int64 ] { } )
-	addFile( ctx, mike, "README.md", sql.Null[ int64 ] { } )
+	addFileToAlbum( ctx, mike, "README.md", helsinki )
 
 	{
 		addFileToAlbum( ctx, mike, "1.jpg", variant )
@@ -1007,7 +1007,8 @@ func downloadPhotosAsGuest( w http.ResponseWriter, r *http.Request ) {
 type Photo struct {
 	ID int64 `json:"id"`
 	Asset string `json:"asset"`
-	Thumbhash string `json:"thumbhash"`
+	Thumbhash string `json:"thumbhash,omitempty"`
+	RawFilename string `json:"filename,omitempty"`
 	Type string `json:"type,omitempty"`
 }
 
@@ -1022,6 +1023,7 @@ func viewLibrary( w http.ResponseWriter, r *http.Request, user User ) {
 			ID: photo.ID,
 			Asset: hex.EncodeToString( photo.Sha256 ),
 			Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
+			RawFilename: sel( photo.Type == "raw", photo.OriginalFilename, "" ),
 			Type: typeIfNotImage( photo.Type ),
 		} )
 	}
@@ -1038,6 +1040,7 @@ func viewAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 				ID: photo.ID,
 				Asset: hex.EncodeToString( photo.Sha256 ),
 				Thumbhash: base64.StdEncoding.EncodeToString( photo.Thumbhash ),
+				RawFilename: sel( photo.Type == "raw", photo.OriginalFilename, "" ),
 				Type: typeIfNotImage( photo.Type ),
 			} )
 		}
