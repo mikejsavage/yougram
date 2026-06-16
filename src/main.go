@@ -1905,6 +1905,8 @@ func startHttpServer( addr string, _404_to_403 bool, routes []Route ) *http.Serv
 
 	mux := http.NewServeMux()
 	mux.HandleFunc( "/", func( w http.ResponseWriter, r *http.Request ) {
+		w.Header().Set( "Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; form-action 'self';" )
+
 		// start := time.Now()
 		defer func() {
 			// dt := time.Now().Sub( start )
