@@ -55,35 +55,37 @@ templ fullscreen( base_urls BaseURLs ) {
 			@keydown.window.left="EnterFullscreen( fullscreen - 1 )"
 			@keydown.window.right="EnterFullscreen( fullscreen + 1 )"
 		>
-			<template x-if="GetPhoto().type == null">
-				<template x-for="f in [fullscreen]" :key="f">
+			<span style="display: contents" @keydown.window.f="$el.requestFullscreen()">
+				<template x-if="GetPhoto().type == null">
+					<template x-for="f in [fullscreen]" :key="f">
+						<div class="stack">
+							<img x-init="MakeThumbhash( $el, GetPhoto().thumbhash )" x-show="!thumbnail_loaded && !asset_loaded">
+							<img :src={ fmt.Sprintf( "'%s' + GetPhoto().asset", base_urls.Thumbnail ) }
+								 @load="thumbnail_loaded = true"
+								 @error="thumbnail_failed = true"
+								 x-show="!thumbnail_failed && !asset_loaded">
+							<img :src={ fmt.Sprintf( "'%s' + GetPhoto().asset", base_urls.Asset ) }
+								 @load="asset_loaded = true"
+								 @error="asset_failed = true"
+								 x-show="!asset_failed">
+						</div>
+					</template>
+				</template>
+
+				<template x-if="GetPhoto().type == 'video'">
 					<div class="stack">
-						<img x-init="MakeThumbhash( $el, GetPhoto().thumbhash )" x-show="!thumbnail_loaded && !asset_loaded">
-						<img :src={ fmt.Sprintf( "'%s' + GetPhoto().asset", base_urls.Thumbnail ) }
-							 @load="thumbnail_loaded = true"
-							 @error="thumbnail_failed = true"
-							 x-show="!thumbnail_failed && !asset_loaded">
-						<img :src={ fmt.Sprintf( "'%s' + GetPhoto().asset", base_urls.Asset ) }
-							 @load="asset_loaded = true"
-							 @error="asset_failed = true"
-							 x-show="!asset_failed">
+						<img x-init="MakeThumbhash( $el, GetPhoto().thumbhash )" x-show="!asset_loaded">
+						<video controls :src={ fmt.Sprintf( "'%s' + GetPhoto().asset", base_urls.Asset ) }
+							x-init="$el.volume = localStorage.getItem( 'video-volume' ) ?? $el.volume; $el.muted = localStorage.getItem( 'video-muted' ) == 'true'"
+							@volumechange="localStorage.setItem( 'video-volume', $el.volume ); localStorage.setItem( 'video-muted', $el.muted )"
+							@click.stop
+							@loadeddata="asset_loaded = true"
+							@error="asset_failed = true"
+							x-show="!asset_failed">
+						</video>
 					</div>
 				</template>
-			</template>
-
-			<template x-if="GetPhoto().type == 'video'">
-				<div class="stack">
-					<img x-init="MakeThumbhash( $el, GetPhoto().thumbhash )" x-show="!asset_loaded">
-					<video controls :src={ fmt.Sprintf( "'%s' + GetPhoto().asset", base_urls.Asset ) }
-						x-init="$el.volume = localStorage.getItem( 'video-volume' ) ?? $el.volume; $el.muted = localStorage.getItem( 'video-muted' ) == 'true'"
-						@volumechange="localStorage.setItem( 'video-volume', $el.volume ); localStorage.setItem( 'video-muted', $el.muted )"
-						@click.stop
-						@loadeddata="asset_loaded = true"
-						@error="asset_failed = true"
-						x-show="!asset_failed">
-					</video>
-				</div>
-			</template>
+			</span>
 
 			<div class="settings" @click.stop>
 				<template x-if="metadata != null">
