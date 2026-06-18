@@ -174,12 +174,7 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 
 			EnterFullscreen( idx ) {
 				const photos = Alpine.store( "photos" );
-
-				idx = Math.max( 0, Math.min( photos.length - 1, idx ) );
-				if( this.fullscreen == idx )
-					return;
-
-				this.fullscreen = idx;
+				this.fullscreen = Math.max( 0, Math.min( photos.length - 1, idx ) );
 			},
 
 			PhotoClicked( idx, shift ) {
