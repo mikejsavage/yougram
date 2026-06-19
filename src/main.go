@@ -808,6 +808,33 @@ func shareAlbum( w http.ResponseWriter, r *http.Request, user User ) {
 	w.Header().Set( "HX-Trigger", sel( shared == 0, "album:stop_sharing", "album:start_sharing" ) )
 }
 
+func setAlbumGuestPassword( w http.ResponseWriter, r *http.Request, user User ) {
+	album_id, err := strconv.ParseInt( r.PostFormValue( "album_id" ), 10, 64 )
+	if err != nil {
+		httpError( w, http.StatusBadRequest )
+		return
+	}
+
+	owner := queryOptional( queries.GetAlbumOwner( r.Context(), album_id ) )
+	if !owner.Valid {
+		httpError( w, http.StatusNotFound )
+		return
+	}
+	if owner.V != user.ID {
+		httpError( w, http.StatusForbidden )
+		return
+	}
+
+	guest_password := r.PostFormValue( "guest_password" )
+	try( queries.SetAlbumGuestPassword( r.Context(), sqlc.SetAlbumGuestPasswordParams {
+		GuestPassword: sql.NullString { guest_password, guest_password != "" },
+		ID: album_id,
+		Owner: user.ID,
+	} ) )
+
+	_ = try1( io.WriteString( w, green_checkmark ) )
+}
+
 func parsePhotoIDs( str string ) ( []int64, error ) {
 	split := strings.Split( str, "," )
 	ids := make( []int64, len( split ) )
@@ -2142,6 +2169,7 @@ func main() {
 		{ "POST", "/Special:albumSettings", requireAuth( updateAlbumSettings ) },
 		{ "GET",  "/Special:checkAlbumURL", requireAuth( checkAlbumURL ) },
 		{ "POST", "/Special:shareAlbum", requireAuth( shareAlbum ) },
+		{ "POST", "/Special:setAlbumGuestPassword", requireAuth( setAlbumGuestPassword ) },
 		{ "DELETE", "/{owner}/{album}", requireAuth( deleteAlbum ) },
 
 		{ "PUT",  "/Special:addToAlbum/{owner}/{album}", requireAuth( addToAlbum ) },

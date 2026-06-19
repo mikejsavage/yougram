@@ -284,7 +284,10 @@ FROM album WHERE ? BETWEEN autoassign_start_date AND autoassign_end_date;
 UPDATE album SET name = ?, url_slug = ? WHERE id = ? AND owner = ?;
 
 -- name: SetAlbumIsShared :exec
-UPDATE album SET shared = ?, guest_password = ? WHERE id = ? AND owner = ?;
+UPDATE album SET shared = ? WHERE id = ? AND owner = ?;
+
+-- name: SetAlbumGuestPassword :exec
+UPDATE album SET guest_password = ? WHERE id = ? AND owner = ?;
 
 -- name: IsAlbumURLInUse :one
 SELECT EXISTS ( SELECT 1 FROM album WHERE owner = ? AND url_slug = ? );

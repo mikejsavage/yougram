@@ -53,7 +53,6 @@ templ loginFormTemplate() {
 	<form method="POST"
 		hx-post="/Special:authenticate"
 		hx-target="#error"
-		hx-swap="textContent"
 		hx-disabled-elt="find input"
 		hx-on::before-request="htmx.find('#error').innerText = ''"
 	>
@@ -398,7 +397,6 @@ templ guestAlbumPasswordForm( album sqlc.GetAlbumByURLRow, secret string ) {
 	<form
 		hx-post={ fmt.Sprintf( "/%s/%s/%s", album.OwnerUsername, album.UrlSlug, secret ) }
 		hx-target="#error"
-		hx-swap="textContent"
 		hx-disabled-elt="find input"
 		hx-on::before-request="htmx.find('#error').innerText = ''"
 	>

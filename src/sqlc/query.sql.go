@@ -1161,24 +1161,33 @@ func (q *Queries) RestoreDeletedAlbum(ctx context.Context, arg RestoreDeletedAlb
 	return err
 }
 
-const setAlbumIsShared = `-- name: SetAlbumIsShared :exec
-UPDATE album SET shared = ?, guest_password = ? WHERE id = ? AND owner = ?
+const setAlbumGuestPassword = `-- name: SetAlbumGuestPassword :exec
+UPDATE album SET guest_password = ? WHERE id = ? AND owner = ?
 `
 
-type SetAlbumIsSharedParams struct {
-	Shared        int64
+type SetAlbumGuestPasswordParams struct {
 	GuestPassword sql.NullString
 	ID            int64
 	Owner         int64
 }
 
+func (q *Queries) SetAlbumGuestPassword(ctx context.Context, arg SetAlbumGuestPasswordParams) error {
+	_, err := q.db.ExecContext(ctx, setAlbumGuestPassword, arg.GuestPassword, arg.ID, arg.Owner)
+	return err
+}
+
+const setAlbumIsShared = `-- name: SetAlbumIsShared :exec
+UPDATE album SET shared = ? WHERE id = ? AND owner = ?
+`
+
+type SetAlbumIsSharedParams struct {
+	Shared int64
+	ID     int64
+	Owner  int64
+}
+
 func (q *Queries) SetAlbumIsShared(ctx context.Context, arg SetAlbumIsSharedParams) error {
-	_, err := q.db.ExecContext(ctx, setAlbumIsShared,
-		arg.Shared,
-		arg.GuestPassword,
-		arg.ID,
-		arg.Owner,
-	)
+	_, err := q.db.ExecContext(ctx, setAlbumIsShared, arg.Shared, arg.ID, arg.Owner)
 	return err
 }
 
