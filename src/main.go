@@ -51,7 +51,6 @@ import (
 	"github.com/galdor/go-thumbhash"
 	"github.com/evanoberholster/imagemeta"
 	"github.com/evanoberholster/imagemeta/meta"
-	"github.com/fsnotify/fsnotify"
 
 	"golang.org/x/image/webp"
 
@@ -319,32 +318,6 @@ func initDB( memory_db bool ) {
 		} ) )
 	}
 	must( tx.Commit() )
-}
-
-func initFSWatcher() *fsnotify.Watcher {
-	watcher := must1( fsnotify.NewWatcher() )
-
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if ok && event.Has( fsnotify.Create ) {
-					fmt.Printf( "new file %s\n", event.Name )
-				}
-
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				log.Println( "error:", err )
-			}
-		}
-	}()
-
-	must( os.MkdirAll( "incoming", 0o755 ) )
-	must( watcher.Add( "incoming" ) )
-
-	return watcher
 }
 
 func exeChecksum() string {
@@ -2120,9 +2093,6 @@ func main() {
 		fmt.Printf( "You need to create a user by running \"%s create-user\" first!\n", os.Args[ 0 ] )
 		os.Exit( 1 )
 	}
-
-	fs_watcher := initFSWatcher()
-	defer fs_watcher.Close()
 
 	initBackgroundTaskRunner()
 	initGeocoder()
