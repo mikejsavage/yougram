@@ -251,7 +251,8 @@ func (q *Queries) EnableUser(ctx context.Context, username string) error {
 }
 
 const getAlbumAssets = `-- name: GetAlbumAssets :many
-SELECT asset.sha256 AS asset, asset.type FROM asset
+SELECT asset.sha256 AS asset, asset.type, asset.original_filename
+FROM asset
 INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
 INNER JOIN photo ON photo.id = photo_asset.photo_id
 INNER JOIN album_photo ON photo.id = album_photo.photo_id
@@ -269,8 +270,9 @@ type GetAlbumAssetsParams struct {
 }
 
 type GetAlbumAssetsRow struct {
-	Asset []byte
-	Type  string
+	Asset            []byte
+	Type             string
+	OriginalFilename string
 }
 
 func (q *Queries) GetAlbumAssets(ctx context.Context, arg GetAlbumAssetsParams) ([]GetAlbumAssetsRow, error) {
@@ -282,7 +284,7 @@ func (q *Queries) GetAlbumAssets(ctx context.Context, arg GetAlbumAssetsParams) 
 	var items []GetAlbumAssetsRow
 	for rows.Next() {
 		var i GetAlbumAssetsRow
-		if err := rows.Scan(&i.Asset, &i.Type); err != nil {
+		if err := rows.Scan(&i.Asset, &i.Type, &i.OriginalFilename); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -771,7 +773,7 @@ func (q *Queries) GetPhotoAlbums(ctx context.Context, photoID int64) ([]GetPhoto
 }
 
 const getPhotoAssets = `-- name: GetPhotoAssets :many
-SELECT asset.sha256 AS asset, asset.type, photo.owner = ? AS owned
+SELECT asset.sha256 AS asset, asset.type, asset.original_filename, photo.owner = ? AS owned
 FROM asset
 INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
 INNER JOIN photo ON photo.id = photo_asset.photo_id
@@ -789,9 +791,10 @@ type GetPhotoAssetsParams struct {
 }
 
 type GetPhotoAssetsRow struct {
-	Asset []byte
-	Type  string
-	Owned bool
+	Asset            []byte
+	Type             string
+	OriginalFilename string
+	Owned            bool
 }
 
 func (q *Queries) GetPhotoAssets(ctx context.Context, arg GetPhotoAssetsParams) ([]GetPhotoAssetsRow, error) {
@@ -808,7 +811,12 @@ func (q *Queries) GetPhotoAssets(ctx context.Context, arg GetPhotoAssetsParams) 
 	var items []GetPhotoAssetsRow
 	for rows.Next() {
 		var i GetPhotoAssetsRow
-		if err := rows.Scan(&i.Asset, &i.Type, &i.Owned); err != nil {
+		if err := rows.Scan(
+			&i.Asset,
+			&i.Type,
+			&i.OriginalFilename,
+			&i.Owned,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -823,7 +831,7 @@ func (q *Queries) GetPhotoAssets(ctx context.Context, arg GetPhotoAssetsParams) 
 }
 
 const getPhotoAssetsForGuest = `-- name: GetPhotoAssetsForGuest :many
-SELECT asset.sha256 AS asset, asset.type, EXISTS(
+SELECT asset.sha256 AS asset, asset.type, asset.original_filename, EXISTS(
 	SELECT 1 FROM album_photo
 	WHERE album_photo.photo_id = ? AND album_photo.album_id = ?
 ) AS has_permission
@@ -845,9 +853,10 @@ type GetPhotoAssetsForGuestParams struct {
 }
 
 type GetPhotoAssetsForGuestRow struct {
-	Asset         []byte
-	Type          string
-	HasPermission int64
+	Asset            []byte
+	Type             string
+	OriginalFilename string
+	HasPermission    int64
 }
 
 func (q *Queries) GetPhotoAssetsForGuest(ctx context.Context, arg GetPhotoAssetsForGuestParams) ([]GetPhotoAssetsForGuestRow, error) {
@@ -865,7 +874,12 @@ func (q *Queries) GetPhotoAssetsForGuest(ctx context.Context, arg GetPhotoAssets
 	var items []GetPhotoAssetsForGuestRow
 	for rows.Next() {
 		var i GetPhotoAssetsForGuestRow
-		if err := rows.Scan(&i.Asset, &i.Type, &i.HasPermission); err != nil {
+		if err := rows.Scan(
+			&i.Asset,
+			&i.Type,
+			&i.OriginalFilename,
+			&i.HasPermission,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

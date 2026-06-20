@@ -99,7 +99,8 @@ SELECT thumbnail, original_filename, EXISTS(
 FROM asset WHERE sha256 = ?;
 
 -- name: GetAlbumAssets :many
-SELECT asset.sha256 AS asset, asset.type FROM asset
+SELECT asset.sha256 AS asset, asset.type, asset.original_filename
+FROM asset
 INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
 INNER JOIN photo ON photo.id = photo_asset.photo_id
 INNER JOIN album_photo ON photo.id = album_photo.photo_id
@@ -150,7 +151,7 @@ INNER JOIN user ON photo.owner = user.id
 WHERE photo.id = ?;
 
 -- name: GetPhotoAssets :many
-SELECT asset.sha256 AS asset, asset.type, photo.owner = ? AS owned
+SELECT asset.sha256 AS asset, asset.type, asset.original_filename, photo.owner = ? AS owned
 FROM asset
 INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
 INNER JOIN photo ON photo.id = photo_asset.photo_id
@@ -160,7 +161,7 @@ WHERE photo.id = ? AND (
 );
 
 -- name: GetPhotoAssetsForGuest :many
-SELECT asset.sha256 AS asset, asset.type, EXISTS(
+SELECT asset.sha256 AS asset, asset.type, asset.original_filename, EXISTS(
 	SELECT 1 FROM album_photo
 	WHERE album_photo.photo_id = ? AND album_photo.album_id = ?
 ) AS has_permission

@@ -928,6 +928,7 @@ func serveAlbumZip( w http.ResponseWriter, r *http.Request, album sqlc.GetAlbumB
 		files[ i ] = ZipFile {
 			Sha256: row.Asset,
 			Type: row.Type,
+			OriginalFilename: row.OriginalFilename,
 		}
 	}
 
@@ -973,6 +974,7 @@ func downloadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
 			files = append( files, ZipFile {
 				Sha256: row.Asset,
 				Type: row.Type,
+				OriginalFilename: row.OriginalFilename,
 			} )
 		}
 	}
@@ -1022,6 +1024,7 @@ func downloadPhotosAsGuest( w http.ResponseWriter, r *http.Request ) {
 				files = append( files, ZipFile {
 					Sha256: row.Asset,
 					Type: row.Type,
+					OriginalFilename: row.OriginalFilename,
 				} )
 			}
 		}
@@ -1831,18 +1834,21 @@ func pathPhotoHandler( w http.ResponseWriter, r *http.Request, user User, handle
 type ZipFile struct {
 	Sha256 []byte
 	Type string
+	OriginalFilename string
 }
 
-func getAssetDirAndExtensions( asset_type string, heic_as_jpeg bool, jxl_as_jpeg bool ) ( string, string, string ) {
-	if heic_as_jpeg && asset_type == "heic" {
-		return "generated", "heic.jpg", "jpg"
+func getAssetDirAndExtensions( original_filename string, heic_as_jpeg bool, jxl_as_jpeg bool ) ( string, string, string ) {
+	ext := normalizedExtension( original_filename )
+
+	if heic_as_jpeg && ext == "heic" {
+		return "generated", ".heic.jpg", ".jpg"
 	}
 
-	if jxl_as_jpeg && asset_type == "jxl" {
-		return "generated", "jxl.jpg", "jpg"
+	if jxl_as_jpeg && ext == "jxl" {
+		return "generated", ".jxl.jpg", ".jpg"
 	}
 
-	return "assets", asset_type, asset_type
+	return "assets", ext, ext
 }
 
 func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, jxl_as_jpeg bool, w http.ResponseWriter ) {
@@ -1851,10 +1857,10 @@ func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, jxl_as_jpeg
 	content_length := int64( end_of_central_directory_size )
 
 	for _, asset := range assets {
-		dir, disk_extension, zip_extension := getAssetDirAndExtensions( asset.Type, heic_as_jpeg, jxl_as_jpeg )
+		dir, disk_extension, zip_extension := getAssetDirAndExtensions( asset.OriginalFilename, heic_as_jpeg, jxl_as_jpeg )
 
 		filename := hex.EncodeToString( asset.Sha256 )
-		f := try1( os.Open( dir + "/" + filename + "." + disk_extension ) )
+		f := try1( os.Open( dir + "/" + filename + disk_extension ) )
 		info := try1( f.Stat() )
 		try( f.Close() )
 
@@ -1863,7 +1869,7 @@ func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, jxl_as_jpeg
 		const data_descriptor_size = 16
 		content_length += local_file_header_size + central_directory_entry_size + data_descriptor_size
 		content_length += info.Size()
-		content_length += 2 * int64( len( filename + "." + zip_extension ) )
+		content_length += 2 * int64( len( filename + zip_extension ) )
 	}
 
 	w.Header().Set( "Content-Disposition", fmt.Sprintf( "attachment; filename=\"%s.zip\"", filename ) )
@@ -1873,13 +1879,13 @@ func serveZip( filename string, assets []ZipFile, heic_as_jpeg bool, jxl_as_jpeg
 	archive := zip.NewWriter( w )
 
 	for _, asset := range assets {
-		dir, disk_extension, zip_extension := getAssetDirAndExtensions( asset.Type, heic_as_jpeg, jxl_as_jpeg )
+		dir, disk_extension, zip_extension := getAssetDirAndExtensions( asset.OriginalFilename, heic_as_jpeg, jxl_as_jpeg )
 
 		filename := hex.EncodeToString( asset.Sha256 )
-		a := try1( os.Open( dir + "/" + filename + "." + disk_extension ) )
+		a := try1( os.Open( dir + "/" + filename + disk_extension ) )
 
 		z := try1( archive.CreateHeader( &zip.FileHeader {
-			Name: filename + "." + zip_extension,
+			Name: filename + zip_extension,
 			Method: zip.Store,
 		} ) )
 		_ = try1( io.Copy( z, a ) )
