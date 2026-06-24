@@ -1951,7 +1951,7 @@ func startHttpServer( addr string, _404_to_403 bool, routes []Route ) *http.Serv
 
 	http_server := &http.Server{
 		Addr: addr,
-		Handler: mux,
+		Handler: http.NewCrossOriginProtection().Handler( mux ),
 	}
 
 	go func() {
