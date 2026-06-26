@@ -281,7 +281,6 @@ func initDB( memory_db bool ) {
 	addFileToAlbum( ctx, mike, "4_webp_ll.webp", france )
 	addFile( ctx, mike, "776AE6EC-FBF4-4549-BD58-5C442DA2860D.JPG", sql.Null[ int64 ] { } )
 	addFile( ctx, mike, "IMG_2330.HEIC", sql.Null[ int64 ] { } )
-	addFileToAlbum( ctx, mike, "README.md", helsinki )
 
 	{
 		addFileToAlbum( ctx, mike, "1.jpg", variant )
@@ -293,6 +292,7 @@ func initDB( memory_db bool ) {
 		} ) )
 	}
 
+	addFileToAlbum( ctx, mike, "README.md", helsinki )
 	addFileToAlbum( ctx, mike, "original.mp4", helsinki )
 
 	seagull := must1( hex.DecodeString( "cc85f99cd694c63840ff359e13610390f85c4ea0b315fc2b033e5839e7591949" ) )

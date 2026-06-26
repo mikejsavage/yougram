@@ -48,12 +48,20 @@ templ fullscreen( base_urls BaseURLs ) {
 					};
 					return emojis[ v.Type ] + ' ' + ( v.Description ?? v.OriginalFilename );
 				},
+
+				SwitchVariant( d ) {
+					if( this.metadata == null )
+						return;
+					this.variant = Math.max( 0, Math.min( this.metadata.Variants.length - 1, this.variant + d ) );
+				},
 			}"
 			:x-init="$el.showModal(); Reset(); metadata = await PhotoMetadata( $store.photos[ fullscreen ].id )"
 			@close="fullscreen = null"
 			@click="$el.close()"
 			@keydown.window.left="EnterFullscreen( fullscreen - 1 )"
 			@keydown.window.right="EnterFullscreen( fullscreen + 1 )"
+			@keydown.window.up="SwitchVariant( -1 )"
+			@keydown.window.down="SwitchVariant( +1 )"
 		>
 			<span style="display: contents" @keydown.window.f="$el.requestFullscreen()">
 				<template x-if="GetPhoto().type == null">
