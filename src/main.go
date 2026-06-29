@@ -83,6 +83,12 @@ var default_favicon_modtime = time.Date( 2026, time.May, 27, 0, 0, 0, 0, time.UT
 var favicon []byte
 var favicon_modtime time.Time
 
+//go:embed ffmpeg/COPYING.LGPLv2.1
+var ffmpeg_license string
+
+//go:embed ffmpeg/COPYING.LGPLv2
+var libmp3lame_license string
+
 var guest_url string
 
 func sel[ T any ]( p bool, t T, f T ) T {
@@ -1978,6 +1984,8 @@ func showHelpAndQuit() {
         Disable the given user account.
     enable-user [username]
         Re-enables a disabled account.
+    licenses
+        Print third party library licenses.
 `, os.Args[ 0 ] )
 	os.Exit( 1 )
 }
@@ -2083,6 +2091,12 @@ func main() {
 				showHelpAndQuit()
 			}
 			must( queries.EnableUser( context.Background(), unicodeNormalize( os.Args[ 2 ] ) ) )
+			os.Exit( 0 )
+
+		case "licenses":
+			fmt.Printf( "yougram embeds ffmpeg n5.1.2, which is licensed as follows:\n\n%s\n", ffmpeg_license )
+			fmt.Printf( "\n\n" )
+			fmt.Printf( "yougram embeds libmp3lame, which is licensed as follows:\n\n%s\n", libmp3lame_license )
 			os.Exit( 0 )
 
 		default: showHelpAndQuit()
