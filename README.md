@@ -163,7 +163,7 @@ https://templ.guide/quick-start/installation/.
 
 If you're using Nix/Devbox/etc, you can make a dev shell with go/gcc/glibc/sqlc/templ.
 
-Then you should be able to use the Makefile to compile yougram, or by hand:
+Then you should be able to use the justfile to compile yougram, or by hand:
 
 ```
 sqlc generate
