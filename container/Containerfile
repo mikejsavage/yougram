@@ -6,7 +6,7 @@ RUN zig build-exe -O ReleaseSmall -mcpu=baseline -fstrip prepare_container.zig
 
 # Compile yougram
 FROM docker.io/library/golang:1.24-alpine AS go
-RUN apk add --no-cache git ca-certificates make gcc g++ musl-dev
+RUN apk add --no-cache git ca-certificates just gcc g++ musl-dev
 
 # Make templ/sqlc nop bins so the Makefile works
 RUN echo -e "#!/bin/sh\nexec true" > /bin/templ
@@ -15,8 +15,8 @@ RUN chmod +x /bin/templ /bin/sqlc
 
 WORKDIR /build
 COPY src /build/src/
-COPY Makefile /build/
-RUN make release
+COPY justfile /build/
+RUN just release
 
 
 # Actual container
