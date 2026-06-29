@@ -18,13 +18,14 @@ and falsehoods.
 - Multi-user: your family can use it too
 - Optionally AI powered: AI photo tagging so you can search for "cat", and facial recognition so you
   can search for "Mike" (not true yet)
-- Guest access: share secret album links with your friends, both writable links for group vacations and
-  read-only links for everyone else
+- Guest access: share secret album links with your friends, both writable links for group vacations
+  and read-only links for everyone else
 - Backup friendly: yougram stores your data unmodified as files on disk, so it works well with
   standard backup solutions (restic/borg/etc)
 - No lock-in: getting your data out of yougram is an explicitly supported and documented workflow,
   feel free to take your photos elsewhere (not really true yet)
-- Private: nothing leaves your computer
+- Private: nothing leaves your computer. Zero telemetry, firewall all outgoing connections if you
+  want
 - Compatible with the Immich app: automatically upload your phone library to yougram (not true yet,
   or probably ever, probably vibecode an app at some point?)
 - Snappy: I'm not a web developer so everything happens instantly
@@ -35,11 +36,12 @@ and falsehoods.
 
 ## Installation instructions
 
+[ghrel]: https://github.com/mikejsavage/yougram/releases
 [funnel]: https://tailscale.com/kb/1223/funnel
 [caddy]: https://caddyserver.com
 [haproxy]: https://www.haproxy.org
 
-1. Download a binary from GitHub releases and copy it to your server
+1. Download a binary from [GitHub releases][ghrel] and copy it to your server
 2. Make a directory somewhere for yougram to store its data and `cd` to it
 3. Create a user by running `yougram create-user` and following the prompts
 4. Figure out how you want to expose yougram to the internet. yougram is split into a private
@@ -49,9 +51,9 @@ and falsehoods.
    expose the private interface to the internet, but running it behind a TLS terminating proxy (e.g.
    [Caddy][caddy] or [HAProxy][haproxy]) is ok. The guest interface is intended to be exposed to the
    internet, but you can put a reverse proxy in front of it too.
-5. Run it with `yougram serve --private-interface 0.0.0.0:12345 --guest-interface 0.0.0.0:12346
-   --guest-url https://guestgram.example.com`. Remember, yougram stores everything in the current
-   working directory, so make sure you're in the right place first!
+5. Run it with `yougram serve --private-listen-addr :12345 --guest-listen-addr :12346 --guest-url
+   https://guestgram.example.com`. Remember, yougram stores everything in the current working
+   directory, so make sure you're in the right place first!
 6. Optionally, if you want AI image classification, download `qwen.gguf` from TODO and put it in the
    `ai` directory.
 
