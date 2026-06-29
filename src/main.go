@@ -1984,6 +1984,8 @@ func showHelpAndQuit() {
         Disable the given user account.
     enable-user [username]
         Re-enables a disabled account.
+    version
+        Print version information.
     licenses
         Print third party library licenses.
 `, os.Args[ 0 ] )
@@ -2025,6 +2027,20 @@ func main() {
 		fmt.Printf( "http://localhost:5678\n" )
 	}
 
+	if !no_args {
+		switch os.Args[ 1 ] {
+		case "licenses":
+			fmt.Printf( "yougram embeds ffmpeg n5.1.2, which is licensed as follows:\n\n%s\n", ffmpeg_license )
+			fmt.Printf( "\n\n" )
+			fmt.Printf( "yougram embeds libmp3lame, which is licensed as follows:\n\n%s\n", libmp3lame_license )
+			os.Exit( 0 )
+
+		case "version":
+			fmt.Printf( "yougram version v20260629\n" )
+			return
+		}
+	}
+
 	// sqlite_vec.Auto()
 	db = must1( sql.Open( "sqlite3", db_path + "?cache=shared" ) )
 	defer db.Close()
@@ -2033,7 +2049,7 @@ func main() {
 
 	initDB( len( os.Args ) == 1 )
 
-	if len( os.Args ) > 1 {
+	if !no_args {
 		switch os.Args[ 1 ] {
 		case "serve":
 			flags := flag.NewFlagSet( "serve", flag.ExitOnError )
@@ -2091,12 +2107,6 @@ func main() {
 				showHelpAndQuit()
 			}
 			must( queries.EnableUser( context.Background(), unicodeNormalize( os.Args[ 2 ] ) ) )
-			os.Exit( 0 )
-
-		case "licenses":
-			fmt.Printf( "yougram embeds ffmpeg n5.1.2, which is licensed as follows:\n\n%s\n", ffmpeg_license )
-			fmt.Printf( "\n\n" )
-			fmt.Printf( "yougram embeds libmp3lame, which is licensed as follows:\n\n%s\n", libmp3lame_license )
 			os.Exit( 0 )
 
 		default: showHelpAndQuit()
