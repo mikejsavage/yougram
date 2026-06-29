@@ -28,4 +28,4 @@ package:
 	@env GOOS=linux GOARCH=arm64 CC="zig cc -target aarch64-linux" CXX="zig c++ -target aarch64-linux" just _yougram "_linux_arm64" "" "-s -w {{linux_ldflags}}" "release {{linux_tags}}"
 
 clean:
-	rm -f yougram yougram-dev
+	rm -f yougram yougram-dev yougram_linux_amd64 yougram_linux_arm64 yougram_macos_arm64
