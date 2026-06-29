@@ -66,10 +66,10 @@ CREATE TABLE IF NOT EXISTS photo_asset (
 CREATE VIEW IF NOT EXISTS photo_primary_asset
 AS SELECT photo.id AS photo_id, asset.* FROM photo
 INNER JOIN asset ON asset.sha256 = IFNULL( photo.primary_asset, (
-		SELECT id FROM asset AS lol
-		INNER JOIN photo_asset ON photo_asset.asset_id = lol.sha256
-		WHERE photo_asset.photo_id = photo.id AND lol.type != 'raw'
-		ORDER BY lol.created_at DESC LIMIT 1
+	SELECT id FROM asset AS primary_asset
+	INNER JOIN photo_asset ON photo_asset.asset_id = primary_asset
+	WHERE photo_asset.photo_id = photo.id AND primary_asset.type != 'raw'
+	ORDER BY primary_asset.created_at DESC LIMIT 1
 ) );
 
 CREATE INDEX IF NOT EXISTS photo__owner ON photo( owner );
