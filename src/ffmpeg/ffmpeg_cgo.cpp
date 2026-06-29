@@ -120,7 +120,6 @@ extern "C" FirstFrameResult FirstFrame( const char * path ) {
 		return StringError( "malloc" );
 	}
 
-	// TODO: error handling...
 	uint8_t * dest_data[4] = { rgb, NULL, NULL, NULL };
 	int dest_linesize[4] = { 4 * frame->width, 0, 0, 0 };
 	struct SwsContext * sws_ctx = sws_getContext(
@@ -128,9 +127,12 @@ extern "C" FirstFrameResult FirstFrame( const char * path ) {
 		frame->width, frame->height, AV_PIX_FMT_RGBA,
 		SWS_BILINEAR, NULL, NULL, NULL
 	);
-	sws_scale( sws_ctx, ( const uint8_t ** )frame->data, frame->linesize, 0,
-		frame->height, dest_data, dest_linesize );
-	sws_freeContext( sws_ctx );
+	if( sws_ctx == NULL ) {
+		return StringError( "sws_getContext" );
+	}
+	defer { sws_freeContext( sws_ctx ); };
+
+	sws_scale( sws_ctx, ( const uint8_t ** ) frame->data, frame->linesize, 0, frame->height, dest_data, dest_linesize );
 
 	return ( struct FirstFrameResult ) {
 		.Rgb = rgb,
