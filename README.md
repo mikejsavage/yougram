@@ -127,10 +127,16 @@ ffmpeg and maps and such. Qwen AI models range from 500MB to mega huge.
 
 ## Security
 
-The private/guest split makes it easy to hide most of yougram behind a VPN, which makes certain
+The private/guest split makes it easy to hide most of yougram behind a VPN, and makes certain
 classes of attacks impossible, for example frontend vulnerabilities in the guest interface cannot be
-leveraged into stealing accounts. Beyond that I make no claims regarding the security of the app
-other than that I have thought about it a bit.
+leveraged into stealing accounts. Having very few dependencies, including zero runtime backend
+dependencies and zero third-party frontend dependencies, also eliminates several classes of
+vulnerabilities. The backend can be run in an empty container with no internet access, and a strict
+frontend security policy blocks connections to external websites, making data exfiltration
+difficult.
+
+Beyond that I make no claims regarding the security of the app other than that I have thought about
+it a bit.
 
 Probably don't make accounts for untrusted users on your instance, but the guest interface is
 legitimately trivial and can be shared freely.
