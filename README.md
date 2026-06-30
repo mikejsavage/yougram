@@ -36,6 +36,17 @@ and falsehoods.
 
 ## Installation instructions
 
+The absolute bare minimum to get started is:
+
+```
+wget github.com/mikejsavage/yougram/releases/latest/download/yougram_linux_amd64
+chmod +x yougram_linux_amd64
+./yougram_linux_amd64 create-user mike
+./yougram_linux_amd64 serve --private-listen-addr :12345 --guest-listen-addr :12346 --guest-url http://localhost:12346
+```
+
+With a bit more detail:
+
 [ghrel]: https://github.com/mikejsavage/yougram/releases
 [funnel]: https://tailscale.com/kb/1223/funnel
 [caddy]: https://caddyserver.com
