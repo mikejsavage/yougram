@@ -585,9 +585,9 @@ templ uploadButton() {
 			progress: "50%",
 			show_form: false,
 
-			FilesSelected( e ) {
+			FilesSelected( files ) {
 				this.files = [ ];
-				for( const file of e.target.files ) {
+				for( const file of files ) {
 					this.files.push( file );
 				}
 				this.MakeStacks();
@@ -666,11 +666,11 @@ templ uploadButton() {
 	}
 	</script>
 
-	<div x-show="!selecting" x-data="MakeUploadForm()">
+	<div x-show="!selecting" x-data="MakeUploadForm()" @drop.window.prevent="FilesSelected( $event.dataTransfer.files )" @dragover.window.prevent="">
 		<button type="button" x-show="state == 'idle'">
 			<label>
 				Upload
-				<input type="file" name="photos" accept=".jpg,.jpeg,.png,.heic,image/heic,image/*,video/*" multiple @change="FilesSelected" style="display: none">
+				<input type="file" name="photos" accept=".jpg,.jpeg,.png,.heic,image/heic,image/*,video/*" multiple @change="FilesSelected( $event.target.files )" style="display: none">
 			</label>
 		</button>
 
