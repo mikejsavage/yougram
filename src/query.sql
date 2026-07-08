@@ -151,7 +151,11 @@ INNER JOIN user ON photo.owner = user.id
 WHERE photo.id = ?;
 
 -- name: GetPhotoAssets :many
-SELECT asset.sha256 AS asset, asset.type, asset.original_filename, photo.owner = ? AS owned
+SELECT asset.sha256 AS asset, asset.type, asset.original_filename, ( photo.owner = ? OR EXISTS(
+	SELECT 1 FROM album_photo
+	INNER JOIN album ON album.id = album_photo.album_id
+	WHERE album.shared OR album.owner = ?
+) ) IS TRUE AS has_permission -- `IS TRUE` is a hack to work around sqlc thinking `photo.owner IS ? OR EXISTS` is nullable
 FROM asset
 INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
 INNER JOIN photo ON photo.id = photo_asset.photo_id

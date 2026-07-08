@@ -934,6 +934,7 @@ func downloadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
 	for _, id := range ids {
 		rows := try1( queries.GetPhotoAssets( r.Context(), sqlc.GetPhotoAssetsParams {
 			Owner: justI64( user.ID ),
+			Owner_2: user.ID,
 			ID: id,
 			IncludeEverything: download_everything,
 			IncludeRaws: download_raws,
@@ -945,7 +946,7 @@ func downloadPhotos( w http.ResponseWriter, r *http.Request, user User ) {
 		}
 
 		for _, row := range rows {
-			if !row.Owned { // TODO: need to check if the photo is in a shared album too
+			if !row.HasPermission {
 				httpError( w, http.StatusForbidden )
 				return
 			}

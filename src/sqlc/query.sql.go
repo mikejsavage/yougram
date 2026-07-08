@@ -773,7 +773,11 @@ func (q *Queries) GetPhotoAlbums(ctx context.Context, photoID int64) ([]GetPhoto
 }
 
 const getPhotoAssets = `-- name: GetPhotoAssets :many
-SELECT asset.sha256 AS asset, asset.type, asset.original_filename, photo.owner = ? AS owned
+SELECT asset.sha256 AS asset, asset.type, asset.original_filename, ( photo.owner = ? OR EXISTS(
+	SELECT 1 FROM album_photo
+	INNER JOIN album ON album.id = album_photo.album_id
+	WHERE album.shared OR album.owner = ?
+) ) IS TRUE AS has_permission -- ` + "`" + `IS TRUE` + "`" + ` is a hack to work around sqlc thinking ` + "`" + `photo.owner IS ? OR EXISTS` + "`" + ` is nullable
 FROM asset
 INNER JOIN photo_asset ON asset.sha256 = photo_asset.asset_id
 INNER JOIN photo ON photo.id = photo_asset.photo_id
@@ -785,6 +789,7 @@ WHERE photo.id = ? AND (
 
 type GetPhotoAssetsParams struct {
 	Owner             sql.NullInt64
+	Owner_2           int64
 	ID                int64
 	IncludeEverything interface{}
 	IncludeRaws       interface{}
@@ -794,12 +799,13 @@ type GetPhotoAssetsRow struct {
 	Asset            []byte
 	Type             string
 	OriginalFilename string
-	Owned            bool
+	HasPermission    bool
 }
 
 func (q *Queries) GetPhotoAssets(ctx context.Context, arg GetPhotoAssetsParams) ([]GetPhotoAssetsRow, error) {
 	rows, err := q.db.QueryContext(ctx, getPhotoAssets,
 		arg.Owner,
+		arg.Owner_2,
 		arg.ID,
 		arg.IncludeEverything,
 		arg.IncludeRaws,
@@ -815,7 +821,7 @@ func (q *Queries) GetPhotoAssets(ctx context.Context, arg GetPhotoAssetsParams) 
 			&i.Asset,
 			&i.Type,
 			&i.OriginalFilename,
-			&i.Owned,
+			&i.HasPermission,
 		); err != nil {
 			return nil, err
 		}
