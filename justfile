@@ -27,5 +27,8 @@ package:
 	@env GOOS=linux GOARCH=amd64 CC="zig cc -target x86_64-linux" CXX="zig c++ -target x86_64-linux" just _yougram "_linux_amd64" "" "-s -w {{linux_ldflags}}" "release {{linux_tags}}"
 	@env GOOS=linux GOARCH=arm64 CC="zig cc -target aarch64-linux" CXX="zig c++ -target aarch64-linux" just _yougram "_linux_arm64" "" "-s -w {{linux_ldflags}}" "release {{linux_tags}}"
 
+container:
+	podman build -f container/Containerfile .
+
 clean:
 	rm -f yougram yougram-dev yougram_linux_amd64 yougram_linux_arm64 yougram_macos_arm64
