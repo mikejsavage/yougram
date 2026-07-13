@@ -260,9 +260,18 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 				object-position: 50% 50%;
 			}
 
+			.video {
+				background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGwtcnVsZT0iZXZlbm9kZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgdmlld0JveD0iMCAwIDI4NCAyODQiPjxwYXRoIGZpbGw9IiNmZmYiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxNSIgZD0ibTIwNi40NDYgMTQxLjczMi05Ny4wNyA1Ni4wNDRWODUuNjg5bDk3LjA3IDU2LjA0NFoiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMTQxLjczMiAwYzc4LjIyNCAwIDE0MS43MzIgNjMuNTA4IDE0MS43MzIgMTQxLjczMnMtNjMuNTA4IDE0MS43MzItMTQxLjczMiAxNDEuNzMyUzAgMjE5Ljk1NiAwIDE0MS43MzIgNjMuNTA4IDAgMTQxLjczMiAwbTAgMjEuMjZjNjYuNDkxIDAgMTIwLjQ3MiA1My45ODIgMTIwLjQ3MiAxMjAuNDcyIDAgNjYuNDkxLTUzLjk4MiAxMjAuNDcyLTEyMC40NzIgMTIwLjQ3Mi02Ni40OTEgMC0xMjAuNDcyLTUzLjk4Mi0xMjAuNDcyLTEyMC40NzIgMC02Ni40OTEgNTMuOTgyLTEyMC40NzIgMTIwLjQ3Mi0xMjAuNDcyIi8+PC9zdmc+Cg==");
+				background-repeat: no-repeat;
+				background-position: center;
+				background-size: 20%;
+				opacity: 0.75;
+			}
+
 			.raw {
 				background: repeating-linear-gradient(135deg,transparent,transparent 10px,#eee 10px,#eee 20px);
 				display: flex;
+				aspect-ratio: 1;
 				padding: 1rem;
 				align-items: center;
 				justify-content: center;
@@ -331,6 +340,9 @@ templ photogrid( photos []Photo, base_urls BaseURLs ) {
 						>
 							<img :src={ fmt.Sprintf( "'%s' + $store.photos[ i ].asset", base_urls.Thumbnail ) } loading="lazy" @load="loaded = true">
 							<img x-init="MakeThumbhash( $el, $store.photos[ i ].thumbhash )" x-show="!loaded">
+							<template x-if="$store.photos[ i ].type == 'video'">
+								<div class="video"></div>
+							</template>
 						</a>
 					</template>
 
