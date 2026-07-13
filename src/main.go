@@ -61,6 +61,9 @@ import (
 const megabyte = 1000 * 1000
 const green_checkmark = "&#x2705;"
 
+// overridden by the linker in `just package`
+var version = "dev"
+
 var db *sql.DB
 var queries *sqlc.Queries
 
@@ -2037,7 +2040,7 @@ func main() {
 			os.Exit( 0 )
 
 		case "version":
-			fmt.Printf( "yougram version v20260629\n" )
+			fmt.Printf( "yougram version %s\n", version )
 			return
 		}
 	}

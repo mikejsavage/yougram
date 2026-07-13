@@ -20,15 +20,15 @@ _yougram bin_suffix config_goflags config_ldflags config_tags:
 		-tags "fts5 nodynamic sqlite_omit_load_extension {{os_tags}} {{config_tags}}"
 
 [macos]
-package:
+package version:
 	@# TODO 20260629: go strip ldflags don't actually strip when cross compiling. zig objcopy removed
 	@# stripping for some reason but we can use that when they readd it
-	@just _yougram "_macos_arm64" "" "-s -w" "release"
-	@env GOOS=linux GOARCH=amd64 CC="zig cc -target x86_64-linux" CXX="zig c++ -target x86_64-linux" just _yougram "_linux_amd64" "" "-s -w {{linux_ldflags}}" "release {{linux_tags}}"
-	@env GOOS=linux GOARCH=arm64 CC="zig cc -target aarch64-linux" CXX="zig c++ -target aarch64-linux" just _yougram "_linux_arm64" "" "-s -w {{linux_ldflags}}" "release {{linux_tags}}"
+	@just _yougram "_macos_arm64" "" "-s -w -X main.version={{version}}" "release"
+	@env GOOS=linux GOARCH=amd64 CC="zig cc -target x86_64-linux" CXX="zig c++ -target x86_64-linux" just _yougram "_linux_amd64" "" "-s -w {{linux_ldflags}} -X main.version={{version}}" "release {{linux_tags}}"
+	@env GOOS=linux GOARCH=arm64 CC="zig cc -target aarch64-linux" CXX="zig c++ -target aarch64-linux" just _yougram "_linux_arm64" "" "-s -w {{linux_ldflags}} -X main.version={{version}}" "release {{linux_tags}}"
 
-container:
-	podman build -f container/Containerfile .
+container version:
+	podman build -f container/Containerfile -t yougram:{{version}} .
 
 clean:
 	rm -f yougram yougram-dev yougram_linux_amd64 yougram_linux_arm64 yougram_macos_arm64
