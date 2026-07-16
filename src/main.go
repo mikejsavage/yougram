@@ -218,6 +218,7 @@ func initDB( memory_db bool ) {
 	exec( ctx, "PRAGMA foreign_keys = ON" )
 	exec( ctx, "PRAGMA journal_mode = WAL" )
 	exec( ctx, "PRAGMA synchronous = NORMAL" )
+	exec( ctx, "PRAGMA busy_timeout = 5000" )
 	exec( ctx, "PRAGMA integrity_check" )
 	exec( ctx, "PRAGMA foreign_key_check" ) // TODO: need to abort if this returns anything
 
