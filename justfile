@@ -26,6 +26,8 @@ package version:
 	@just _yougram "_macos_arm64" "" "-s -w -X main.version={{version}}" "release"
 	@env GOOS=linux GOARCH=amd64 CC="zig cc -target x86_64-linux" CXX="zig c++ -target x86_64-linux" just _yougram "_linux_amd64" "" "-s -w {{linux_ldflags}} -X main.version={{version}}" "release {{linux_tags}}"
 	@env GOOS=linux GOARCH=arm64 CC="zig cc -target aarch64-linux" CXX="zig c++ -target aarch64-linux" just _yougram "_linux_arm64" "" "-s -w {{linux_ldflags}} -X main.version={{version}}" "release {{linux_tags}}"
+	@(file yougram_linux_amd64 | grep "statically linked" > /dev/null) || (echo "yougram_linux_amd64 not statically linked" && false)
+	@(file yougram_linux_arm64 | grep "statically linked" > /dev/null) || (echo "yougram_linux_arm64 not statically linked" && false)
 
 container version:
 	podman build -f container/Containerfile -t yougram:{{version}} .
