@@ -787,13 +787,14 @@ templ addToAlbumButton() {
 			<div style="display: flex; flex-direction: column; gap: 0.5rem">
 				<input type="search" placeholder="Search albums" x-model="search" x-ref="search" @keypress.enter="SubmitIfOneResult( $refs.dropdown )">
 
-				<template x-for="album in albums">
+				<template x-for="album in albums" :key="album.UrlSlug">
 					<template x-if="album.Name.toLowerCase().includes( search.toLowerCase() ) && !window.location.pathname.startsWith( '/' + album.Owner + '/' + album.UrlSlug )">
 						<button
 							:hx-put="'/Special:addToAlbum/' + album.Owner + '/' + album.UrlSlug"
 							hx-vals="js:{ photos: PhotosFormValue() }"
 							hx-disabled-elt="this"
 							hx-target="find .status"
+							x-init="$nextTick( () => htmx.process( $el ) )"
 						>
 							<template x-if="album.KeyPhotoSha256.length > 0">
 								<img :src="'/Special:thumbnail/' + album.KeyPhotoSha256" style="height: 1lh">
