@@ -794,7 +794,7 @@ templ addToAlbumButton() {
 							hx-vals="js:{ photos: PhotosFormValue() }"
 							hx-disabled-elt="this"
 							hx-target="find .status"
-							x-init="$nextTick( () => htmx.process( $el ) )"
+							x-init="htmx.process( $el )"
 						>
 							<template x-if="album.KeyPhotoSha256.length > 0">
 								<img :src="'/Special:thumbnail/' + album.KeyPhotoSha256" style="height: 1lh">
