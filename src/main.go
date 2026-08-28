@@ -72,7 +72,7 @@ var db_schema string
 
 //go:embed vendor_js/alpine-3.14.9.js
 var alpinejs string
-//go:embed vendor_js/htmx-2.0.4.js
+//go:embed vendor_js/htmx-4.0.0.js
 var htmxjs string
 //go:embed vendor_js/thumbhash.js
 var thumbhashjs string
@@ -2153,7 +2153,7 @@ func main() {
 
 		{ "GET",  "/Special:checksum", getChecksum },
 		{ "GET",  "/Special:alpinejs-3.14.9.js", serveJS( alpinejs ) },
-		{ "GET",  "/Special:htmx-2.0.4.js", serveJS( htmxjs ) },
+		{ "GET",  "/Special:htmx-4.0.0.js", serveJS( htmxjs ) },
 		{ "GET",  "/Special:thumbhash-1.0.0.js", serveJS( thumbhashjs ) },
 
 		{ "POST", "/Special:authenticate", authenticate },
@@ -2197,7 +2197,7 @@ func main() {
 
 		{ "GET",  "/Special:checksum", getChecksum },
 		{ "GET",  "/Special:alpinejs-3.14.9.js", serveJS( alpinejs ) },
-		{ "GET",  "/Special:htmx-2.0.4.js", serveJS( htmxjs ) },
+		{ "GET",  "/Special:htmx-4.0.0.js", serveJS( htmxjs ) },
 		{ "GET",  "/Special:thumbhash-1.0.0.js", serveJS( thumbhashjs ) },
 
 		{ "GET",  "/{owner}/{album}/{secret}", viewAlbumAsGuest },
