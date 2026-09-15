@@ -1435,27 +1435,47 @@ func generateThumbnail( image *image.RGBA ) ( []byte, []byte ) {
 	return thumbnail_jpg, thumbhash.EncodeImage( thumbnail )
 }
 
-func writeFileFSync( name string, r io.Reader, perm os.FileMode ) error {
-	f, err := os.OpenFile( name, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, perm )
+func writeFileSafe( name string, r io.Reader, perm os.FileMode ) ( err error ) {
+	// write to a temp file in case e.g. someone uploads the same file twice at the same time
+	temp, err := os.CreateTemp( "", "yougram_*" )
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy( f, r )
-	err1 := f.Sync()
-	err2 := f.Close()
-	return cmp.Or( err, err1, err2 )
+	defer os.Remove( temp.Name() )
+
+	if _, err = io.Copy( temp, r ); err != nil {
+		return err
+	}
+
+	// fsync the temp file
+	if err = temp.Sync(); err != nil {
+		return err
+	}
+	if err = temp.Close(); err != nil {
+		return err
+	}
+
+	// move the temp file into place
+	if err = os.Rename( temp.Name(), name ); err != nil {
+		return err
+	}
+
+	// fsync the parent dir
+	dir, err := os.Open( filepath.Dir( name ) )
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	return dir.Sync()
 }
 
 func saveAsset( r io.ReadSeeker, filename string ) error {
-	_, err := r.Seek( 0, io.SeekStart )
-	if err != nil {
-		return err
-	}
-	return writeFileFSync( "assets/" + filename, r, 0644 )
+	_ = must1( r.Seek( 0, io.SeekStart ) )
+	return writeFileSafe( "assets/" + filename, r, 0644 )
 }
 
 func saveGenerated( data []byte, filename string ) error {
-	return os.WriteFile( "generated/" + filename, data, 0644 )
+	return writeFileSafe( "generated/" + filename, bytes.NewReader( data ), 0644 )
 }
 
 type AddedAsset struct {
