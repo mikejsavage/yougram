@@ -34,3 +34,5 @@ container version:
 
 clean:
 	rm -f yougram yougram-dev yougram_linux_amd64 yougram_linux_arm64 yougram_macos_arm64
+
+import "src/facedetect/facedetect.just"

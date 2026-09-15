@@ -133,15 +133,63 @@ LEFT OUTER JOIN photo_primary_asset ON photo_primary_asset.photo_id = IFNULL( al
 -- CREATE INDEX IF NOT EXISTS album_photo__album_id ON album_photo( album_id );
 CREATE INDEX IF NOT EXISTS album_photo__photo_id ON album_photo( photo_id );
 
-----------------
--- AI TAGGING --
-----------------
-CREATE TABLE IF NOT EXISTS ai_description (
-	asset_id BLOB PRIMARY KEY REFERENCES asset( sha256 ),
-	generator TEXT NOT NULL,
-	description TEXT NOT NULL
+------------
+-- CONFIG --
+------------
+CREATE TABLE config (
+	id INTEGER PRIMARY KEY CHECK( id = 1 ),
+	last_asset_added_time INTEGER,
+	last_facial_recognition_cluster_time INTEGER
 ) STRICT;
 
-CREATE VIRTUAL TABLE IF NOT EXISTS ai_description_fts USING fts5( description, content=ai_description, content_rowid=description );
+INSERT OR IGNORE INTO config ( id ) VALUES ( 1 );
 
-CREATE INDEX IF NOT EXISTS ai_description__generator ON ai_description( generator );
+CREATE TRIGGER update_last_asset_added_time
+AFTER INSERT ON asset
+BEGIN
+    UPDATE config SET last_asset_added_time = unixepoch();
+END;
+
+----------
+-- CLIP --
+----------
+-- CREATE VIRTUAL TABLE clip_embedding USING vec0(
+-- 	id INTEGER PRIMARY KEY,
+-- 	embedding float[ 512 ]
+-- );
+
+------------------------
+-- FACIAL RECOGNITION --
+------------------------
+CREATE VIRTUAL TABLE face_embedding USING vec0(
+	id INTEGER PRIMARY KEY,
+	embedding float[ 512 ],
+	generator INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS face_embedding ( -- fake table for sqlc
+	id INTEGER PRIMARY KEY,
+	embedding float[ 512 ],
+	generator INTEGER NOT NULL
+) STRICT;
+
+CREATE TABLE person (
+	id INTEGER PRIMARY KEY,
+	name TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE person_face (
+	person_id INTEGER NOT NULL REFERENCES person( id ),
+	face_id INTEGER NOT NULL, -- REFERENCES face_embedding( id ),
+	UNIQUE( face_id )
+) STRICT;
+
+CREATE TABLE asset_face (
+	asset_id BLOB NOT NULL, -- REFERENCES asset( id ),
+	face_id INTEGER NOT NULL, -- REFERENCES face_embedding( id ),
+	UNIQUE( asset_id, face_id )
+) STRICT;
+
+CREATE VIEW photo_face
+AS SELECT DISTINCT face_id, photo_id FROM asset_face
+INNER JOIN photo_asset ON photo_asset.asset_id = asset_face.asset_id;

@@ -3,7 +3,6 @@ package main
 import (
 	"archive/zip"
 	"bytes"
-	"cmp"
 	"context"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -55,7 +54,7 @@ import (
 	"golang.org/x/image/webp"
 
 	_ "github.com/mattn/go-sqlite3"
-	// sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
+	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 )
 
 const megabyte = 1000 * 1000
@@ -2046,7 +2045,7 @@ func main() {
 		}
 	}
 
-	// sqlite_vec.Auto()
+	sqlite_vec.Auto()
 	db = must1( sql.Open( "sqlite3", db_path + "?cache=shared" ) )
 	defer db.Close()
 
@@ -2124,6 +2123,7 @@ func main() {
 	}
 
 	initBackgroundTaskRunner()
+	initFacialRecognition()
 	initGeocoder()
 
 	{
@@ -2224,5 +2224,6 @@ func main() {
 	must( guest_http_server.Shutdown( ctx ) )
 
 	shutdownGeocoder()
+	shutdownFacialRecognition()
 	shutdownBackgroundTaskRunner()
 }

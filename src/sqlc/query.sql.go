@@ -232,6 +232,15 @@ func (q *Queries) DeleteUnusedAvatars(ctx context.Context) error {
 	return err
 }
 
+const didClusterFaces = `-- name: DidClusterFaces :exec
+UPDATE config SET last_facial_recognition_cluster_time = unixepoch()
+`
+
+func (q *Queries) DidClusterFaces(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, didClusterFaces)
+	return err
+}
+
 const disableUser = `-- name: DisableUser :exec
 UPDATE user SET enabled = 0 WHERE username = ?
 `
@@ -521,26 +530,6 @@ func (q *Queries) GetAlbumsForUser(ctx context.Context, owner int64) ([]GetAlbum
 		return nil, err
 	}
 	return items, nil
-}
-
-const getAnAssetThatNeedsANewAIDescription = `-- name: GetAnAssetThatNeedsANewAIDescription :one
-SELECT sha256, thumbnail FROM asset
-LEFT JOIN ai_description ON sha256 = asset_id
-WHERE generator IS NULL OR generator != ?
-ORDER BY generator ASC NULLS FIRST
-LIMIT 1
-`
-
-type GetAnAssetThatNeedsANewAIDescriptionRow struct {
-	Sha256    []byte
-	Thumbnail []byte
-}
-
-func (q *Queries) GetAnAssetThatNeedsANewAIDescription(ctx context.Context, generator string) (GetAnAssetThatNeedsANewAIDescriptionRow, error) {
-	row := q.db.QueryRowContext(ctx, getAnAssetThatNeedsANewAIDescription, generator)
-	var i GetAnAssetThatNeedsANewAIDescriptionRow
-	err := row.Scan(&i.Sha256, &i.Thumbnail)
-	return i, err
 }
 
 const getAssetGuestMetadata = `-- name: GetAssetGuestMetadata :one
@@ -1110,6 +1099,22 @@ func (q *Queries) IsAlbumURLInUse(ctx context.Context, arg IsAlbumURLInUseParams
 	return column_1, err
 }
 
+const needToClusterFaces = `-- name: NeedToClusterFaces :one
+
+SELECT COALESCE( last_asset_added_time > last_facial_recognition_cluster_time + 5 * 60, TRUE ) FROM config
+`
+
+// ----------
+// CONFIG --
+// ----------
+// wait 5 mins so we don't waste work clustering in the middle of uploading photos
+func (q *Queries) NeedToClusterFaces(ctx context.Context) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, needToClusterFaces)
+	var coalesce interface{}
+	err := row.Scan(&coalesce)
+	return coalesce, err
+}
+
 const purgeDeletedAlbums = `-- name: PurgeDeletedAlbums :exec
 DELETE FROM album WHERE delete_at IS NOT NULL AND delete_at < ?
 `
@@ -1229,25 +1234,6 @@ func (q *Queries) SetAlbumSettings(ctx context.Context, arg SetAlbumSettingsPara
 		arg.ID,
 		arg.Owner,
 	)
-	return err
-}
-
-const setAssetAIDescription = `-- name: SetAssetAIDescription :exec
-
-INSERT OR REPLACE INTO ai_description ( asset_id, generator, description ) VALUES ( ?, ?, ? )
-`
-
-type SetAssetAIDescriptionParams struct {
-	AssetID     []byte
-	Generator   string
-	Description string
-}
-
-// --------------
-// AI TAGGING --
-// --------------
-func (q *Queries) SetAssetAIDescription(ctx context.Context, arg SetAssetAIDescriptionParams) error {
-	_, err := q.db.ExecContext(ctx, setAssetAIDescription, arg.AssetID, arg.Generator, arg.Description)
 	return err
 }
 

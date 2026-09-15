@@ -8,16 +8,6 @@ import (
 	"database/sql"
 )
 
-type AiDescription struct {
-	AssetID     []byte
-	Generator   string
-	Description string
-}
-
-type AiDescriptionFt struct {
-	Description string
-}
-
 type Album struct {
 	ID                  int64
 	Owner               int64
@@ -59,9 +49,36 @@ type Asset struct {
 	Longitude        sql.NullFloat64
 }
 
+type AssetFace struct {
+	AssetID []byte
+	FaceID  int64
+}
+
 type Avatar struct {
 	Sha256 []byte
 	Avatar []byte
+}
+
+type Config struct {
+	ID                               int64
+	LastAssetAddedTime               sql.NullInt64
+	LastFacialRecognitionClusterTime sql.NullInt64
+}
+
+type FaceEmbedding struct {
+	ID        int64
+	Embedding interface{}
+	Generator int64
+}
+
+type Person struct {
+	ID   int64
+	Name string
+}
+
+type PersonFace struct {
+	PersonID int64
+	FaceID   int64
 }
 
 type Photo struct {
@@ -75,6 +92,11 @@ type Photo struct {
 type PhotoAsset struct {
 	PhotoID int64
 	AssetID []byte
+}
+
+type PhotoFace struct {
+	FaceID  int64
+	PhotoID int64
 }
 
 type PhotoPrimaryAsset struct {

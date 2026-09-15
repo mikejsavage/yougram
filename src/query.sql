@@ -1,3 +1,14 @@
+------------
+-- CONFIG --
+------------
+
+-- name: NeedToClusterFaces :one
+-- wait 5 mins so we don't waste work clustering in the middle of uploading photos
+SELECT COALESCE( last_asset_added_time > last_facial_recognition_cluster_time + 5 * 60, TRUE ) FROM config;
+
+-- name: DidClusterFaces :exec
+UPDATE config SET last_facial_recognition_cluster_time = unixepoch();
+
 -----------
 -- USERS --
 -----------
@@ -298,16 +309,37 @@ UPDATE album SET guest_password = ? WHERE id = ? AND owner = ?;
 SELECT EXISTS ( SELECT 1 FROM album WHERE owner = ? AND url_slug = ? );
 
 
-----------------
--- AI TAGGING --
-----------------
+----------
+-- CLIP --
+----------
 
--- name: SetAssetAIDescription :exec
-INSERT OR REPLACE INTO ai_description ( asset_id, generator, description ) VALUES ( ?, ?, ? );
 
--- name: GetAnAssetThatNeedsANewAIDescription :one
-SELECT sha256, thumbnail FROM asset
-LEFT JOIN ai_description ON sha256 = asset_id
-WHERE generator IS NULL OR generator != ?
-ORDER BY generator ASC NULLS FIRST
+------------------------
+-- FACIAL RECOGNITION --
+------------------------
+
+-- name: AddFaceEmbedding :one
+INSERT INTO face_embedding ( id, embedding, generator ) VALUES ( ?, ?, ? ) RETURNING id;
+
+-- name: AddPerson :one
+INSERT INTO person ( name ) VALUES ( ? ) RETURNING id;
+
+-- name: AddPersonFace :exec
+INSERT INTO person_face ( person_id, face_id ) VALUES ( ?, ? );
+
+-- name: GetFaceEmbeddings :many
+SELECT id, embedding, generator FROM face_embedding;
+
+-- name: FindNearestPerson :one
+SELECT person.id, person.name FROM person
+INNER JOIN person_face ON person_face.person_id = person.id
+INNER JOIN face_embedding ON person_face.face_id = face_embedding.id
+WHERE face_embedding.embedding MATCH ?
+ORDER BY face_embedding.distance
 LIMIT 1;
+
+-- name: FindPhotosOfPerson :many
+SELECT photo_id FROM photo_asset
+INNER JOIN asset_face ON photo_asset.asset_id = asset_face.asset_id
+INNER JOIN face_embedding ON asset_face.face_id = face_embedding.id
+WHERE vec_distance_cosine( face_embedding.embedding, ? ) < @threshold;

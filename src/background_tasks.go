@@ -1,11 +1,11 @@
 package main
 
-import (
-	// "context"
-	// "fmt"
-	"sync"
+// this is a simple background task runner, with a fast task queue and a slow
+// task queue. the fast queue is prioritised over the slow queue, but fast
+// tasks do not preempt slow tasks
 
-	// "mikegram/sqlc"
+import (
+	"sync"
 )
 
 var fast_tasks []func()
@@ -14,30 +14,6 @@ var slow_tasks []func()
 var wake_channel chan int
 var shutdown bool
 var shutdown_waiter sync.WaitGroup
-
-func tagAPhoto() {
-	/*
-	if !moondream.Ok() {
-		return
-	}
-
-	untagged := queryOptional( queries.GetAnAssetThatNeedsANewAIDescription( context.Background(), 0 ) )
-	if !untagged.Valid {
-		return
-	}
-
-	description := moondream.DescribePhoto( untagged.V.Thumbnail )
-	must( queries.SetAssetAIDescription( context.Background(), sqlc.SetAssetAIDescriptionParams {
-		AssetID: untagged.V.Sha256,
-		Generator: "qwen3.5",
-		Description: description,
-	} ) )
-
-	fmt.Printf( "%v -> %s\n", untagged.V.Sha256, description )
-
-	addSlowBackgroundTask( tagAPhoto )
-	*/
-}
 
 // TODO: maybe try to thread a context through this
 func initBackgroundTaskRunner() {
@@ -73,8 +49,12 @@ func initBackgroundTaskRunner() {
 
 	// wait until the task runner is ready
 	wake_channel <- 1
+}
 
-	addSlowBackgroundTask( tagAPhoto )
+func shutdownBackgroundTaskRunner() {
+	shutdown = true
+	wakeTheTaskRunner()
+	shutdown_waiter.Wait()
 }
 
 func wakeTheTaskRunner() {
@@ -82,12 +62,6 @@ func wakeTheTaskRunner() {
     case wake_channel <- 1:
     default:
     }
-}
-
-func shutdownBackgroundTaskRunner() {
-	shutdown = true
-	wakeTheTaskRunner()
-	shutdown_waiter.Wait()
 }
 
 func addFastBackgroundTask( task func() ) {

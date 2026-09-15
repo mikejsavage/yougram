@@ -7,6 +7,7 @@ require github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd // indire
 require (
 	github.com/a-h/templ v0.3.960
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
+	github.com/asg017/sqlite-vec-go-bindings v0.1.6
 	github.com/evanoberholster/imagemeta v1.0.0
 	github.com/galdor/go-thumbhash v1.0.0
 	github.com/gen2brain/avif v0.4.4
