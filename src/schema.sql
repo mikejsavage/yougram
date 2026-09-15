@@ -1,12 +1,12 @@
 -----------
 -- USERS --
 -----------
-CREATE TABLE IF NOT EXISTS avatar (
+CREATE TABLE avatar (
 	sha256 BLOB PRIMARY KEY CHECK( length( sha256 ) = 32 ),
 	avatar BLOB NOT NULL
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS user (
+CREATE TABLE user (
 	id INTEGER PRIMARY KEY,
 	username TEXT NOT NULL UNIQUE CHECK( username <> '' ),
 	password TEXT NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS user (
 ------------
 -- ASSETS --
 ------------
-CREATE TABLE IF NOT EXISTS valid_asset_type (
+CREATE TABLE valid_asset_type (
     type TEXT PRIMARY KEY
 ) STRICT;
 INSERT OR IGNORE INTO valid_asset_type VALUES
@@ -27,7 +27,7 @@ INSERT OR IGNORE INTO valid_asset_type VALUES
 	( 'video' ), -- ( 'h265' ),
 	( 'raw' );
 
-CREATE TABLE IF NOT EXISTS asset (
+CREATE TABLE asset (
 	sha256 BLOB PRIMARY KEY CHECK( length( sha256 ) = 32 ),
 	created_at INTEGER NOT NULL,
 	original_filename TEXT NOT NULL,
@@ -42,13 +42,13 @@ CREATE TABLE IF NOT EXISTS asset (
 	CHECK( type = 'raw' OR ( thumbnail IS NOT NULL AND thumbhash IS NOT NULL ) )
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS asset__created_at ON asset( created_at );
-CREATE INDEX IF NOT EXISTS asset__date_taken ON asset( date_taken );
+CREATE INDEX asset__created_at ON asset( created_at );
+CREATE INDEX asset__date_taken ON asset( date_taken );
 
 ------------
 -- PHOTOS --
 ------------
-CREATE TABLE IF NOT EXISTS photo (
+CREATE TABLE photo (
 	id INTEGER PRIMARY KEY,
 	owner INTEGER REFERENCES user( id ),
 	created_at INTEGER NOT NULL,
@@ -57,13 +57,13 @@ CREATE TABLE IF NOT EXISTS photo (
 	FOREIGN KEY ( id, primary_asset ) REFERENCES photo_asset( photo_id, asset_id ) DEFERRABLE INITIALLY DEFERRED
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS photo_asset (
+CREATE TABLE photo_asset (
 	photo_id INTEGER NOT NULL REFERENCES photo( id ),
 	asset_id BLOB NOT NULL REFERENCES asset( sha256 ),
 	UNIQUE( photo_id, asset_id )
 ) STRICT;
 
-CREATE VIEW IF NOT EXISTS photo_primary_asset
+CREATE VIEW photo_primary_asset
 AS SELECT photo.id AS photo_id, asset.* FROM photo
 INNER JOIN asset ON asset.sha256 = IFNULL( photo.primary_asset, (
 	SELECT id FROM asset AS primary_asset
@@ -72,14 +72,14 @@ INNER JOIN asset ON asset.sha256 = IFNULL( photo.primary_asset, (
 	ORDER BY primary_asset.created_at DESC LIMIT 1
 ) );
 
-CREATE INDEX IF NOT EXISTS photo__owner ON photo( owner );
-CREATE INDEX IF NOT EXISTS photo_asset__photo_id ON photo_asset( photo_id );
-CREATE INDEX IF NOT EXISTS photo_asset__asset_id ON photo_asset( asset_id );
+CREATE INDEX photo__owner ON photo( owner );
+CREATE INDEX photo_asset__photo_id ON photo_asset( photo_id );
+CREATE INDEX photo_asset__asset_id ON photo_asset( asset_id );
 
 ------------
 -- ALBUMS --
 ------------
-CREATE TABLE IF NOT EXISTS album (
+CREATE TABLE album (
 	id INTEGER PRIMARY KEY,
 	owner INTEGER NOT NULL REFERENCES user( id ),
 	name TEXT NOT NULL UNIQUE CHECK( name <> '' ),
@@ -114,13 +114,13 @@ CREATE TABLE IF NOT EXISTS album (
 	UNIQUE( owner, url_slug )
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS album_photo (
+CREATE TABLE album_photo (
 	album_id INTEGER NOT NULL REFERENCES album( id ) ON DELETE CASCADE,
 	photo_id INTEGER NOT NULL REFERENCES photo( id ) ON DELETE CASCADE,
 	UNIQUE( album_id, photo_id )
 ) STRICT;
 
-CREATE VIEW IF NOT EXISTS album_key_asset
+CREATE VIEW album_key_asset
 AS SELECT album.id, photo_primary_asset.sha256 FROM album
 LEFT OUTER JOIN photo_primary_asset ON photo_primary_asset.photo_id = IFNULL( album.key_photo, (
 	SELECT newest_asset.photo_id FROM album_photo
@@ -130,8 +130,8 @@ LEFT OUTER JOIN photo_primary_asset ON photo_primary_asset.photo_id = IFNULL( al
 ) );
 
 -- the unique constraint makes the first index pointless, not sure if we ever need the second one
--- CREATE INDEX IF NOT EXISTS album_photo__album_id ON album_photo( album_id );
-CREATE INDEX IF NOT EXISTS album_photo__photo_id ON album_photo( photo_id );
+-- CREATE INDEX album_photo__album_id ON album_photo( album_id );
+CREATE INDEX album_photo__photo_id ON album_photo( photo_id );
 
 ------------
 -- CONFIG --
