@@ -47,7 +47,7 @@ templ createAlbumButton() {
 	<div x-data="{
 		name: '',
 		url: '',
-		auto_slug: true,
+		auto_slug: false,
 		shared: false,
 	}">
 		<button command="show-modal" commandfor="createalbum" @click="ResetForms">Create album</button>
@@ -65,9 +65,9 @@ templ createAlbumButton() {
 				<fieldset>
 					<legend><label for="url">URL</label></legend>
 					<input type="text" name="url" x-model="url" autocomplete="off" x-effect="if( auto_slug ) { url = MakeSlug( name ); }" :readonly="auto_slug" required>
-					<button style="display: inline-flex; align-items: center; gap: 0.25em" @click="selecting = !selecting">
-						<input type="checkbox" x-model="auto_slug" :checked="auto_slug"> Auto
-					</button>
+					<label>
+						<input type="checkbox" x-model="auto_slug" checked> Auto
+					</label>
 				</fieldset>
 
 				<label>
